@@ -1,0 +1,71 @@
+{
+  "name": "AllerCare AI — Theo dõi từ xa & an toàn thuốc",
+  "short_name": "AllerCare",
+  "description": "Theo dõi diễn biến, khai báo thuốc, trò chuyện cùng Trợ lý AI và kiểm tra an toàn thuốc. Bản demo dùng dữ liệu giả lập.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "vi",
+  "dir": "ltr",
+  "background_color": "#f0f7fc",
+  "theme_color": "#0284c7",
+  "categories": ["health", "medical", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Phân luồng AI",
+      "short_name": "Phân luồng",
+      "description": "Khai triệu chứng — phân luồng xanh/vàng/đỏ hỗ trợ cấp cứu 115",
+      "url": "/patient/triage",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Cập nhật diễn biến",
+      "short_name": "Cập nhật",
+      "description": "Khai báo thuốc đang dùng và báo triệu chứng",
+      "url": "/patient/updates",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Hỏi đáp AI",
+      "short_name": "Hỏi đáp AI",
+      "description": "Hỏi đáp với Trợ lý AI học từ kho kiến thức của hệ thống",
+      "url": "/patient/chat",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Lịch hẹn",
+      "short_name": "Lịch hẹn",
+      "description": "Đặt lịch và tham gia video call với bác sĩ",
+      "url": "/patient/appointments",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

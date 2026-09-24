@@ -1,0 +1,85 @@
+# Production compose — build từ Dockerfile multi-stage.
+# Dùng: docker compose -f infra/docker-compose.prod.yml up -d --build
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: allercare-prod-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-allercare}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-allercare_demo}
+      POSTGRES_DB: ${POSTGRES_DB:-allercare}
+    volumes:
+      - allercare_pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U allercare -d allercare"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    # Production thật: KHÔNG expose 5432 ra ngoài host
+
+  api:
+    build:
+      context: ../services/api
+      dockerfile: Dockerfile
+    image: allercare/api:latest
+    container_name: allercare-prod-api
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-allercare}:${POSTGRES_PASSWORD:-allercare_demo}@postgres:5432/${POSTGRES_DB:-allercare}
+      AUTH_SECRET: ${AUTH_SECRET:?Vui lòng đặt AUTH_SECRET — dùng chuỗi ngẫu nhiên dài}
+      DEMO_MODE: ${DEMO_MODE:-true}
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      AI_API_KEY: ${AI_API_KEY:-}
+      VIDEO_BASE_URL: ${VIDEO_BASE_URL:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      DATA_DIR: /srv/data
+      SEED_ON_START: ${SEED_ON_START:-0}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ../data:/srv/data:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+      args:
+        API_ORIGIN: http://api:8000
+    image: allercare/web:latest
+    container_name: allercare-prod-web
+    environment:
+      API_ORIGIN: http://api:8000
+      NODE_ENV: production
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: allercare-prod-caddy
+    ports:
+      - "443:443"
+      - "${HTTP_PORT:-8080}:8080"
+    environment:
+      LAN_IP: ${LAN_IP:-localhost}
+      HTTP_PORT: ${HTTP_PORT:-8080}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - ./caddy/data/caddy-root:/data/caddy-root:ro
+    depends_on:
+      - api
+      - web
+    restart: unless-stopped
+
+volumes:
+  allercare_pgdata_prod:
+  caddy_data:
+  caddy_config:

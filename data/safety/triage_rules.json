@@ -1,0 +1,67 @@
+{
+  "_readme": "Quy tắc TriageGuard AI — phân luồng 3 mức theo tài liệu CHI TIẾT mục 3. Mức đỏ = dấu hiệu nguy hiểm cần cấp cứu ngay (115). Mức vàng = triệu chứng mới/tăng dần cần bác sĩ đánh giá sớm. Mức xanh = nhẹ, ổn định, theo dõi tại nhà. Hệ thống chỉ hỗ trợ phân luồng ban đầu — chẩn đoán và phân độ phản vệ phải tuân quy định Bộ Y tế (ydct.moh.gov.vn).",
+  "red": {
+    "description": "Khó thở, phù môi lưỡi, rối loạn ý thức, choáng hoặc triệu chứng tiến triển nhanh → cảnh báo cấp cứu ngay + thông báo bác sĩ/người nhà",
+    "patterns": [
+      { "pattern": "khó thở", "label": "Khó thở" },
+      { "pattern": "thở khò khè", "label": "Thở khò khè" },
+      { "pattern": "sưng (mặt|môi|lưỡi|cổ họng)", "label": "Sưng mặt/môi/lưỡi/cổ họng" },
+      { "pattern": "phù (môi|lưỡi|mi mắt| mặt|họng)", "label": "Phù môi/lưỡi/mi mắt/họng" },
+      { "pattern": "phản vệ", "label": "Phản vệ" },
+      { "pattern": "sốc phản vệ", "label": "Sốc phản vệ" },
+      { "pattern": "mất ý thức", "label": "Mất ý thức" },
+      { "pattern": "choáng", "label": "Choáng" },
+      { "pattern": "co giật", "label": "Co giật" },
+      { "pattern": "đau ngực dữ dội", "label": "Đau ngực dữ dội" },
+      { "pattern": "sưng phù (mi mắt|mặt)", "label": "Sưng phù mi mắt/mặt" },
+      { "pattern": "nổi mẩn.*khó thở", "label": "Mẩn toàn thân kèm khó thở" },
+      { "pattern": "môi tím", "label": "Môi tím" },
+      { "pattern": "tím tái", "label": "Tím tái" }
+    ],
+    "action_patient": "GỌI CẤP CỨU 115 hoặc đến cơ sở y tế gần nhất NGAY LẬP TỨC",
+    "notify": ["assigned_doctor", "nurse_queue", "caregiver"],
+    "needs_doctor_approval": false
+  },
+  "yellow": {
+    "description": "Triệu chứng mới xuất hiện, tăng dần hoặc cần bác sĩ đánh giá → liên hệ bác sĩ sớm + vào danh sách kiểm tra của NVYT",
+    "patterns": [
+      { "pattern": "nổi mẩn", "label": "Nổi mẩn" },
+      { "pattern": "mẩn đỏ", "label": "Mẩn đỏ" },
+      { "pattern": "phát ban", "label": "Phát ban" },
+      { "pattern": "ngứa nhiều", "label": "Ngứa nhiều" },
+      { "pattern": "sưng (nóng|đau)", "label": "Sưng nóng/đau" },
+      { "pattern": "rỉ dịch", "label": "Rỉ dịch" },
+      { "pattern": "sốt", "label": "Sốt" },
+      { "pattern": "nôn", "label": "Nôn/ói" },
+      { "pattern": "đau bụng", "label": "Đau bụng" },
+      { "pattern": "phù nhẹ", "label": "Phù nhẹ" },
+      { "pattern": "đau tăng", "label": "Đau tăng dần" },
+      { "pattern": "tổn thương da", "label": "Tổn thương da" },
+      { "pattern": "mề đay", "label": "Mề đay" },
+      { "pattern": "triệu chứng mới", "label": "Triệu chứng mới" },
+      { "pattern": "tăng dần", "label": "Triệu chứng tăng dần" }
+    ],
+    "action_patient": "Liên hệ bác sĩ sớm qua mục Lịch hẹn hoặc Hỏi đáp AI — không chờ quá 24 giờ",
+    "notify": ["assigned_doctor", "nurse_queue"],
+    "needs_doctor_approval": true
+  },
+  "green": {
+    "description": "Triệu chứng nhẹ, ổn định, chưa có dấu hiệu nguy hiểm → tiếp tục theo dõi, ghi nhận và làm đúng chỉ định",
+    "patterns": [
+      { "pattern": "ngứa nhẹ", "label": "Ngứa nhẹ" },
+      { "pattern": "khô da", "label": "Khô da" },
+      { "pattern": "bình thường", "label": "Tình trạng ổn định" },
+      { "pattern": "ổn định", "label": "Ổn định" },
+      { "pattern": "đỡ hơn", "label": "Đỡ hơn" },
+      { "pattern": "giảm", "label": "Triệu chứng giảm" }
+    ],
+    "action_patient": "Tiếp tục theo dõi, ghi nhận triệu chứng và uống thuốc đúng chỉ định",
+    "notify": ["assigned_doctor"],
+    "needs_doctor_approval": false
+  },
+  "high_risk_context": {
+    "_note": "Đặc điểm người bệnh làm tăng độ ưu tiên: từng có phản vệ trước đây + đang dùng thuốc nghi ngờ → bất kỳ triệu chứng da bất thường cũng nâng tối thiểu lên vàng",
+    "prior_anaphylaxis_min_level": "yellow",
+    "rechallenge_suspect_min_level": "yellow"
+  }
+}

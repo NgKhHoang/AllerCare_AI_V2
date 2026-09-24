@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mất kết nối — AllerCare AI</title>
+  <style>
+    :root {
+      --brand: #0284c7; --brand-dark: #075985;
+      --bg: #f0f7fc; --text: #0f2438; --muted: #4a6274;
+      --danger: #c0392b; --danger-bg: #fdecec;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Be Vietnam Pro", Inter, -apple-system, sans-serif;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(160deg, #bae6fd 0%, #e0f2fe 34%, #ffffff 78%);
+      color: var(--text); padding: 16px;
+    }
+    .card {
+      max-width: 420px; width: 100%; text-align: center;
+      background: rgba(255,255,255,.92); border-radius: 22px;
+      box-shadow: 0 20px 60px rgba(2,60,100,.18); padding: 36px 28px;
+    }
+    .logo {
+      width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 20px;
+      background: linear-gradient(135deg, #0ea5e9, #0284c7);
+      display: flex; align-items: center; justify-content: center; font-size: 30px;
+      box-shadow: 0 8px 24px rgba(2,132,199,.35);
+    }
+    h1 { font-size: 22px; color: var(--brand-dark); margin-bottom: 8px; }
+    p { color: var(--muted); font-size: 15px; line-height: 1.6; margin-bottom: 10px; }
+    .warn {
+      background: var(--danger-bg); color: var(--danger); border: 1.5px solid #f5c6c1;
+      border-radius: 14px; padding: 12px 14px; font-size: 14px; font-weight: 600; margin: 16px 0;
+      text-align: left;
+    }
+    button {
+      width: 100%; min-height: 48px; border: none; border-radius: 12px;
+      background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #fff;
+      font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 6px;
+    }
+    .tip { font-size: 13px; color: var(--muted); margin-top: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">🌊</div>
+    <h1>Mất kết nối</h1>
+    <p>Không thể kết nối tới máy chủ AllerCare AI. Vui lòng kiểm tra Internet và thử lại.</p>
+    <div class="warn">
+      🚨 <strong>Khẩn cấp?</strong> Gọi ngay <strong>115</strong> hoặc đến cơ sở y tế gần nhất.
+      Ứng dụng không thay thế kênh cấp cứu và không dùng được khi mất mạng.
+    </div>
+    <button onclick="location.reload()">Thử kết nối lại</button>
+    <p class="tip">Vì lý do an toàn, AllerCare không lưu hồ sơ sức khỏe của bạn trên thiết bị khi offline.</p>
+  </div>
+</body>
+</html>

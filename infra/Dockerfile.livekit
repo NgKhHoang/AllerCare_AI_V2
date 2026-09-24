@@ -1,0 +1,20 @@
+# LiveKit server build offline — dùng khi Docker Hub chậm/không tải được image.
+# Cần file livekit.tar.gz (binary chính thức linux_arm64) cùng thư mục:
+#   curl -L -o infra/livekit.tar.gz \
+#     https://github.com/livekit/livekit/releases/download/v1.13.7/livekit_1.13.7_linux_arm64.tar.gz
+# (Đổi sang livekit_1.13.7_linux_amd64.tar.gz nếu host là Intel/AMD64)
+#
+# Base: caddy:2-alpine đã có sẵn local (nền Alpine) — tránh pull alpine:3.20 từ registry.
+# Image chỉ chạy livekit binary; phần caddy trong base bị bỏ qua (ENTRYPOINT ghi đè).
+FROM caddy:2-alpine
+
+RUN addgroup -S livekit 2>/dev/null; adduser -S livekit -G livekit 2>/dev/null; true
+COPY livekit.tar.gz /tmp/livekit.tar.gz
+RUN tar -xzf /tmp/livekit.tar.gz -C /usr/local/bin livekit-server \
+    && chmod +x /usr/local/bin/livekit-server \
+    && rm /tmp/livekit.tar.gz
+
+USER livekit
+EXPOSE 7880 7881 7882/udp
+ENTRYPOINT ["/usr/local/bin/livekit-server"]
+CMD ["--config", "/etc/livekit.yaml"]

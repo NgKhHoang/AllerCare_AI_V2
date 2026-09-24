@@ -1,0 +1,31 @@
+[
+  { "username": "doctor1", "password": "doctor123", "full_name": "BS. Nguyễn Văn An", "role": "doctor" },
+  { "username": "doctor2", "password": "doctor123", "full_name": "BS. Trần Thị Bình", "role": "doctor" },
+  { "username": "nurse1", "password": "nurse123", "full_name": "ĐD. Trịnh Thu Hà", "role": "nurse" },
+  { "username": "nurse2", "password": "nurse123", "full_name": "ĐD. Lâm Quốc Tuấn", "role": "nurse" },
+  { "username": "pharmacist1", "password": "pharma123", "full_name": "DS. Nguyễn Thị Em", "role": "pharmacist" },
+  { "username": "leader1", "password": "leader123", "full_name": "PGS.TS. Đặng Văn Giang", "role": "leader" },
+  { "username": "admin1", "password": "admin123", "full_name": "QT. Hồ Văn Khoa", "role": "admin" },
+  { "username": "family1", "password": "family123", "full_name": "Nguyễn Thị Ngọc Mai", "role": "caregiver", "care_for": "case01" },
+
+  { "username": "patient1", "password": "patient123", "full_name": "Lê Văn Cường", "role": "patient" },
+  { "username": "patient2", "password": "patient123", "full_name": "Phạm Thị Dung", "role": "patient" },
+  { "username": "patient3", "password": "patient123", "full_name": "Hoàng Minh Đức", "role": "patient" },
+  { "username": "patient4", "password": "patient123", "full_name": "Vũ Thị Giang", "role": "patient" },
+  { "username": "patient5", "password": "patient123", "full_name": "Đỗ Quốc Huy", "role": "patient" },
+  { "username": "patient6", "password": "patient123", "full_name": "Bùi Thị Hoa", "role": "patient" },
+  { "username": "patient7", "password": "patient123", "full_name": "Ngô Văn Ích", "role": "patient" },
+  { "username": "patient8", "password": "patient123", "full_name": "Lý Thanh Jame", "role": "patient" },
+
+  { "username": "case01", "password": "patient123", "full_name": "NGUYỄN THỊ NGUYỆT", "role": "patient" },
+  { "username": "case02", "password": "patient123", "full_name": "NGUYỄN KÈO", "role": "patient" },
+  { "username": "case03", "password": "patient123", "full_name": "LANG THANH BÌNH", "role": "patient" },
+  { "username": "case04", "password": "patient123", "full_name": "BÙI THỊ ÁNH HÀ", "role": "patient" },
+  { "username": "case05", "password": "patient123", "full_name": "LIÊU KIM NGUYÊN", "role": "patient" },
+  { "username": "case06", "password": "patient123", "full_name": "NGUYỄN THỊ HỒNG NGÂN", "role": "patient" },
+  { "username": "case07", "password": "patient123", "full_name": "NGUYỄN VĂN ĐÊ", "role": "patient" },
+  { "username": "case08", "password": "patient123", "full_name": "LÒ TUẤN ĐẠT", "role": "patient" },
+  { "username": "case09", "password": "patient123", "full_name": "TRƯƠNG QUỐC CHÍNH", "role": "patient" },
+  { "username": "case10", "password": "patient123", "full_name": "TÔ THỊ THƠM", "role": "patient" },
+  { "username": "case11", "password": "patient123", "full_name": "CAO THỊ LỆ THU", "role": "patient" }
+]

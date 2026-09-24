@@ -1,0 +1,61 @@
+{
+  "_readme": "Nguồn tài liệu y tế dùng làm căn cứ cho quy tắc an toàn + phân luồng. Khi có dữ liệu thật, thay file này giữ nguyên cấu trúc. URL trong license_note là nguồn gốc theo tài liệu CHI TIẾT.",
+  "sources": [
+    {
+      "title": "Tương tác thuốc Davies 2024 (bản rút gọn đào tạo)",
+      "publisher": "Davies",
+      "version": "2024.1",
+      "published_date": "2024-03",
+      "license_note": "Tài liệu đào tạo nội bộ mô phỏng từ nguồn tương tác thuốc cho demo. Quyền sử dụng: demo.",
+      "content": "Tương tác thuốc Davies 2024 — nội dung mô phỏng cho demo. Cách dùng thuốc an toàn: uống đúng liều theo hướng dẫn của bác sĩ, không tự tăng giảm liều. Nếu quên một liều, không uống gấp đôi để bù. Bảo quản thuốc nơi khô mát, tránh ánh nắng, để xa tầm tay trẻ em. Khi gặp dấu hiệu bất thường như nổi mẩn, khó thở, sưng mặt hoặc môi, hãy ngừng thuốc và liên hệ ngay cơ sở y tế hoặc gọi 115. Không dùng chung thuốc với người khác và không dùng thuốc đã quá hạn."
+    },
+    {
+      "title": "HBOT 2024 — Thông tin thuốc hướng dẫn sử dụng",
+      "publisher": "Ban Dược BV",
+      "version": "2024.2",
+      "published_date": "2024-06",
+      "license_note": "Hướng dẫn sử dụng thuốc mô phỏng cho demo.",
+      "content": "HBOT 2024 — nội dung mô phỏng cho demo. Cách dùng thuốc an toàn: uống đúng liều theo hướng dẫn của bác sĩ, không tự tăng giảm liều. Nếu quên một liều, không uống gấp đôi để bù. Bảo quản thuốc nơi khô mát, tránh ánh nắng, để xa tầm tay trẻ em. Khi gặp dấu hiệu bất thường như nổi mẩn, khó thở, sưng mặt hoặc môi, hãy ngừng thuốc và liên hệ ngay cơ sở y tế hoặc gọi 115. Không dùng chung thuốc với người khác và không dùng thuốc đã quá hạn."
+    },
+    {
+      "title": "Quyết định hướng dẫn chẩn đoán và điều trị da liễu (mô phỏng)",
+      "publisher": "Bộ Y tế (mô phỏng)",
+      "version": "2020.1",
+      "published_date": "2020-01",
+      "license_note": "Mô phỏng cho demo, không thay thế văn bản gốc.",
+      "content": "Quyết định hướng dẫn chẩn đoán và điều trị da liễu — nội dung mô phỏng cho demo. Cách dùng thuốc an toàn: uống đúng liều theo hướng dẫn của bác sĩ, không tự tăng giảm liều. Nếu quên một liều, không uống gấp đôi để bù. Bảo quản thuốc nơi khô mát, tránh ánh nắng, để xa tầm tay trẻ em. Khi gặp dấu hiệu bất thường như nổi mẩn, khó thở, sưng mặt hoặc môi, hãy ngừng thuốc và liên hệ ngay cơ sở y tế hoặc gọi 115. Không dùng chung thuốc với người khác và không dùng thuốc đã quá hạn."
+    },
+    {
+      "title": "Cảnh báo dược quốc gia — bản chép lại đào tạo",
+      "publisher": "Dược quốc gia (mô phỏng)",
+      "version": "2023.1",
+      "published_date": "2023-09",
+      "license_note": "Mô phỏng cho demo.",
+      "content": "Cảnh báo dược quốc gia — nội dung mô phỏng cho demo. Cách dùng thuốc an toàn: uống đúng liều theo hướng dẫn của bác sĩ, không tự tăng giảm liều. Nếu quên một liều, không uống gấp đôi để bù. Bảo quản thuốc nơi khô mát, tránh ánh nắng, để xa tầm tay trẻ em. Khi gặp dấu hiệu bất thường như nổi mẩn, khó thở, sưng mặt hoặc môi, hãy ngừng thuốc và liên hệ ngay cơ sở y tế hoặc gọi 115. Không dùng chung thuốc với người khác và không dùng thuốc đã quá hạn."
+    },
+    {
+      "title": "WHO — Causality assessment of suspected adverse reactions",
+      "publisher": "WHO",
+      "version": "2013.1",
+      "published_date": "2013",
+      "license_note": "Nguồn gốc: who.int/docs/default-source/medicines/pharmacovigilance/whocausality-assessment.pdf — trích nguyên tắc, dùng cho xếp hạng tác nhân nghi ngờ.",
+      "content": "Đánh giá quan hệ nhân quả của phản ứng có hại theo WHO: thường chỉ đạt mức 'có thể' (possible) hoặc 'có khả năng' (probable); rất ít trường hợp khẳng định chắc chắn (certain) do thiếu xét nghiệm đặc hiệu và không thể thử dùng lại thuốc chỉ để kiểm chứng. Các yếu tố xem xét: quan hệ thời gian giữa dùng thuốc và khởi phát, đáp ứng với việc ngừng thuốc (dechallenge), tái diễn khi dùng lại (rechallenge), nguyên nhân thay thế, tiền sử phản ứng tương tự, nồng độ thuốc trong máu, dấu hiệu đặc hiệu cho thuốc."
+    },
+    {
+      "title": "WHO — Medication reconciliation (WHO/UHC/SDS/2019.9)",
+      "publisher": "WHO",
+      "version": "2019.1",
+      "published_date": "2019",
+      "license_note": "Nguồn gốc: who.int/publications/i/item/WHO-UHC-SDS-2019.9 — nguyên tắc đối soát thuốc.",
+      "content": "Đối soát thuốc (medication reconciliation) là quá trình nhân viên y tế phối hợp với người bệnh để bảo đảm thông tin thuốc đầy đủ, chính xác và nhất quán, đặc biệt khi nhập viện, chuyển khoa hoặc xuất viện. Cần ghi nhận mọi nguồn thuốc: bệnh viện kê, cơ sở khác, tự mua, không kê đơn, thực phẩm chức năng, đông y, thuốc bôi/nhỏ/tiêm, và thuốc đã ngừng nhưng từng gây phản ứng bất thường."
+    },
+    {
+      "title": "Bộ Y tế — Hướng dẫn chẩn đoán, phân độ và xử trí phản vệ",
+      "publisher": "Bộ Y tế",
+      "version": "2022.1",
+      "published_date": "2022",
+      "license_note": "Nguồn gốc: ydct.moh.gov.vn — chẩn đoán, phân độ và xử trí phản vệ phải tuân theo quy định chuyên môn của Bộ Y tế.",
+      "content": "Phản vệ độ I (nhẹ): biểu hiện nhẹ như mẩn ngứa, phù mi mắt, không suy giảm sinh hiệu — xử trí kháng histamin, corticoid, theo dõi. Phản vệ độ II (trung bình): co thắt phế quản, phù thanh quản không suy hô hấp nặng. Phản vệ độ III (nặng): suy hô hấp, tụt huyết áp, sốc phản vệ — cấp cứu với Adrenalin, hồi sinh. Chẩn đoán và xử trí phải do nhân viên y tế thực hiện theo quy định chuyên môn."
+    }
+  ]
+}

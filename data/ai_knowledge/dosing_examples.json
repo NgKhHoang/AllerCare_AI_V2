@@ -1,0 +1,221 @@
+{
+  "_readme": "Ví dụ chia liều do bác sĩ ghi nhận trong demo. AI dùng các bản ghi này để giải thích cách chia liều và tham chiếu khi trả lời. Khi có dữ liệu thật, thay file này bằng dữ liệu thật (cùng cấu trúc).",
+  "examples": [
+    {
+      "id": "dose-001",
+      "drug": "Paracetamol",
+      "brand_example": "Paracetamol 500mg",
+      "patient_context": {
+        "age_group": "adult",
+        "weight_kg": null,
+        "renal_function": "normal",
+        "hepatic_function": "normal",
+        "pregnancy": false
+      },
+      "dose": "500mg–1000mg mỗi lần, cách 4–6 giờ",
+      "max_daily": "4000mg/ngày",
+      "route": "uống",
+      "reasoning": "Liều chuẩn người lớn khỏe mạnh. Tổng từ TẤT CẢ thuốc chứa Paracetamol (kể cả thuốc cảm, Panadol Extra) phải cộng gộp và không vượt trần 4000mg/ngày.",
+      "doctor_note": "Nhắc người bệnh kiểm tra thành phần thuốc cảm khác đang dùng để tránh vượt trần liều.",
+      "source_file": "dosing_examples.json"
+    },
+    {
+      "id": "dose-002",
+      "drug": "Paracetamol",
+      "brand_example": "Panadol 500mg",
+      "patient_context": {
+        "age_group": "elderly",
+        "weight_kg": null,
+        "renal_function": "normal",
+        "hepatic_function": "mild_impairment",
+        "pregnancy": false
+      },
+      "dose": "500mg mỗi lần, cách 6 giờ",
+      "max_daily": "3000mg/ngày",
+      "route": "uống",
+      "reasoning": "Người cao tuổi + suy gan nhẹ: hạ trần liều xuống 3000mg/ngày theo nguyên tắc start low, go slow.",
+      "doctor_note": "Theo dõi men gan định kỳ.",
+      "source_file": "dosing_examples.json"
+    },
+    {
+      "id": "dose-003",
+      "drug": "Metformin",
+      "brand_example": "Glucophage 850mg",
+      "patient_context": {
+        "age_group": "adult",
+        "weight_kg": null,
+        "renal_function": "normal",
+        "hepatic_function": "normal",
+        "pregnancy": false
+      },
+      "dose": "850mg x 2 lần/ngày (sáng – tối, sau ăn)",
+      "max_daily": "2550mg/ngày",
+      "route": "uống",
+      "reasoning": "Liều duy trì chuẩn đái tháo đường típ 2. Chia 2 lần để giảm kích ứng dạ dày.",
+      "doctor_note": "Cần CrCl trước khi tăng liều.",
+      "source_file": "dosing_examples.json"
+    },
+    {
+      "id": "dose-004",
+      "drug": "Metformin",
+      "brand_example": "Metformin 500mg",
+      "patient_context": {
+        "age_group": "adult",
+        "weight_kg": null,
+        "renal_function": "crcl_30_60",
+        "hepatic_function": "normal",
+        "pregnancy": false
+      },
+      "dose": "500mg x 2 lần/ngày, không vượt 1000mg/ngày khi CrCl 30–45",
+      "max_daily": "1000mg/ngày (CrCl 30–45)",
+      "route": "uống",
+      "reasoning": "CrCl giảm → giảm liều Metformin để tránh acid lactic. Khi CrCl < 30: chống chỉ định.",
+      "doctor_note": "Kiểm tra CrCl ít nhất mỗi 3–6 tháng.",
+      "source_file": "dosing_examples.json"
+    },
+    {
+      "id": "dose-005",
+      "drug": "Amlodipin",
+      "brand_example": "Amlodipin 5mg",
+      "patient_context": {
+        "age_group": "adult",
+        "weight_kg": null,
+        "renal_function": "normal",
+        "hepatic_function": "normal",
+        "pregnancy": false
+      },
+      "dose": "5mg x 1 lần/ngày",
+      "max_daily": "10mg/ngày",
+      "route": "uống",
+      "reasoning": "Liều khởi đầu chuẩn tăng huyết áp. Tăng lên 10mg nếu chưa đạt mục tiêu huyết áp sau 2–4 tuần.",
+      "doctor_note": "Tác dụng phụ hay gặp: phù cổ chân.",
+      "source_file": "dosing_examples.json"
+    },
+    {
+      "id": "dose-006",
+      "drug": "Amlodipin",
+      "brand_example": "Amlodipin 5mg",
+      "patient_context": {
+        "age_group": "elderly",
+        "weight_kg": null,
+        "renal_function": "normal",
+        "hepatic_function": "normal",
+        "pregnancy": false
+      },
+      "dose": "2.5mg x 1 lần/ngày khởi đầu",
+      "max_daily": "5mg/ngày (khởi đầu)",
+      "route": "uống",
+      "reasoning": "Người cao tuổi: khởi đầu liều thấp hơn nửa liều chuẩn, tăng chậm theo huyết áp.",
+      "doctor_note": "Đo huyết áp tại nhà mỗi sáng và ghi lại.",
+      "source_file": "dosing_examples.json"
+    },
+    {
+      "id": "dose-007",
+      "drug": "Warfarin",
+      "brand_example": "Warfarin 3mg",
+      "patient_context": {
+        "age_group": "adult",
+        "weight_kg": null,
+        "renal_function": "normal",
+        "hepatic_function": "normal",
+        "pregnancy": false
+      },
+      "dose": "Tùy chỉnh theo INR, khởi đầu 3–5mg/ngày uống chiều tối",
+      "max_daily": "Theo INR mục tiêu 2.0–3.0",
+      "route": "uống",
+      "reasoning": "Thuốc khoảng an toàn hẹp: liều phải chỉnh theo INR định kỳ, không có liều cố định cho mọi người.",
+      "doctor_note": "Nhắc tránh thêm Aspirin/NSAID tự ý; ăn rau xanh ổn định.",
+      "source_file": "dosing_examples.json"
+    },
+    {
+      "id": "dose-008",
+      "drug": "Amoxicillin",
+      "brand_example": "Amoxicillin 500mg",
+      "patient_context": {
+        "age_group": "adult",
+        "weight_kg": null,
+        "renal_function": "normal",
+        "hepatic_function": "normal",
+        "pregnancy": false
+      },
+      "dose": "500mg x 3 lần/ngày, cách 8 giờ, uống đủ liệu trình",
+      "max_daily": "1500–3000mg/ngày tùy chỉ định",
+      "route": "uống",
+      "reasoning": "Kháng sinh phải duy trì nồng độ ức chế ổn định: chia đều 8 giờ, không bỏ liều, không tự ngừng khi đã đỡ.",
+      "doctor_note": "Hỏi kỹ tiền sử dị ứng Penicillin trước khi kê.",
+      "source_file": "dosing_examples.json"
+    },
+    {
+      "id": "dose-009",
+      "drug": "Amoxicillin",
+      "brand_example": "Amoxicillin 500mg",
+      "patient_context": {
+        "age_group": "child",
+        "weight_kg": 20,
+        "renal_function": "normal",
+        "hepatic_function": "normal",
+        "pregnancy": false
+      },
+      "dose": "25mg/kg/ngày chia 3 lần (≈ 500mg/ngày cho trẻ 20kg)",
+      "max_daily": "Theo mg/kg, không vượt liều người lớn",
+      "route": "uống",
+      "reasoning": "Liều trẻ em tính theo cân nặng mg/kg/ngày rồi chia 3 lần cách 8 giờ.",
+      "doctor_note": "Dùng siro/dạng phân tán cho trẻ nhỏ; cân đúng kg trước khi tính.",
+      "source_file": "dosing_examples.json"
+    },
+    {
+      "id": "dose-010",
+      "drug": "Cetirizine",
+      "brand_example": "Zyrtec 10mg",
+      "patient_context": {
+        "age_group": "adult",
+        "weight_kg": null,
+        "renal_function": "normal",
+        "hepatic_function": "normal",
+        "pregnancy": false
+      },
+      "dose": "10mg x 1 lần/ngày buổi tối",
+      "max_daily": "10mg/ngày",
+      "route": "uống",
+      "reasoning": "Uống 1 lần/ngày vì bán thải dài; buổi tối để hạn chế buồn ngủ ban ngày.",
+      "doctor_note": "Không uống cùng rượu bia.",
+      "source_file": "dosing_examples.json"
+    },
+    {
+      "id": "dose-011",
+      "drug": "Cetirizine",
+      "brand_example": "Cetirizine 10mg",
+      "patient_context": {
+        "age_group": "elderly",
+        "weight_kg": null,
+        "renal_function": "crcl_30_60",
+        "hepatic_function": "normal",
+        "pregnancy": false
+      },
+      "dose": "5mg x 1 lần/ngày",
+      "max_daily": "5mg/ngày",
+      "route": "uống",
+      "reasoning": "CrCl 30–60: liều Cetirizine giảm còn một nửa vì thải qua thận.",
+      "doctor_note": "Cẩn thận chóng mặt, té ngã ở người cao tuổi.",
+      "source_file": "dosing_examples.json"
+    },
+    {
+      "id": "dose-012",
+      "drug": "Ibuprofen",
+      "brand_example": "Ibuprofen 400mg",
+      "patient_context": {
+        "age_group": "adult",
+        "weight_kg": null,
+        "renal_function": "normal",
+        "hepatic_function": "normal",
+        "pregnancy": false
+      },
+      "dose": "400mg mỗi 6–8 giờ khi cần, uống sau ăn no",
+      "max_daily": "1200mg/ngày (mua tự do) / 2400mg/ngày (theo chỉ định)",
+      "route": "uống",
+      "reasoning": "NSAID dùng khi cần, sau ăn để giảm kích ứng dạ dày. Trần liều tùy kê đơn hay không.",
+      "doctor_note": "Tránh khi suy thận, loét dạ dày, đang dùng Aspirin.",
+      "source_file": "dosing_examples.json"
+    }
+  ]
+}

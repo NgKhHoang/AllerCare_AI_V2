@@ -1,0 +1,1 @@
+# AllerCare AI — application package.

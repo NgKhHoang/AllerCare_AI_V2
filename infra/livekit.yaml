@@ -1,0 +1,18 @@
+# LiveKit server — self-hosted cho demo AllerCare AI
+# Media: UDP 7882 (ICE/UDP mux). Signaling: HTTP 7880 (qua Caddy /livekit).
+# RTC over TCP 7881 dùng làm fallback khi UDP bị chặn (3G/4G, firewall doanh nghiệp).
+port: 7880
+bind_addresses:
+  - ""
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: false
+  # IP công khai của máy chủ nếu truy cập từ ngoài LAN (bỏ comment + điền IP khi cần)
+  # nat_1_to_1_ip: 203.0.113.10
+logging:
+  level: info
+room:
+  # Phòng tự đóng sau khi trống — tiết kiệm tài nguyên, không lưu dữ liệu cuộc gọi
+  empty_timeout: 300
+  max_participants: 8

@@ -1,0 +1,55 @@
+# Caddy reverse proxy cho AllerCare AI — HTTPS trong mạng LAN
+#
+# - TLS nội bộ tự ký do Caddy quản lý (local_certs) — trình duyệt/điện thoại cần
+#   tin cậy root CA của Caddy (tải tại http://<ip-may-chu>:{$HTTP_PORT}/ca.crt).
+# - Lắng nghe theo IP LAN thực tế (biến {$LAN_IP}) và allercare.local.
+# - /api/* → backend FastAPI; phần còn lại → Next.js.
+
+{
+	# Tự sinh CA nội bộ, không gọi ra Internet để cấp cert
+	local_certs
+	# Điện thoại truy cập bằng IP không gửi SNI — dùng cert của IP làm mặc định
+	default_sni {$LAN_IP}
+	log {
+		output stdout
+		level INFO
+	}
+}
+
+# Site HTTPS theo IP LAN + tên miền giả lập (đều dùng cùng CA nội bộ)
+https://{$LAN_IP} {
+	# /api/* → FastAPI
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	# /livekit/* → LiveKit signaling (handle_path bỏ prefix /livekit trước khi forward;
+	# WebSocket upgrade được Caddy tự động hỗ trợ)
+	handle_path /livekit/* {
+		reverse_proxy livekit:7880
+	}
+
+	# Còn lại → Next.js
+	handle {
+		reverse_proxy web:3000
+	}
+}
+
+https://allercare.local {
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle_path /livekit/* {
+		reverse_proxy livekit:7880
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}
+
+# Serve root CA để điện thoại tải về cài tin cậy (HTTP, không cần cert)
+http://:{$HTTP_PORT} {
+	root * /data/caddy-root
+	header /ca.crt Content-Type application/x-x509-ca-cert
+	file_server
+}

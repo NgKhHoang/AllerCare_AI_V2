@@ -1,0 +1,105 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: allercare-postgres
+    environment:
+      POSTGRES_USER: allercare
+      POSTGRES_PASSWORD: allercare_demo
+      POSTGRES_DB: allercare
+    ports:
+      - "5432:5432"
+    volumes:
+      - allercare_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U allercare -d allercare"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: python:3.12-slim
+    container_name: allercare-api
+    working_dir: /srv
+    command: sh -c "pip install --no-cache-dir -e . >/dev/null 2>&1 && alembic upgrade head && python -m app.seed_data && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://allercare:allercare_demo@postgres:5432/allercare
+      AUTH_SECRET: demo-secret-change-me
+      DEMO_MODE: "1"
+      AI_PROVIDER: mock
+      VIDEO_BASE_URL: ""
+      LIVEKIT_URL: wss://192.168.2.15/livekit
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-allercare-demo-secret-0123456789ab}
+      ALLOWED_ORIGINS: http://localhost:3000
+      DATA_DIR: /srv/data
+    volumes:
+      - ../services/api:/srv
+      - ../data:/srv/data:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  livekit:
+    # Build offline từ binary chính thức (xem Dockerfile.livekit) — tránh pull từ Docker Hub
+    image: allercare/livekit:local
+    build:
+      context: .
+      dockerfile: Dockerfile.livekit
+    container_name: allercare-livekit
+    command: --config /etc/livekit.yaml
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-allercare-demo-secret-0123456789ab}"   # API key/secret dùng để ký token (dev) — ĐỔI KHI ĐƯA LÊN PRODUCTION
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "7881:7881"
+      - "7882:7882/udp"
+    restart: unless-stopped
+
+  web:
+    image: node:22-alpine
+    container_name: allercare-web
+    working_dir: /app
+    command: sh -c "npm install --no-audit --no-fund >/dev/null 2>&1 && npx next dev --port 3000 --hostname 0.0.0.0"
+    environment:
+      API_ORIGIN: http://api:8000
+      NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ../apps/web:/app
+      - web_node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+      - livekit
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: allercare-caddy
+    ports:
+      - "443:443"
+      - "${HTTP_PORT:-8080}:8080"
+    environment:
+      LAN_IP: ${LAN_IP:-localhost}
+      HTTP_PORT: ${HTTP_PORT:-8080}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - ./caddy/data/caddy-root:/data/caddy-root:ro
+    depends_on:
+      - api
+      - web
+    restart: unless-stopped
+
+volumes:
+  allercare_pgdata:
+  web_node_modules:
+  caddy_data:
+  caddy_config:
+
+# LiveKit API key/secret dùng để ký access token video (xem infra/livekit.yaml)
+# Ví dụ file infra/.env: LIVEKIT_API_KEY=devkey\nLIVEKIT_API_SECRET=<chuỗi ngẫu nhiên>
