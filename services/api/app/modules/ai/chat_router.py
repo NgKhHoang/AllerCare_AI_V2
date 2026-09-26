@@ -183,3 +183,18 @@ def knowledge_info(user: CurrentUser = Depends(require_roles("patient"))) -> dic
         ],
         "stats": stats,
     }
+
+
+class OcrIn(BaseModel):
+    image_base64: str = Field(description="Base64 encoded image string")
+    mime_type: str = Field(default="image/jpeg", description="MIME type của ảnh")
+
+
+@router.post("/ocr-prescription", summary="Quét ảnh đơn thuốc/vỏ hộp thuốc bằng Gemini Vision")
+def ocr_prescription(
+    body: OcrIn,
+    user: CurrentUser = Depends(require_roles("patient", "caregiver", "doctor", "nurse")),
+) -> list[dict]:
+    from app.modules.ai.vision_service import extract_medications_from_image
+
+    return extract_medications_from_image(body.image_base64, body.mime_type)

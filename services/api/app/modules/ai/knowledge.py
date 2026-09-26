@@ -109,11 +109,12 @@ class AIBrain:
         self.principles_md: str = bundle["dosing_principles_md"]
         self.patient_factors_md: str = bundle["patient_factors_md"]
         self.style_md: str = bundle["conversation_style_md"]
+        self.drug_interactions: list[dict] = bundle.get("drug_interactions", [])
         raw_examples = bundle["dosing_examples"]
         self.examples: list[DoseExample] = [
             DoseExample.from_dict(e) for e in raw_examples.get("examples", [])
         ]
-        # Chỉ số tra cứu nhanh
+        # Chỉ số tra cứu nhanh ví dụ liều
         self._by_drug: dict[str, list[DoseExample]] = {}
         for ex in self.examples:
             self._by_drug.setdefault(ex.drug.lower(), []).append(ex)
@@ -121,6 +122,23 @@ class AIBrain:
     # ------------------------------------------------------------------
     # Truy xuất kiến thức (RAG tối giản theo từ khóa)
     # ------------------------------------------------------------------
+
+    def find_interaction_in_message(self, message: str) -> dict | None:
+        """Tìm tương tác thuốc nếu câu hỏi nhắc đến 2 hoạt chất/thuốc có trong kho tương tác."""
+        msg_lower = message.lower()
+        candidates = []
+        for item in self.drug_interactions:
+            act1 = item.get("act1", "").lower()
+            act2 = item.get("act2", "").lower()
+            # Làm sạch tên (bỏ ngoặc đơn nếu có)
+            pure1 = re.sub(r"\s*\(.*?\)", "", act1).strip()
+            pure2 = re.sub(r"\s*\(.*?\)", "", act2).strip()
+            if (pure1 in msg_lower and pure2 in msg_lower) or (act1 in msg_lower and act2 in msg_lower):
+                candidates.append(item)
+        if candidates:
+            # Chọn tương tác khớp dài nhất
+            return candidates[0]
+        return None
 
     def find_drug_examples(self, message: str) -> list[DoseExample]:
         """Tìm ví dụ liều cho các thuốc được nhắc trong tin nhắn."""
@@ -173,6 +191,7 @@ class AIBrain:
         return {
             "examples": len(self.examples),
             "drugs": len(self._by_drug),
+            "drug_interactions": len(self.drug_interactions),
             "principles_chars": len(self.principles_md),
             "factors_chars": len(self.patient_factors_md),
             "files": self.knowledge_files(),

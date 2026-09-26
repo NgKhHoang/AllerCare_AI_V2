@@ -102,6 +102,7 @@ def load_demo_cases() -> list[dict]:
 AI_KNOWLEDGE_FILES = (
     "ai_knowledge/dosing_principles.md",
     "ai_knowledge/dosing_examples.json",
+    "ai_knowledge/drug_interactions.json",
     "ai_knowledge/patient_factors.md",
     "ai_knowledge/conversation_style.md",
 )
@@ -109,16 +110,13 @@ AI_KNOWLEDGE_FILES = (
 
 @lru_cache
 def load_ai_knowledge_bundle() -> dict[str, Any]:
-    """Nạp toàn bộ kho kiến thức AI (chỉ từ ai_knowledge/).
-
-    Cache theo thời gian ngắn: dùng lru_cache thủ công qua wrapper bên dưới
-    nếu cần làm mới trong quá trình chạy dài. Hiện tại nạp 1 lần mỗi tiến trình
-    đủ cho demo; file lớn (dữ liệu thật) nên nạp lại qua restart hoặc gọi
-    `reload_ai_knowledge()`.
-    """
+    """Nạp toàn bộ kho kiến thức AI (chỉ từ ai_knowledge/)."""
+    path_int = data_dir() / "ai_knowledge/drug_interactions.json"
+    drug_interactions = _read_json("ai_knowledge/drug_interactions.json") if path_int.is_file() else []
     return {
         "dosing_principles_md": _read_text("ai_knowledge/dosing_principles.md"),
         "dosing_examples": _read_json("ai_knowledge/dosing_examples.json"),
+        "drug_interactions": drug_interactions,
         "patient_factors_md": _read_text("ai_knowledge/patient_factors.md"),
         "conversation_style_md": _read_text("ai_knowledge/conversation_style.md"),
     }

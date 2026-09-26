@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api, getToken } from "../../lib/api";
 import { AppShell, EmergencyBanner, EmptyState, VerifiedBadge } from "../../components/ui";
 
@@ -18,6 +19,7 @@ interface Medication {
   is_planned: boolean;
   dose: string | null;
   frequency: string | null;
+  timing: string | null;
   verification: string;
 }
 interface Allergy {
@@ -53,7 +55,10 @@ export default function PatientHome() {
   if (!profile && !error) {
     return (
       <main className="login-wrap">
-        <p className="muted">Đang tải hồ sơ…</p>
+        <div style={{ textAlign: "center" }}>
+          <div className="brand-dot" style={{ margin: "0 auto 12px" }}>🛡️</div>
+          <p className="muted">Đang tải hồ sơ thông minh…</p>
+        </div>
       </main>
     );
   }
@@ -62,9 +67,7 @@ export default function PatientHome() {
     return (
       <main className="login-wrap">
         <div className="login-card">
-          <div className="login-logo">
-            <div className="brand-dot">🌊</div>
-          </div>
+          <div className="brand-dot">🛡️</div>
           <p className="error-text" style={{ textAlign: "center" }}>
             {error}
           </p>
@@ -72,7 +75,6 @@ export default function PatientHome() {
             Về trang đăng nhập
           </a>
         </div>
-        <div className="container" />
       </main>
     );
   }
@@ -81,47 +83,91 @@ export default function PatientHome() {
   const plannedMeds = meds.filter((m) => m.is_planned).length;
 
   return (
-    <AppShell role="patient" icon="🏠" title={`Xin chào, ${profile?.full_name?.split(" ").slice(-1)}`} subtitle="Hồ sơ và theo dõi của bạn">
+    <AppShell
+      role="patient"
+      icon="👋"
+      title={`Xin chào, ${profile?.full_name}`}
+      subtitle="Trung tâm theo dõi an toàn thuốc & Trợ lý Gemini AI cá thể hóa"
+    >
       <EmergencyBanner />
 
+      {/* 4 Smart Action Tiles */}
       <div className="grid-2">
-        <a className="card" href="/patient/triage" style={{ textDecoration: "none", color: "inherit" }}>
-          <div className="card-title">
-            <span className="t-ico">🚦</span> Phân luồng AI
+        <Link className="smart-tile" href="/patient/updates">
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div className="tile-icon" style={{ background: "var(--brand-50)", color: "var(--brand-600)" }}>
+              📸
+            </div>
+            <div>
+              <div className="tile-title">Quét đơn thuốc AI</div>
+              <div className="tile-desc">Chụp ảnh đơn thuốc — Gemini tự động nhận diện và đối soát</div>
+            </div>
           </div>
-          <div style={{ fontSize: 14, color: "var(--text-secondary)" }}>
-            Khai triệu chứng — hệ thống phân luồng xanh/vàng/đỏ ngay lập tức.
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--brand-600)" }}>Thực hiện ngay →</span>
+        </Link>
+
+        <Link className="smart-tile" href="/patient/chat">
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div className="tile-icon" style={{ background: "#ecfdf5", color: "#059669" }}>
+              💬
+            </div>
+            <div>
+              <div className="tile-title">Hỏi đáp AI & Giọng nói</div>
+              <div className="tile-desc">Tra cứu liều dùng, tương tác thuốc chuẩn Bộ Y tế & nghe đọc</div>
+            </div>
           </div>
-        </a>
-        <a className="card" href="/patient/guides" style={{ textDecoration: "none", color: "inherit" }}>
-          <div className="card-title">
-            <span className="t-ico">📖</span> Hướng dẫn dùng thuốc
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#059669" }}>Trò chuyện ngay →</span>
+        </Link>
+
+        <Link className="smart-tile" href="/patient/triage">
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div className="tile-icon" style={{ background: "#fff7ed", color: "#ea580c" }}>
+              🚦
+            </div>
+            <div>
+              <div className="tile-title">Phân luồng TriageGuard</div>
+              <div className="tile-desc">Khai báo triệu chứng bất thường để phân luồng cấp cứu 3 mức</div>
+            </div>
           </div>
-          <div style={{ fontSize: 14, color: "var(--text-secondary)" }}>
-            Hướng dẫn do AI soạn, bác sĩ duyệt — xác nhận "Tôi đã hiểu".
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#ea580c" }}>Kiểm tra triệu chứng →</span>
+        </Link>
+
+        <Link className="smart-tile" href="/patient/guides">
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div className="tile-icon" style={{ background: "#f5f3ff", color: "#7c3aed" }}>
+              📖
+            </div>
+            <div>
+              <div className="tile-title">Hướng dẫn dùng thuốc</div>
+              <div className="tile-desc">Xem hướng dẫn chi tiết theo giờ do Bác sĩ đã phê duyệt</div>
+            </div>
           </div>
-        </a>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#7c3aed" }}>Xem hướng dẫn →</span>
+        </Link>
       </div>
 
-      <div className="stat-row">
-        <div className="stat">
-          <div className="s-num">{currentMeds}</div>
-          <div className="s-label">Thuốc đang dùng</div>
+      {/* Stats Row */}
+      <div className="grid-3">
+        <div className="card" style={{ padding: 16, textAlign: "center", background: "linear-gradient(135deg, #ffffff 0%, var(--brand-50) 100%)" }}>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "var(--brand-600)" }}>{currentMeds}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Thuốc đang sử dụng</div>
         </div>
-        <div className="stat">
-          <div className="s-num">{plannedMeds}</div>
-          <div className="s-label">Thuốc dự kiến</div>
+        <div className="card" style={{ padding: 16, textAlign: "center", background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)" }}>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#16a34a" }}>{plannedMeds}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Thuốc dự kiến kê</div>
         </div>
-        <div className="stat">
-          <div className="s-num">{allergies.length}</div>
-          <div className="s-label">Dị ứng ghi nhận</div>
+        <div className="card" style={{ padding: 16, textAlign: "center", background: "linear-gradient(135deg, #ffffff 0%, #fff1f2 100%)" }}>
+          <div style={{ fontSize: 28, fontWeight: 800, color: "#e11d48" }}>{allergies.length}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Dị ứng đã ghi nhận</div>
         </div>
       </div>
 
+      {/* Main Content Columns */}
       <div className="grid-2">
+        {/* Thuốc của tôi */}
         <div className="card">
           <div className="card-title">
-            <span className="t-ico">💊</span> Thuốc của tôi
+            <span className="t-ico">💊</span> Danh sách thuốc của tôi
           </div>
           {meds.length === 0 && <EmptyState icon="💊" text="Chưa khai báo thuốc nào." />}
           {meds.map((m) => (
@@ -129,46 +175,51 @@ export default function PatientHome() {
               <div className="list-main">
                 <div className="list-title">{m.raw_name}</div>
                 <div className="list-sub">
-                  {m.is_planned ? "Thuốc dự kiến" : "Đang dùng"}
-                  {m.frequency ? ` · ${m.frequency}` : ""}
+                  {m.dose ? `Liều: ${m.dose}` : ""} {m.timing ? `· ${m.timing}` : ""}
                 </div>
               </div>
               <VerifiedBadge verification={m.verification} />
             </div>
           ))}
+          <div style={{ marginTop: 12, textAlign: "right" }}>
+            <Link href="/patient/updates" className="btn btn-secondary btn-sm">
+              + Khai báo thêm thuốc
+            </Link>
+          </div>
         </div>
 
+        {/* Tiền sử dị ứng */}
         <div className="card">
           <div className="card-title">
-            <span className="t-ico">🚫</span> Dị ứng / tiền sử
+            <span className="t-ico">🚫</span> Tiền sử dị ứng thuốc
           </div>
           {allergies.length === 0 && (
             <EmptyState icon="✅" text="Chưa có tiền sử dị ứng nào được ghi nhận." />
           )}
           {allergies.map((a) => (
-            <div className="list-row" key={a.id}>
+            <div className="list-row" key={a.id} style={{ background: "#fff5f5", borderColor: "#fed7d7" }}>
               <div className="list-main">
-                <div className="list-title">{a.substance}</div>
-                <div className="list-sub">{a.reaction ?? "—"}</div>
+                <div className="list-title" style={{ color: "#c53030" }}>{a.substance}</div>
+                <div className="list-sub">Biểu hiện: {a.reaction ?? "Phản ứng dị ứng"}</div>
               </div>
               <VerifiedBadge verification={a.verification} />
             </div>
           ))}
+          <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-secondary)" }}>
+            ℹ️ Mọi thuốc nghi ngờ dị ứng đều được MedSafe tự động chặn trong đơn thuốc mới.
+          </div>
         </div>
       </div>
 
-      <div className="card">
+      {/* Safety Rules Banner */}
+      <div className="card" style={{ borderLeft: "4px solid var(--brand-500)" }}>
         <div className="card-title">
-          <span className="t-ico">📋</span> Hướng dẫn dùng thuốc an toàn
+          <span className="t-ico">🛡️</span> Nguyên tắc an toàn sử dụng thuốc
         </div>
-        <ul style={{ paddingLeft: 20, color: "var(--text-secondary)", lineHeight: 1.9 }}>
-          <li>Uống đúng liều theo hướng dẫn của bác sĩ, không tự tăng/giảm liều.</li>
-          <li>Quên một liều: không uống gấp đôi để bù.</li>
-          <li>
-            Gặp nổi mẩn, khó thở, sưng mặt/môi: ngừng thuốc và gọi <strong>115</strong> hoặc đến cơ
-            sở y tế gần nhất.
-          </li>
-          <li>Không dùng chung thuốc với người khác; bảo quản nơi khô mát, tránh nắng.</li>
+        <ul style={{ paddingLeft: 20, color: "var(--text-secondary)", lineHeight: 1.8, fontSize: 13.5 }}>
+          <li>Uống thuốc đúng liều lượng và thời điểm bác sĩ hướng dẫn; không tự ý ngừng hoặc đổi liều.</li>
+          <li>Khi quên liều: <strong>Tuyệt đối không uống gấp đôi</strong> ở lần tiếp theo để bù liều.</li>
+          <li>Khi gặp triệu chứng khó thở, sưng môi lưỡi hoặc nổi mày đay cấp: <strong>Gọi ngay 115</strong>.</li>
         </ul>
       </div>
     </AppShell>

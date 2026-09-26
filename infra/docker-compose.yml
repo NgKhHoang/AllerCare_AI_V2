@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: allercare_demo
       POSTGRES_DB: allercare
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5434}:5432"
     volumes:
       - allercare_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -25,7 +25,9 @@ services:
       DATABASE_URL: postgresql+psycopg://allercare:allercare_demo@postgres:5432/allercare
       AUTH_SECRET: demo-secret-change-me
       DEMO_MODE: "1"
-      AI_PROVIDER: mock
+      AI_PROVIDER: ${AI_PROVIDER:-gemini}
+      AI_MODEL: ${AI_MODEL:-gemini-flash-latest}
+      AI_API_KEY: ${AI_API_KEY:-}
       VIDEO_BASE_URL: ""
       LIVEKIT_URL: wss://192.168.2.15/livekit
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}

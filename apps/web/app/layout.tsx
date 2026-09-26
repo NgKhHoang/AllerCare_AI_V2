@@ -3,9 +3,9 @@ import "./globals.css";
 import { ServiceWorkerRegistrar } from "../components/ServiceWorkerRegistrar";
 
 export const metadata: Metadata = {
-  title: "AllerCare AI",
+  title: "AllerCare AI — Nền tảng Y tế An toàn Thuốc & Trợ lý Gemini",
   description:
-    "Theo dõi từ xa và kiểm tra an toàn thuốc — MVP demo với dữ liệu giả lập.",
+    "Ứng dụng AI trong theo dõi từ xa và hỗ trợ giảm sai sót trong sử dụng thuốc cho người bệnh Da liễu - Miễn dịch Dị ứng.",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -31,6 +31,14 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body>
         {children}
         <ServiceWorkerRegistrar />

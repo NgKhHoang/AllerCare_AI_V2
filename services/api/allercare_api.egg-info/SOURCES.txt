@@ -20,6 +20,7 @@ app/modules/ai/dosage_advisor.py
 app/modules/ai/guardrails.py
 app/modules/ai/knowledge.py
 app/modules/ai/patient_context.py
+app/modules/ai/vision_service.py
 app/modules/audit/__init__.py
 app/modules/audit/models.py
 app/modules/auth/__init__.py

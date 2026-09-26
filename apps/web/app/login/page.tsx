@@ -3,29 +3,30 @@
 import { useState } from "react";
 
 const DEMO_ACCOUNTS = [
-  { label: "Người bệnh", username: "patient1", password: "patient123" },
-  { label: "Ca thật 01", username: "case01", password: "patient123" },
-  { label: "Ca thật 02 (Cefaclor)", username: "case02", password: "patient123" },
-  { label: "Bác sĩ", username: "doctor1", password: "doctor123" },
-  { label: "Điều dưỡng", username: "nurse1", password: "nurse123" },
-  { label: "Dược sĩ", username: "pharmacist1", password: "pharma123" },
-  { label: "Người nhà", username: "family1", password: "family123" },
-  { label: "Lãnh đạo khoa", username: "leader1", password: "leader123" },
-  { label: "Quản trị viên", username: "admin1", password: "admin123" },
+  { label: "Bệnh nhân (patient1)", username: "patient1", password: "patient123", icon: "👤", role: "Người bệnh" },
+  { label: "Ca 02 Phản vệ Cefaclor", username: "case02", password: "patient123", icon: "⚠️", role: "Ca dị ứng mẫu" },
+  { label: "BS. Nguyễn Văn An", username: "doctor1", password: "doctor123", icon: "🩺", role: "Bác sĩ" },
+  { label: "ĐD. Trịnh Thu Hà", username: "nurse1", password: "nurse123", icon: "🚦", role: "Điều dưỡng" },
+  { label: "DS. Nguyễn Thị Em", username: "pharmacist1", password: "pharma123", icon: "💊", role: "Dược sĩ" },
+  { label: "Lãnh đạo khoa", username: "leader1", password: "leader123", icon: "📊", role: "Quality Dashboard" },
+  { label: "Người nhà (family1)", username: "family1", password: "family123", icon: "🏡", role: "Ủy quyền" },
+  { label: "Quản trị viên", username: "admin1", password: "admin123", icon: "🛠️", role: "Hệ thống" },
 ];
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("patient1");
+  const [password, setPassword] = useState("patient123");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleLogin(e?: React.FormEvent, customUser?: string, customPass?: string) {
+    if (e) e.preventDefault();
+    const u = customUser || username;
+    const p = customPass || password;
     setError("");
     setLoading(true);
     try {
-      const form = new URLSearchParams({ username, password });
+      const form = new URLSearchParams({ username: u, password: p });
       const res = await fetch("/api/v1/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -54,25 +55,33 @@ export default function LoginPage() {
     }
   }
 
-  function fillDemo(acc: (typeof DEMO_ACCOUNTS)[number]) {
+  function quickLogin(acc: (typeof DEMO_ACCOUNTS)[number]) {
     setUsername(acc.username);
     setPassword(acc.password);
+    handleLogin(undefined, acc.username, acc.password);
   }
 
   return (
     <main className="login-wrap">
       <div className="login-card">
-        <div className="login-logo">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/icons/icon-192.png"
-            alt="Logo AllerCare AI"
-            style={{ width: 64, height: 64, margin: "0 auto 12px", display: "block", borderRadius: 20 }}
-          />
-          <div className="login-title">AllerCare AI</div>
-          <div className="login-sub">Theo dõi từ xa & an toàn thuốc</div>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div className="brand-dot">🛡️</div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.03em" }}>
+            AllerCare <span style={{ color: "var(--brand-500)" }}>AI</span>
+          </h1>
+          <p style={{ fontSize: 13.5, color: "var(--text-secondary)", marginTop: 4 }}>
+            Nền tảng Theo dõi Từ xa & An toàn Thuốc Da liễu
+          </p>
+          <div style={{ marginTop: 8 }}>
+            <span className="badge badge-info" style={{ fontSize: 11 }}>
+              ✨ Tích hợp Gemini 1.5 & 633 Tương tác thuốc Bộ Y tế
+            </span>
+          </div>
         </div>
-        <form onSubmit={handleLogin}>
+
+        {error && <div className="error-text" style={{ textAlign: "center", marginBottom: 12 }}>{error}</div>}
+
+        <form onSubmit={(e) => handleLogin(e)}>
           <div className="field">
             <label className="label" htmlFor="username">
               Tên đăng nhập
@@ -100,33 +109,38 @@ export default function LoginPage() {
               required
             />
           </div>
-          {error && <p className="error-text">{error}</p>}
-          <button className="btn btn-primary" style={{ width: "100%" }} disabled={loading}>
-            {loading ? "Đang đăng nhập…" : "Đăng nhập"}
+          <button className="btn btn-primary" style={{ width: "100%", marginTop: 8, padding: 12, fontSize: 15 }} disabled={loading}>
+            {loading ? "Đang xử lý đăng nhập…" : "Đăng nhập hệ thống →"}
           </button>
         </form>
-        <div className="demo-hint">
-          <strong>🔑 Tài khoản demo</strong> (bấm để điền nhanh):
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-            {DEMO_ACCOUNTS.map((a) => (
+
+        <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--border-default)" }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 10, textAlign: "center" }}>
+            ⚡ CHỌN TÀI KHOẢN DEMO ĐĂNG NHẬP NHANH (1-CLICK)
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {DEMO_ACCOUNTS.map((acc) => (
               <button
-                key={a.username}
+                key={acc.username}
                 type="button"
                 className="btn btn-secondary btn-sm"
-                onClick={() => fillDemo(a)}
+                onClick={() => quickLogin(acc)}
+                style={{
+                  textAlign: "left",
+                  justifyContent: "flex-start",
+                  fontSize: 12,
+                  padding: "6px 8px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+                title={`Đăng nhập nhanh vai trò ${acc.role}`}
               >
-                {a.username}
+                <span>{acc.icon}</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{acc.label}</span>
               </button>
             ))}
           </div>
-          <div style={{ marginTop: 8 }}>
-            Mật khẩu: patient123 · doctor123 · nurse123 · pharma123 · family123 · leader123 ·
-            admin123
-          </div>
         </div>
-        <p className="muted" style={{ marginTop: 14, fontSize: 13 }}>
-          Bản demo dùng dữ liệu giả lập, không dùng cho chăm sóc thực tế.
-        </p>
       </div>
     </main>
   );

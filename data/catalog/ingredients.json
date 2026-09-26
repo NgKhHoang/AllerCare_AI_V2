@@ -1,63 +1,1306 @@
 [
-  { "name": "Paracetamol", "atc_code": "N02BE01" },
-  { "name": "Ibuprofen", "atc_code": "M01AE01" },
-  { "name": "Diclofenac", "atc_code": "M01AB05" },
-  { "name": "Amoxicillin", "atc_code": "J01CA04" },
-  { "name": "Acid clavulanic", "atc_code": "J01CR02" },
-  { "name": "Cefaclor", "atc_code": "J01DC04" },
-  { "name": "Ceftriaxone", "atc_code": "J01DD04" },
-  { "name": "Cephalexin", "atc_code": "J01DB01" },
-  { "name": "Azithromycin", "atc_code": "J01FA10" },
-  { "name": "Cetirizine", "atc_code": "R06AE07" },
-  { "name": "Loratadine", "atc_code": "R06AX13" },
-  { "name": "Fexofenadine", "atc_code": "R06AX26" },
-  { "name": "Rupatadine", "atc_code": "R06AX27" },
-  { "name": "Chlorpheniramine", "atc_code": "R06AB04" },
-  { "name": "Diphenhydramine", "atc_code": "R06AA02" },
-  { "name": "Epinephrine", "atc_code": "C01CA24" },
-  { "name": "Fentanyl", "atc_code": "N01AH03" },
-  { "name": "Methylprednisolon", "atc_code": "H02AB04" },
-  { "name": "Deflazacort", "atc_code": "H02AB16" },
-  { "name": "Prednisolon", "atc_code": "H02AB07" },
-  { "name": "Metformin", "atc_code": "A10BA02" },
-  { "name": "Amlodipin", "atc_code": "C08CA01" },
-  { "name": "Enalapril", "atc_code": "C09AA02" },
-  { "name": "Losartan", "atc_code": "C09CA01" },
-  { "name": "Bisoprolol", "atc_code": "C07AB07" },
-  { "name": "Trimetazidine", "atc_code": "C01EB15" },
-  { "name": "Clopidogrel", "atc_code": "B01AC04" },
-  { "name": "Atorvastatin", "atc_code": "C10AA05" },
-  { "name": "Rosuvastatin", "atc_code": "C10AA07" },
-  { "name": "Ezetimibe", "atc_code": "C10AX09" },
-  { "name": "Simvastatin", "atc_code": "C10AA01" },
-  { "name": "Omeprazole", "atc_code": "A02BC01" },
-  { "name": "Esomeprazole", "atc_code": "A02BC05" },
-  { "name": "Gabapentin", "atc_code": "N03AX12" },
-  { "name": "Warfarin", "atc_code": "B01AA03" },
-  { "name": "Aspirin", "atc_code": "B01AC06" },
-  { "name": "Salbutamol", "atc_code": "R03AC02" },
-  { "name": "Budesonide", "atc_code": "R03BA02" },
-  { "name": "Fusidic acid", "atc_code": "D06AX01" },
-  { "name": "Sodium chloride", "atc_code": "B05BB01" },
-  { "name": "Zinc", "atc_code": "A12CB" },
-  { "name": "Caffeine", "atc_code": "N06BC01" },
-  { "name": "Carbocisteine", "atc_code": "R05CB03" },
-  { "name": "Menthol", "atc_code": "R02AD20" },
-  { "name": "Acid ascorbic", "atc_code": "A11GA01" },
-  { "name": "Telmisartan", "atc_code": "C09CA07" },
-  { "name": "Montelukast", "atc_code": "R03DC03" },
-  { "name": "Formoterol", "atc_code": "R03AC13" },
-  { "name": "Salmeterol", "atc_code": "R03AC12" },
-  { "name": "Fluticasone", "atc_code": "R03BA05" },
-  { "name": "Cefadroxil", "atc_code": "J01DC05" },
-  { "name": "Cefixime", "atc_code": "J01DD08" },
-  { "name": "Ciprofloxacin", "atc_code": "J01MA02" },
-  { "name": "Doxycycline", "atc_code": "J01AA02" },
-  { "name": "Clarithromycin", "atc_code": "J01FA09" },
-  { "name": "Tramadol", "atc_code": "N02AX02" },
-  { "name": "Codeine", "atc_code": "R05DA04" },
-  { "name": "Tyrothricin", "atc_code": "R02AA20" },
-  { "name": "Lidocaine", "atc_code": "N01BB02" },
-  { "name": "Echinacea", "atc_code": null },
-  { "name": "Rabies vaccine", "atc_code": "J07BG01" }
+  {
+    "name": "Paracetamol",
+    "atc_code": "N02BE01"
+  },
+  {
+    "name": "Ibuprofen",
+    "atc_code": "M01AE01"
+  },
+  {
+    "name": "Diclofenac",
+    "atc_code": "M01AB05"
+  },
+  {
+    "name": "Amoxicillin",
+    "atc_code": "J01CA04"
+  },
+  {
+    "name": "Acid clavulanic",
+    "atc_code": "J01CR02"
+  },
+  {
+    "name": "Cefaclor",
+    "atc_code": "J01DC04"
+  },
+  {
+    "name": "Ceftriaxone",
+    "atc_code": "J01DD04"
+  },
+  {
+    "name": "Cephalexin",
+    "atc_code": "J01DB01"
+  },
+  {
+    "name": "Azithromycin",
+    "atc_code": "J01FA10"
+  },
+  {
+    "name": "Cetirizine",
+    "atc_code": "R06AE07"
+  },
+  {
+    "name": "Loratadine",
+    "atc_code": "R06AX13"
+  },
+  {
+    "name": "Fexofenadine",
+    "atc_code": "R06AX26"
+  },
+  {
+    "name": "Rupatadine",
+    "atc_code": "R06AX27"
+  },
+  {
+    "name": "Chlorpheniramine",
+    "atc_code": "R06AB04"
+  },
+  {
+    "name": "Diphenhydramine",
+    "atc_code": "R06AA02"
+  },
+  {
+    "name": "Epinephrine",
+    "atc_code": "C01CA24"
+  },
+  {
+    "name": "Fentanyl",
+    "atc_code": "N01AH03"
+  },
+  {
+    "name": "Methylprednisolon",
+    "atc_code": "H02AB04"
+  },
+  {
+    "name": "Deflazacort",
+    "atc_code": "H02AB16"
+  },
+  {
+    "name": "Prednisolon",
+    "atc_code": "H02AB07"
+  },
+  {
+    "name": "Metformin",
+    "atc_code": "A10BA02"
+  },
+  {
+    "name": "Amlodipin",
+    "atc_code": "C08CA01"
+  },
+  {
+    "name": "Enalapril",
+    "atc_code": "C09AA02"
+  },
+  {
+    "name": "Losartan",
+    "atc_code": "C09CA01"
+  },
+  {
+    "name": "Bisoprolol",
+    "atc_code": "C07AB07"
+  },
+  {
+    "name": "Trimetazidine",
+    "atc_code": "C01EB15"
+  },
+  {
+    "name": "Clopidogrel",
+    "atc_code": "B01AC04"
+  },
+  {
+    "name": "Atorvastatin",
+    "atc_code": "C10AA05"
+  },
+  {
+    "name": "Rosuvastatin",
+    "atc_code": "C10AA07"
+  },
+  {
+    "name": "Ezetimibe",
+    "atc_code": "C10AX09"
+  },
+  {
+    "name": "Simvastatin",
+    "atc_code": "C10AA01"
+  },
+  {
+    "name": "Omeprazole",
+    "atc_code": "A02BC01"
+  },
+  {
+    "name": "Esomeprazole",
+    "atc_code": "A02BC05"
+  },
+  {
+    "name": "Gabapentin",
+    "atc_code": "N03AX12"
+  },
+  {
+    "name": "Warfarin",
+    "atc_code": "B01AA03"
+  },
+  {
+    "name": "Aspirin",
+    "atc_code": "B01AC06"
+  },
+  {
+    "name": "Salbutamol",
+    "atc_code": "R03AC02"
+  },
+  {
+    "name": "Budesonide",
+    "atc_code": "R03BA02"
+  },
+  {
+    "name": "Fusidic acid",
+    "atc_code": "D06AX01"
+  },
+  {
+    "name": "Sodium chloride",
+    "atc_code": "B05BB01"
+  },
+  {
+    "name": "Zinc",
+    "atc_code": "A12CB"
+  },
+  {
+    "name": "Caffeine",
+    "atc_code": "N06BC01"
+  },
+  {
+    "name": "Carbocisteine",
+    "atc_code": "R05CB03"
+  },
+  {
+    "name": "Menthol",
+    "atc_code": "R02AD20"
+  },
+  {
+    "name": "Acid ascorbic",
+    "atc_code": "A11GA01"
+  },
+  {
+    "name": "Telmisartan",
+    "atc_code": "C09CA07"
+  },
+  {
+    "name": "Montelukast",
+    "atc_code": "R03DC03"
+  },
+  {
+    "name": "Formoterol",
+    "atc_code": "R03AC13"
+  },
+  {
+    "name": "Salmeterol",
+    "atc_code": "R03AC12"
+  },
+  {
+    "name": "Fluticasone",
+    "atc_code": "R03BA05"
+  },
+  {
+    "name": "Cefadroxil",
+    "atc_code": "J01DC05"
+  },
+  {
+    "name": "Cefixime",
+    "atc_code": "J01DD08"
+  },
+  {
+    "name": "Ciprofloxacin",
+    "atc_code": "J01MA02"
+  },
+  {
+    "name": "Doxycycline",
+    "atc_code": "J01AA02"
+  },
+  {
+    "name": "Clarithromycin",
+    "atc_code": "J01FA09"
+  },
+  {
+    "name": "Tramadol",
+    "atc_code": "N02AX02"
+  },
+  {
+    "name": "Codeine",
+    "atc_code": "R05DA04"
+  },
+  {
+    "name": "Tyrothricin",
+    "atc_code": "R02AA20"
+  },
+  {
+    "name": "Lidocaine",
+    "atc_code": "N01BB02"
+  },
+  {
+    "name": "Echinacea",
+    "atc_code": null
+  },
+  {
+    "name": "Rabies vaccine",
+    "atc_code": "J07BG01"
+  },
+  {
+    "name": "Aceclofenac",
+    "atc_code": null
+  },
+  {
+    "name": "Ketorolac",
+    "atc_code": null
+  },
+  {
+    "name": "Acenocoumarol",
+    "atc_code": null
+  },
+  {
+    "name": "Tamoxifen",
+    "atc_code": null
+  },
+  {
+    "name": "Acid mefenamic",
+    "atc_code": null
+  },
+  {
+    "name": "Acid tranexamic",
+    "atc_code": null
+  },
+  {
+    "name": "Ethinyl estradiol",
+    "atc_code": null
+  },
+  {
+    "name": "Estradiol valerat",
+    "atc_code": null
+  },
+  {
+    "name": "Estriol",
+    "atc_code": null
+  },
+  {
+    "name": "Clormadinon",
+    "atc_code": null
+  },
+  {
+    "name": "Desogestrel",
+    "atc_code": null
+  },
+  {
+    "name": "Dienogest",
+    "atc_code": null
+  },
+  {
+    "name": "Drospirenon",
+    "atc_code": null
+  },
+  {
+    "name": "Etonogestrel",
+    "atc_code": null
+  },
+  {
+    "name": "Gestoden",
+    "atc_code": null
+  },
+  {
+    "name": "Levonorgestrel",
+    "atc_code": null
+  },
+  {
+    "name": "Lynestrenol",
+    "atc_code": null
+  },
+  {
+    "name": "Medroxypro gesteron",
+    "atc_code": null
+  },
+  {
+    "name": "Norelgestro min",
+    "atc_code": null
+  },
+  {
+    "name": "Norethindron",
+    "atc_code": null
+  },
+  {
+    "name": "Norgestrel",
+    "atc_code": null
+  },
+  {
+    "name": "Acitretin",
+    "atc_code": null
+  },
+  {
+    "name": "Doxycyclin",
+    "atc_code": null
+  },
+  {
+    "name": "Minocyclin",
+    "atc_code": null
+  },
+  {
+    "name": "Tetracyclin",
+    "atc_code": null
+  },
+  {
+    "name": "Tigecyclin",
+    "atc_code": null
+  },
+  {
+    "name": "Adipiodon",
+    "atc_code": null
+  },
+  {
+    "name": "Agomelatin",
+    "atc_code": null
+  },
+  {
+    "name": "Fluvoxamin",
+    "atc_code": null
+  },
+  {
+    "name": "Alfuzosin",
+    "atc_code": null
+  },
+  {
+    "name": "Boceprevir",
+    "atc_code": null
+  },
+  {
+    "name": "Lopinavir/ritonavir",
+    "atc_code": null
+  },
+  {
+    "name": "Atazanavir/ritonavir",
+    "atc_code": null
+  },
+  {
+    "name": "Darunavir/ritonavir",
+    "atc_code": null
+  },
+  {
+    "name": "Indinavir +/- ritonavir",
+    "atc_code": null
+  },
+  {
+    "name": "Saquinavir +/- ritonavir",
+    "atc_code": null
+  },
+  {
+    "name": "Aliskiren",
+    "atc_code": null
+  },
+  {
+    "name": "Benazepril",
+    "atc_code": null
+  },
+  {
+    "name": "Candesartan",
+    "atc_code": null
+  },
+  {
+    "name": "Captopril",
+    "atc_code": null
+  },
+  {
+    "name": "Eprosartan",
+    "atc_code": null
+  },
+  {
+    "name": "Imidapril",
+    "atc_code": null
+  },
+  {
+    "name": "Irbesartan",
+    "atc_code": null
+  },
+  {
+    "name": "Lisinopril",
+    "atc_code": null
+  },
+  {
+    "name": "Olmesartan",
+    "atc_code": null
+  },
+  {
+    "name": "Perindopril",
+    "atc_code": null
+  },
+  {
+    "name": "Quinapril",
+    "atc_code": null
+  },
+  {
+    "name": "Ramipril",
+    "atc_code": null
+  },
+  {
+    "name": "Trandolapril",
+    "atc_code": null
+  },
+  {
+    "name": "Valsartan",
+    "atc_code": null
+  },
+  {
+    "name": "Zofenopril",
+    "atc_code": null
+  },
+  {
+    "name": "Alprazolam",
+    "atc_code": null
+  },
+  {
+    "name": "Amiodaron",
+    "atc_code": null
+  },
+  {
+    "name": "Thioridazin",
+    "atc_code": null
+  },
+  {
+    "name": "Moxifloxacin",
+    "atc_code": null
+  },
+  {
+    "name": "Sotalol",
+    "atc_code": null
+  },
+  {
+    "name": "Clorpromazin",
+    "atc_code": null
+  },
+  {
+    "name": "Citalopram",
+    "atc_code": null
+  },
+  {
+    "name": "Escitalopram",
+    "atc_code": null
+  },
+  {
+    "name": "Haloperidol",
+    "atc_code": null
+  },
+  {
+    "name": "Cloroquin",
+    "atc_code": null
+  },
+  {
+    "name": "Domperidon",
+    "atc_code": null
+  },
+  {
+    "name": "Fluconazol",
+    "atc_code": null
+  },
+  {
+    "name": "Piperaquin/ dihydroartemisinin",
+    "atc_code": null
+  },
+  {
+    "name": "Piperaquin/ dihydroartemisinin (piperaquin)",
+    "atc_code": null
+  },
+  {
+    "name": "Colchicin",
+    "atc_code": null
+  },
+  {
+    "name": "Lopinavir/ritonavir (ritonavir)",
+    "atc_code": null
+  },
+  {
+    "name": "Darunavir/ritonavir (ritonavir)",
+    "atc_code": null
+  },
+  {
+    "name": "Atazanavir/ritonavir (ritonavir)",
+    "atc_code": null
+  },
+  {
+    "name": "Sparfloxacin",
+    "atc_code": null
+  },
+  {
+    "name": "Amisulpirid",
+    "atc_code": null
+  },
+  {
+    "name": "Amitriptylin",
+    "atc_code": null
+  },
+  {
+    "name": "Linezolid",
+    "atc_code": null
+  },
+  {
+    "name": "Xanh methylen",
+    "atc_code": null
+  },
+  {
+    "name": "Xanh methylen (sử dụng đường tiêm tĩnh mạch)",
+    "atc_code": null
+  },
+  {
+    "name": "Furazolidon",
+    "atc_code": null
+  },
+  {
+    "name": "Arsenic trioxid",
+    "atc_code": null
+  },
+  {
+    "name": "Artemether/lumefantrin",
+    "atc_code": null
+  },
+  {
+    "name": "Posaconazol",
+    "atc_code": null
+  },
+  {
+    "name": "Rifampicin",
+    "atc_code": null
+  },
+  {
+    "name": "Enzalutamid",
+    "atc_code": null
+  },
+  {
+    "name": "Carbamazepin",
+    "atc_code": null
+  },
+  {
+    "name": "Phenobarbital",
+    "atc_code": null
+  },
+  {
+    "name": "Phenytoin",
+    "atc_code": null
+  },
+  {
+    "name": "Lovastatin",
+    "atc_code": null
+  },
+  {
+    "name": "Dihydroergotamin",
+    "atc_code": null
+  },
+  {
+    "name": "Ergotamin",
+    "atc_code": null
+  },
+  {
+    "name": "Ergometrin",
+    "atc_code": null
+  },
+  {
+    "name": "Methylergometrin",
+    "atc_code": null
+  },
+  {
+    "name": "Ivabradin",
+    "atc_code": null
+  },
+  {
+    "name": "Ticagrelor",
+    "atc_code": null
+  },
+  {
+    "name": "Ranolazin",
+    "atc_code": null
+  },
+  {
+    "name": "Tolvaptan",
+    "atc_code": null
+  },
+  {
+    "name": "Felodipin",
+    "atc_code": null
+  },
+  {
+    "name": "Lercanidipin",
+    "atc_code": null
+  },
+  {
+    "name": "Sildenafil",
+    "atc_code": null
+  },
+  {
+    "name": "Quetiapin",
+    "atc_code": null
+  },
+  {
+    "name": "Grazoprevir/ elbasvir",
+    "atc_code": null
+  },
+  {
+    "name": "Vardenafil",
+    "atc_code": null
+  },
+  {
+    "name": "Propafenon",
+    "atc_code": null
+  },
+  {
+    "name": "Everolimus",
+    "atc_code": null
+  },
+  {
+    "name": "Voriconazol",
+    "atc_code": null
+  },
+  {
+    "name": "Ciclosporin",
+    "atc_code": null
+  },
+  {
+    "name": "Gemfibrozil",
+    "atc_code": null
+  },
+  {
+    "name": "Atropin",
+    "atc_code": null
+  },
+  {
+    "name": "Kali clorid",
+    "atc_code": null
+  },
+  {
+    "name": "Kali clorid (dạng uống giải phóng kéo dài)",
+    "atc_code": null
+  },
+  {
+    "name": "Sacubitril/val sartan",
+    "atc_code": null
+  },
+  {
+    "name": "Sacubitril/val sartan (sacubitril)",
+    "atc_code": null
+  },
+  {
+    "name": "Bleomycin",
+    "atc_code": null
+  },
+  {
+    "name": "Brentuximab",
+    "atc_code": null
+  },
+  {
+    "name": "Bosentan",
+    "atc_code": null
+  },
+  {
+    "name": "Glibenclamid",
+    "atc_code": null
+  },
+  {
+    "name": "Brivudin",
+    "atc_code": null
+  },
+  {
+    "name": "Capecitabin",
+    "atc_code": null
+  },
+  {
+    "name": "Fluorouracil",
+    "atc_code": null
+  },
+  {
+    "name": "Tegafur",
+    "atc_code": null
+  },
+  {
+    "name": "Bromocriptin",
+    "atc_code": null
+  },
+  {
+    "name": "Metoclopramid",
+    "atc_code": null
+  },
+  {
+    "name": "Sulpirid",
+    "atc_code": null
+  },
+  {
+    "name": "Bupropion",
+    "atc_code": null
+  },
+  {
+    "name": "Calci clorid",
+    "atc_code": null
+  },
+  {
+    "name": "Ceftriaxon",
+    "atc_code": null
+  },
+  {
+    "name": "Calci glubionat",
+    "atc_code": null
+  },
+  {
+    "name": "Calci gluconat",
+    "atc_code": null
+  },
+  {
+    "name": "Sacubitril/valsartan",
+    "atc_code": null
+  },
+  {
+    "name": "Sacubitril/valsartan (sacubitril)",
+    "atc_code": null
+  },
+  {
+    "name": "Praziquantel",
+    "atc_code": null
+  },
+  {
+    "name": "Rilpivirin",
+    "atc_code": null
+  },
+  {
+    "name": "Daclatasvir",
+    "atc_code": null
+  },
+  {
+    "name": "Delamanid",
+    "atc_code": null
+  },
+  {
+    "name": "Carvedilol",
+    "atc_code": null
+  },
+  {
+    "name": "Dung dịch nuôi dưỡng đường tĩnh mạch chứa calci",
+    "atc_code": null
+  },
+  {
+    "name": "Ringer Lactat",
+    "atc_code": null
+  },
+  {
+    "name": "Celecoxib",
+    "atc_code": null
+  },
+  {
+    "name": "Pitavastatin",
+    "atc_code": null
+  },
+  {
+    "name": "Cilostazol",
+    "atc_code": null
+  },
+  {
+    "name": "Tizanidin",
+    "atc_code": null
+  },
+  {
+    "name": "Duloxetin",
+    "atc_code": null
+  },
+  {
+    "name": "Saquinavir/ ritonavir",
+    "atc_code": null
+  },
+  {
+    "name": "Clidinium",
+    "atc_code": null
+  },
+  {
+    "name": "Clomipramin",
+    "atc_code": null
+  },
+  {
+    "name": "Clonixin",
+    "atc_code": null
+  },
+  {
+    "name": "Itraconazol",
+    "atc_code": null
+  },
+  {
+    "name": "Roxithromycin",
+    "atc_code": null
+  },
+  {
+    "name": "Erythromycin",
+    "atc_code": null
+  },
+  {
+    "name": "Verapamil",
+    "atc_code": null
+  },
+  {
+    "name": "Diltiazem",
+    "atc_code": null
+  },
+  {
+    "name": "Sunitinib",
+    "atc_code": null
+  },
+  {
+    "name": "Nilotinib",
+    "atc_code": null
+  },
+  {
+    "name": "Dabigatran",
+    "atc_code": null
+  },
+  {
+    "name": "Danazol",
+    "atc_code": null
+  },
+  {
+    "name": "Dexamethason",
+    "atc_code": null
+  },
+  {
+    "name": "Dexibuprofen",
+    "atc_code": null
+  },
+  {
+    "name": "Dexketoprofen",
+    "atc_code": null
+  },
+  {
+    "name": "Dexlansoprazol",
+    "atc_code": null
+  },
+  {
+    "name": "Dextromethorphan",
+    "atc_code": null
+  },
+  {
+    "name": "Paroxetin",
+    "atc_code": null
+  },
+  {
+    "name": "Fluoxetin",
+    "atc_code": null
+  },
+  {
+    "name": "Dicycloverin",
+    "atc_code": null
+  },
+  {
+    "name": "Kali clorid (dạng thuốc viên sử dụng đường uống)",
+    "atc_code": null
+  },
+  {
+    "name": "Sumatriptan",
+    "atc_code": null
+  },
+  {
+    "name": "Donepezil",
+    "atc_code": null
+  },
+  {
+    "name": "Spiramycin",
+    "atc_code": null
+  },
+  {
+    "name": "Levofloxacin",
+    "atc_code": null
+  },
+  {
+    "name": "Methadon",
+    "atc_code": null
+  },
+  {
+    "name": "Levomeprom azin",
+    "atc_code": null
+  },
+  {
+    "name": "Levosulpirid",
+    "atc_code": null
+  },
+  {
+    "name": "Ondansetron",
+    "atc_code": null
+  },
+  {
+    "name": "Oxaliplatin",
+    "atc_code": null
+  },
+  {
+    "name": "Propofol",
+    "atc_code": null
+  },
+  {
+    "name": "Sevofluran",
+    "atc_code": null
+  },
+  {
+    "name": "Tretinoin",
+    "atc_code": null
+  },
+  {
+    "name": "Isotretinoin",
+    "atc_code": null
+  },
+  {
+    "name": "Doxylamin",
+    "atc_code": null
+  },
+  {
+    "name": "Efavirenz",
+    "atc_code": null
+  },
+  {
+    "name": "Eltrombopag",
+    "atc_code": null
+  },
+  {
+    "name": "Ephedrin",
+    "atc_code": null
+  },
+  {
+    "name": "Ephedrin (sử dụng đường uống)",
+    "atc_code": null
+  },
+  {
+    "name": "Etodolac",
+    "atc_code": null
+  },
+  {
+    "name": "Etoricoxib",
+    "atc_code": null
+  },
+  {
+    "name": "Indinavir/ritonavir",
+    "atc_code": null
+  },
+  {
+    "name": "Indinavir/ritonavir (ritonavir)",
+    "atc_code": null
+  },
+  {
+    "name": "Saquinavir/ritonavir",
+    "atc_code": null
+  },
+  {
+    "name": "Saquinavir/ritonavir (ritonavir)",
+    "atc_code": null
+  },
+  {
+    "name": "Floctafenin",
+    "atc_code": null
+  },
+  {
+    "name": "Flurbiprofen",
+    "atc_code": null
+  },
+  {
+    "name": "Fluvastatin",
+    "atc_code": null
+  },
+  {
+    "name": "Sertralin",
+    "atc_code": null
+  },
+  {
+    "name": "Venlafaxin",
+    "atc_code": null
+  },
+  {
+    "name": "Milnacipran",
+    "atc_code": null
+  },
+  {
+    "name": "Trazodon",
+    "atc_code": null
+  },
+  {
+    "name": "Methylphen idat",
+    "atc_code": null
+  },
+  {
+    "name": "Mirtazapin",
+    "atc_code": null
+  },
+  {
+    "name": "Pethidin",
+    "atc_code": null
+  },
+  {
+    "name": "Levodopa/ca rbidopa +/- entacapon",
+    "atc_code": null
+  },
+  {
+    "name": "Methyldopa",
+    "atc_code": null
+  },
+  {
+    "name": "Pseudoephed rin",
+    "atc_code": null
+  },
+  {
+    "name": "Pseudoephed rin (sử dụng đường uống)",
+    "atc_code": null
+  },
+  {
+    "name": "Phenylephrin",
+    "atc_code": null
+  },
+  {
+    "name": "Phenylephrin (sử dụng đường uống)",
+    "atc_code": null
+  },
+  {
+    "name": "Nefopam",
+    "atc_code": null
+  },
+  {
+    "name": "Repaglinid",
+    "atc_code": null
+  },
+  {
+    "name": "Pravastatin",
+    "atc_code": null
+  },
+  {
+    "name": "Grazoprevir/elbasvir",
+    "atc_code": null
+  },
+  {
+    "name": "Lopinavir/ritonavir (lopinavir)",
+    "atc_code": null
+  },
+  {
+    "name": "Hydroxycloroquin",
+    "atc_code": null
+  },
+  {
+    "name": "Hyoscin butylbromid",
+    "atc_code": null
+  },
+  {
+    "name": "Hyoscyamin",
+    "atc_code": null
+  },
+  {
+    "name": "Indomethacin",
+    "atc_code": null
+  },
+  {
+    "name": "Iobitridol",
+    "atc_code": null
+  },
+  {
+    "name": "Iodixanol",
+    "atc_code": null
+  },
+  {
+    "name": "Iohexol",
+    "atc_code": null
+  },
+  {
+    "name": "Iopamidol",
+    "atc_code": null
+  },
+  {
+    "name": "Iopromid",
+    "atc_code": null
+  },
+  {
+    "name": "Ioxaglic natri/ioxaglic meglumin",
+    "atc_code": null
+  },
+  {
+    "name": "Ioxitalamat natri/ioxitala mat meglumin",
+    "atc_code": null
+  },
+  {
+    "name": "Irinotecan",
+    "atc_code": null
+  },
+  {
+    "name": "Isosorbid dinitrat",
+    "atc_code": null
+  },
+  {
+    "name": "Tadalafil",
+    "atc_code": null
+  },
+  {
+    "name": "Isosorbid mononitrat",
+    "atc_code": null
+  },
+  {
+    "name": "Trihexyphe nidyl",
+    "atc_code": null
+  },
+  {
+    "name": "Solifenacin",
+    "atc_code": null
+  },
+  {
+    "name": "Oxybutynin",
+    "atc_code": null
+  },
+  {
+    "name": "Ketoprofen",
+    "atc_code": null
+  },
+  {
+    "name": "Lornoxicam",
+    "atc_code": null
+  },
+  {
+    "name": "Loxoprofen",
+    "atc_code": null
+  },
+  {
+    "name": "Meloxicam",
+    "atc_code": null
+  },
+  {
+    "name": "Nabumeton",
+    "atc_code": null
+  },
+  {
+    "name": "Naproxen",
+    "atc_code": null
+  },
+  {
+    "name": "Piroxicam",
+    "atc_code": null
+  },
+  {
+    "name": "Talniflumat",
+    "atc_code": null
+  },
+  {
+    "name": "Tenoxicam",
+    "atc_code": null
+  },
+  {
+    "name": "Zaltoprofen",
+    "atc_code": null
+  },
+  {
+    "name": "Lansoprazol",
+    "atc_code": null
+  },
+  {
+    "name": "Levodopa/carb idopa +/- entacapon",
+    "atc_code": null
+  },
+  {
+    "name": "Metoclopram id",
+    "atc_code": null
+  },
+  {
+    "name": "Lopinavir/riton avir",
+    "atc_code": null
+  },
+  {
+    "name": "Lopinavir/rito avir",
+    "atc_code": null
+  },
+  {
+    "name": "Lopinavir/riton avir (ritonavir)",
+    "atc_code": null
+  },
+  {
+    "name": "Mifepriston",
+    "atc_code": null
+  },
+  {
+    "name": "Methylphenidat",
+    "atc_code": null
+  },
+  {
+    "name": "Rotigotin",
+    "atc_code": null
+  },
+  {
+    "name": "Pramipexol",
+    "atc_code": null
+  },
+  {
+    "name": "Piribedil",
+    "atc_code": null
+  },
+  {
+    "name": "Nicoradil",
+    "atc_code": null
+  },
+  {
+    "name": "Nifedipin",
+    "atc_code": null
+  },
+  {
+    "name": "Nitroglycerin",
+    "atc_code": null
+  },
+  {
+    "name": "Esomeprazol",
+    "atc_code": null
+  },
+  {
+    "name": "Omeprazol",
+    "atc_code": null
+  },
+  {
+    "name": "Oxcarbamazepin",
+    "atc_code": null
+  },
+  {
+    "name": "Pantoprazol",
+    "atc_code": null
+  },
+  {
+    "name": "Peginterferon- alpha",
+    "atc_code": null
+  },
+  {
+    "name": "Peginterferon- alpha (2a hoặc 2b)",
+    "atc_code": null
+  },
+  {
+    "name": "Telbivudin",
+    "atc_code": null
+  },
+  {
+    "name": "Piperaquin/di hydroartemisinin",
+    "atc_code": null
+  },
+  {
+    "name": "Piperaquin/di hydroartemisinin (piperaquin)",
+    "atc_code": null
+  },
+  {
+    "name": "Piperaquin/dihydroartemisinin",
+    "atc_code": null
+  },
+  {
+    "name": "Piperaquin/dihydroartemisinin (piperaquin)",
+    "atc_code": null
+  },
+  {
+    "name": "Pseudoephedrin",
+    "atc_code": null
+  },
+  {
+    "name": "Pseudoephedrin (sử dụng đường uống)",
+    "atc_code": null
+  },
+  {
+    "name": "Rabeprazol",
+    "atc_code": null
+  },
+  {
+    "name": "Sofosbuvir",
+    "atc_code": null
+  },
+  {
+    "name": "Sofosbuvir/ledipasvir",
+    "atc_code": null
+  },
+  {
+    "name": "Sofosbuvir/ledipasvir (ledipasvir)",
+    "atc_code": null
+  }
 ]

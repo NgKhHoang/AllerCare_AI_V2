@@ -74,10 +74,61 @@ export default function PatientUpdates() {
   const [medTiming, setMedTiming] = useState("");
   const [medImage, setMedImage] = useState("");
   const [medStatus, setMedStatus] = useState("active");
+  const [isScanning, setIsScanning] = useState(false);
   // form triệu chứng
   const [symptomLabel, setSymptomLabel] = useState("");
   const [symptomTime, setSymptomTime] = useState("");
   const [symptomImage, setSymptomImage] = useState("");
+
+  async function handleScanPrescription(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsScanning(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64Data = reader.result as string;
+        try {
+          const results = await api<Array<{ name: string; dose?: string; timing?: string; source_label?: string; route?: string }>>(
+            "/v1/chat/ocr-prescription",
+            {
+              method: "POST",
+              body: {
+                image_base64: base64Data,
+                mime_type: file.type || "image/jpeg",
+              },
+            }
+          );
+
+          if (results && results.length > 0) {
+            const first = results[0];
+            setMedName(first.name || "");
+            if (first.dose) setMedDose(first.dose);
+            if (first.timing) setMedTiming(first.timing);
+            if (first.source_label && MED_SOURCES.includes(first.source_label)) {
+              setMedSource(first.source_label);
+            }
+            setMedImage(file.name);
+            setSuccess(`✨ Gemini AI đã nhận diện thành công: "${first.name}". Vui lòng kiểm tra lại và bấm "Gửi khai báo"!`);
+          } else {
+            setError("Không nhận diện được thuốc trong ảnh. Bạn có thể tự nhập tay thông tin.");
+          }
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Lỗi khi quét ảnh đơn thuốc");
+        } finally {
+          setIsScanning(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setIsScanning(false);
+      setError("Không thể đọc tệp ảnh này.");
+    }
+  }
 
   useEffect(() => {
     if (!getToken()) {
@@ -187,6 +238,30 @@ export default function PatientUpdates() {
           chức năng, đông y — kèm ảnh toa/bao bì nếu có. Việc này giúp bác sĩ phát hiện trùng
           thuốc, tương tác và dị ứng.
         </p>
+
+        {/* Nút bấm AI OCR Quét đơn thuốc bằng Gemini Vision */}
+        <div style={{ marginBottom: 16, padding: "12px 16px", background: "var(--brand-50, #F0F9FF)", border: "1px dashed var(--brand-500, #0284C7)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: "var(--brand-700, #075985)" }}>
+              📸 Quét đơn thuốc / vỏ hộp tự động (Gemini Vision)
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+              Chụp ảnh toa hoặc bao bì — AI sẽ tự điền tên thuốc, liều và cách dùng
+            </div>
+          </div>
+          <label className="btn btn-primary" style={{ cursor: isScanning ? "wait" : "pointer", padding: "8px 14px", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6, margin: 0 }}>
+            {isScanning ? "⏳ Đang phân tích ảnh..." : "📷 Chụp / Chọn ảnh"}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              style={{ display: "none" }}
+              onChange={handleScanPrescription}
+              disabled={isScanning}
+            />
+          </label>
+        </div>
+
         <form onSubmit={addMedication}>
           <div className="field">
             <label className="label">Tên thuốc</label>

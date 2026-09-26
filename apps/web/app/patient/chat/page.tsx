@@ -59,8 +59,8 @@ function formatTime(iso?: string) {
 export default function PatientChat() {
   const WELCOME =
     "Chào bạn! Mình là Trợ lý AI của AllerCare 🌊 Mình học từ kho kiến thức của hệ thống — " +
-    "gồm cách bác sĩ chia liều, ví dụ liều thực tế và yếu tố bệnh nhân (tuổi, chức năng thận, dị ứng…). " +
-    'Bạn có thể hỏi mình về cách dùng thuốc, ví dụ: "Uống Glucophage 850mg bao nhiêu viên một ngày?"';
+    "gồm 633 tương tác thuốc Bộ Y tế, cách bác sĩ chia liều và bối cảnh hồ sơ bệnh nhân (tuổi, chức năng thận, dị ứng…). " +
+    'Bạn có thể gõ câu hỏi hoặc bấm 🎙️ để nói trực tiếp, ví dụ: "Uống Aceclofenac cùng Ketorolac có sao không?"';
 
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", content: WELCOME },
@@ -71,7 +71,10 @@ export default function PatientChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     if (!getToken()) window.location.href = "/login";
@@ -107,6 +110,95 @@ export default function PatientChat() {
     setError("");
   }
 
+  // Khởi tạo Speech Recognition (Voice Input)
+  function toggleListening() {
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Trình duyệt của bạn chưa hỗ trợ nhận diện giọng nói. Vui lòng dùng Google Chrome / Edge / Safari.");
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+      recognition.lang = "vi-VN";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn("Speech recognition error", event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (e) {
+      console.error(e);
+      setIsListening(false);
+    }
+  }
+
+  // Text-to-Speech (Voice Output)
+  function speakMessage(text: string, index: number) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      alert("Trình duyệt không hỗ trợ phát giọng nói.");
+      return;
+    }
+
+    if (speakingIndex === index) {
+      window.speechSynthesis.cancel();
+      setSpeakingIndex(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    // Loại bỏ các ký tự markdown trước khi đọc
+    const cleanText = text
+      .replace(/\*\*/g, "")
+      .replace(/#/g, "")
+      .replace(/- /g, " ")
+      .replace(/👉|🔬|⚠️|📋|💊|🚨|🤖/g, "");
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = "vi-VN";
+    utterance.rate = 0.95; // Đọc chậm rãi, ấm áp cho người bệnh
+
+    utterance.onend = () => {
+      setSpeakingIndex(null);
+    };
+
+    utterance.onerror = () => {
+      setSpeakingIndex(null);
+    };
+
+    setSpeakingIndex(index);
+    window.speechSynthesis.speak(utterance);
+  }
+
   async function send(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
@@ -130,9 +222,9 @@ export default function PatientChat() {
   }
 
   const suggestions = [
-    "Liều Glucophage 850mg chia thế nào?",
+    "Uống Aceclofenac cùng Ketorolac có sao không?",
+    "Liều Glucophage 850mg chia thế nào cho người suy thận?",
     "Paracetamol uống tối đa bao nhiêu viên mỗi ngày?",
-    "Bác sĩ chia liều theo nguyên tắc nào?",
     "Uống Cetirizine lúc nào trong ngày?",
   ];
 
@@ -141,7 +233,7 @@ export default function PatientChat() {
       role="patient"
       icon="💬"
       title="Hỏi đáp AI"
-      subtitle="Chat với Trợ lý AI · AI học từ kho kiến thức của hệ thống · Khẩn cấp gọi 115"
+      subtitle="Trợ lý AI tích hợp Gemini & 633 tương tác thuốc Bộ Y tế · Hỗ trợ giọng nói · Khẩn cấp gọi 115"
     >
       <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
         <button className="btn btn-primary btn-sm" onClick={newChat}>
@@ -183,7 +275,7 @@ export default function PatientChat() {
         </div>
       )}
 
-      <div className="card" style={{ maxHeight: "50vh", overflowY: "auto" }}>
+      <div className="card" style={{ maxHeight: "52vh", overflowY: "auto" }}>
         {messages.map((m, i) => (
           <div key={i}>
             {m.at && i > 0 && (
@@ -195,7 +287,7 @@ export default function PatientChat() {
               style={{
                 display: "flex",
                 justifyContent: m.role === "patient" ? "flex-end" : "flex-start",
-                marginBottom: 10,
+                marginBottom: 12,
               }}
             >
               <div
@@ -208,18 +300,40 @@ export default function PatientChat() {
                     ? "bubble bubble-handoff"
                     : "bubble bubble-bot"
                 }
+                style={{ maxWidth: "85%", position: "relative" }}
               >
                 {m.role !== "patient" && (
-                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, opacity: 0.8 }}>
-                    🤖 Trợ lý AI
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--brand-700, #075985)" }}>
+                      🤖 Trợ lý AI AllerCare
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => speakMessage(m.content, i)}
+                      style={{
+                        background: speakingIndex === i ? "var(--brand-500, #0284C7)" : "rgba(2,132,199,0.1)",
+                        color: speakingIndex === i ? "#FFF" : "var(--brand-700, #075985)",
+                        border: "none",
+                        borderRadius: 20,
+                        padding: "2px 8px",
+                        fontSize: 11,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                      title="Đọc câu trả lời bằng giọng nói"
+                    >
+                      {speakingIndex === i ? "⏹ Dừng đọc" : "🔊 Nghe đọc"}
+                    </button>
                   </div>
                 )}
                 <RichText text={m.content} />
                 {m.sources && m.sources.length > 0 && (
-                  <div style={{ fontSize: 12, marginTop: 6, opacity: 0.75 }}>
-                    Nguồn:{" "}
+                  <div style={{ fontSize: 11, marginTop: 8, padding: "6px 8px", background: "rgba(0,0,0,0.03)", borderRadius: 6, borderLeft: "2px solid var(--brand-500, #0284C7)" }}>
+                    📚 <strong>Nguồn căn cứ:</strong>{" "}
                     {m.sources
-                      .map((s) => `${s.title}${s.version ? ` (v${s.version})` : ""}`)
+                      .map((s) => `${s.title}${s.version ? ` (${s.version})` : ""}`)
                       .join("; ")}
                   </div>
                 )}
@@ -227,7 +341,7 @@ export default function PatientChat() {
             </div>
           </div>
         ))}
-        {loading && <p className="muted">🤖 Trợ lý AI đang soạn trả lời…</p>}
+        {loading && <p className="muted">🤖 Trợ lý AI đang tra cứu tri thức y khoa & soạn câu trả lời…</p>}
         <div ref={bottomRef} />
       </div>
 
@@ -247,22 +361,39 @@ export default function PatientChat() {
 
       {error && <p className="error-text">{error}</p>}
 
-      <form onSubmit={send} style={{ display: "flex", gap: 8, marginTop: 12 }}>
+      <form onSubmit={send} style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
         <input
           className="input"
-          placeholder="Hỏi AI về cách dùng thuốc, cách chia liều…"
+          style={{ flex: 1 }}
+          placeholder={isListening ? "🎙️ Đang lắng nghe giọng nói của bạn..." : "Hỏi AI về cách dùng thuốc, tương tác thuốc..."}
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />
+        <button
+          type="button"
+          onClick={toggleListening}
+          className="btn"
+          style={{
+            background: isListening ? "#EF4444" : "var(--brand-50, #F0F9FF)",
+            color: isListening ? "#FFFFFF" : "var(--brand-700, #075985)",
+            borderColor: isListening ? "#EF4444" : "var(--brand-300, #7DD3FC)",
+            padding: "8px 12px",
+            fontSize: 14,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+          title={isListening ? "Bấm để dừng ghi âm" : "Bấm để nói bằng giọng nói"}
+        >
+          {isListening ? "🔴 Dừng" : "🎙️ Nói"}
+        </button>
         <button className="btn btn-primary" disabled={loading || !input.trim()}>
           Gửi
         </button>
       </form>
 
       <p className="muted" style={{ fontSize: 13, marginTop: 10 }}>
-        💬 Bạn đang trò chuyện với <strong>Trợ lý AI</strong> (không phải bác sĩ/dược sĩ). AI chỉ
-        học từ kho kiến thức trong hệ thống, không kê đơn và không thay thế bác sĩ — liều cuối cùng
-        do bác sĩ phụ trách quyết định.
+        💬 Bạn đang trò chuyện với <strong>Trợ lý AI AllerCare</strong>. AI tham chiếu từ kho tri thức 633 tương tác thuốc Bộ Y tế & phác đồ bác sĩ. Không kê đơn và không thay thế bác sĩ — liều dùng thực tế do Bác sĩ phụ trách quyết định.
       </p>
     </AppShell>
   );

@@ -9,14 +9,14 @@ import { useEffect, useState } from "react";
 
 export function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { cls: string; label: string }> = {
-    has_alerts: { cls: "badge badge-danger", label: "⚠ Có cảnh báo" },
+    has_alerts: { cls: "badge badge-danger", label: "⚠️ Có cảnh báo" },
     no_alerts_in_scope: {
       cls: "badge badge-neutral",
-      label: "Chưa phát hiện trong phạm vi đã kiểm tra",
+      label: "✓ Chưa phát hiện cảnh báo trong phạm vi",
     },
-    insufficient_data: { cls: "badge badge-missing", label: "ⓘ Chưa đủ dữ liệu" },
-    out_of_scope: { cls: "badge badge-scope", label: "Ngoài phạm vi hỗ trợ" },
-    failed: { cls: "badge badge-error", label: "✕ Kiểm tra thất bại" },
+    insufficient_data: { cls: "badge badge-warning", label: "ℹ️ Chưa đủ dữ liệu" },
+    out_of_scope: { cls: "badge badge-neutral", label: "Ngoài phạm vi hỗ trợ" },
+    failed: { cls: "badge badge-danger", label: "✕ Kiểm tra thất bại" },
   };
   const item = map[status] ?? { cls: "badge badge-neutral", label: status };
   return <span className={item.cls}>{item.label}</span>;
@@ -40,8 +40,8 @@ export function SeverityBadge({ severity }: { severity: string }) {
     low: "badge badge-neutral",
   };
   const labels: Record<string, string> = {
-    high: "Mức cao",
-    medium: "Mức trung bình",
+    high: "Mức cao (Đỏ)",
+    medium: "Mức vừa (Vàng)",
     low: "Mức thấp",
   };
   return <span className={map[severity] ?? "badge badge-neutral"}>{labels[severity] ?? severity}</span>;
@@ -61,26 +61,23 @@ export interface AlertItem {
 export function AlertCard({ alert }: { alert: AlertItem }) {
   const cls =
     alert.severity === "high"
-      ? "alertbox alertbox-danger"
+      ? "badge badge-danger"
       : alert.severity === "medium"
-      ? "alertbox alertbox-warning"
-      : "alertbox alertbox-neutral";
+      ? "badge badge-warning"
+      : "badge badge-neutral";
   return (
-    <div className={cls}>
-      <div className="alertbox-title">
-        {alert.severity === "high" ? "⚠" : "•"} {alert.message}
-      </div>
-      {alert.detail && Object.keys(alert.detail).length > 0 && (
-        <div style={{ fontSize: 14 }}>
-          {Object.entries(alert.detail).map(([k, v]) => (
-            <span key={k} style={{ marginRight: 12 }}>
-              <strong>{k}:</strong> {String(v)}
-            </span>
-          ))}
+    <div style={{ padding: "14px 16px", borderRadius: 12, background: alert.severity === "high" ? "var(--status-danger-bg)" : "var(--status-warning-bg)", border: `1px solid ${alert.severity === "high" ? "var(--status-danger-border)" : "var(--status-warning-border)"}`, marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+        <div style={{ fontWeight: 700, fontSize: 14.5, color: alert.severity === "high" ? "var(--status-danger)" : "var(--status-warning)" }}>
+          {alert.severity === "high" ? "🚨 CẢNH BÁO NGUY HIỂM" : "⚠️ CẢNH BÁO THẬN TRỌNG"}
         </div>
-      )}
-      <div className="source">
-        Nguồn: {alert.source} · Quy tắc {alert.rule_code} v{alert.rule_version}
+        <span className={cls}>{alert.rule_code}</span>
+      </div>
+      <p style={{ fontSize: 13.5, color: "var(--text-primary)", lineHeight: 1.5, marginBottom: 8 }}>
+        {alert.message}
+      </p>
+      <div style={{ fontSize: 12, color: "var(--text-secondary)", opacity: 0.85 }}>
+        📚 Căn cứ: {alert.source} (Phiên bản quy tắc {alert.rule_version})
       </div>
     </div>
   );
@@ -90,46 +87,22 @@ export function ResultBox({ result }: { result: Record<string, unknown> }) {
   const status = result.status as string;
   const note = (result.note as string) ?? "";
   const alerts = (result.alerts as AlertItem[]) ?? [];
-  const missing = (result.missing_data as string[]) ?? [];
-  const outOfScope = (result.out_of_scope as string[]) ?? [];
-
-  const boxCls =
-    status === "has_alerts"
-      ? "alertbox alertbox-danger"
-      : status === "insufficient_data"
-      ? "alertbox alertbox-missing"
-      : status === "out_of_scope"
-      ? "alertbox alertbox-scope"
-      : status === "failed"
-      ? "alertbox alertbox-error"
-      : "alertbox alertbox-neutral";
 
   return (
-    <div>
+    <div style={{ marginTop: 12, padding: 16, background: "var(--surface-card)", border: "1px solid var(--border-default)", borderRadius: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <span style={{ fontWeight: 700, fontSize: 15 }}>Kết quả kiểm tra MedSafe:</span>
+        <StatusBadge status={status} />
+      </div>
+      {note && <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 10 }}>{note}</p>}
       {alerts.map((a, i) => (
         <AlertCard key={i} alert={a} />
       ))}
-      <div className={boxCls}>
-        <div className="alertbox-title">
-          <StatusBadge status={status} />
-        </div>
-        <div style={{ fontSize: 14 }}>{note}</div>
-        {missing.length > 0 && (
-          <div style={{ fontSize: 14, marginTop: 6 }}>
-            <strong>Thiếu dữ liệu:</strong> {missing.join(", ")}
-          </div>
-        )}
-        {outOfScope.length > 0 && (
-          <div style={{ fontSize: 14, marginTop: 6 }}>
-            <strong>Thuốc ngoài danh mục (cần xác nhận):</strong> {outOfScope.join(", ")}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
 
-/* ---------- Header + Bottom nav — dùng chung mọi vai trò ---------- */
+/* ---------- Điều hướng chung ---------- */
 
 export interface NavItem {
   href: string;
@@ -139,14 +112,14 @@ export interface NavItem {
 
 export const PATIENT_NAV: NavItem[] = [
   { href: "/patient", label: "Trang chủ", icon: "🏠" },
-  { href: "/patient/triage", label: "Phân luồng", icon: "🚦" },
-  { href: "/patient/updates", label: "Cập nhật", icon: "📝" },
+  { href: "/patient/updates", label: "Đối soát thuốc", icon: "📝" },
   { href: "/patient/chat", label: "Hỏi đáp AI", icon: "💬" },
   { href: "/patient/appointments", label: "Lịch hẹn", icon: "📅" },
+  { href: "/notifications", label: "Thông báo", icon: "🔔" },
 ];
 
 export const DOCTOR_NAV: NavItem[] = [
-  { href: "/doctor", label: "Danh sách ca", icon: "👥" },
+  { href: "/doctor", label: "Danh sách ca", icon: "🩺" },
   { href: "/pharmacist", label: "Quy tắc", icon: "📋" },
   { href: "/notifications", label: "Thông báo", icon: "🔔" },
 ];
@@ -215,7 +188,7 @@ export function AppShell({
 
   function logout() {
     clearSession();
-    pwaLogoutCleanup(); // dọn cache SW khi đăng xuất (an toàn bảo mật)
+    pwaLogoutCleanup();
     window.location.href = "/login";
   }
 
@@ -242,10 +215,22 @@ export function AppShell({
     <>
       <header className="app-header">
         <div className="app-header-inner">
-          <div className="brand">
-            <span className="brand-dot">🌊</span> AllerCare AI
-          </div>
-          <div className="userchip">
+          <Link href={role === "patient" ? "/patient" : `/${role}`} className="brand-link">
+            <div className="brand-shield">🛡️</div>
+            <div>
+              <div className="brand-title">
+                AllerCare <span className="brand-ai-chip">AI v2.5</span>
+              </div>
+            </div>
+          </Link>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {/* AI Status Pill */}
+            <div className="ai-status-pill" title="Mô hình Gemini & Kho 633 tương tác thuốc Bộ Y tế đang hoạt động">
+              <span className="pulse-dot"></span>
+              <span style={{ fontSize: 11 }}>Gemini Grounded</span>
+            </div>
+
             {canInstall && !installed && (
               <button
                 className="btn btn-primary btn-sm"
@@ -255,44 +240,80 @@ export function AppShell({
                 ⬇ Cài app
               </button>
             )}
+
             <Link
               href="/notifications"
               className="btn btn-secondary btn-sm"
               title="Thông báo"
-              style={{ position: "relative", minWidth: 40 }}
+              style={{ position: "relative", padding: "6px 10px" }}
             >
-              🔔{unread > 0 && <span style={{ marginLeft: 4, fontWeight: 700 }}>{unread}</span>}
+              🔔
+              {unread > 0 && (
+                <span
+                  style={{
+                    marginLeft: 4,
+                    background: "var(--status-danger)",
+                    color: "white",
+                    borderRadius: "50%",
+                    padding: "1px 6px",
+                    fontSize: 10,
+                    fontWeight: 700,
+                  }}
+                >
+                  {unread}
+                </span>
+              )}
             </Link>
-            <div className="who">
-              <div className="name">{user?.full_name ?? "…"}</div>
-              <div className="role">{roleLabel}</div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 6, borderLeft: "1px solid var(--border-default)" }}>
+              <span
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  background: "var(--brand-100)",
+                  color: "var(--brand-700)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: 700,
+                  fontSize: 12,
+                }}
+              >
+                {initials || "U"}
+              </span>
+              <div style={{ display: "none" }} className="who">
+                <div style={{ fontSize: 13, fontWeight: 700 }}>{user?.full_name ?? "…"}</div>
+                <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>{roleLabel}</div>
+              </div>
+              <button className="btn btn-secondary btn-sm" onClick={logout} style={{ fontSize: 12, padding: "5px 10px" }}>
+                Thoát
+              </button>
             </div>
-            <span className="avatar">{initials || "？"}</span>
-            <button className="btn btn-secondary btn-sm" onClick={logout}>
-              Thoát
-            </button>
           </div>
         </div>
       </header>
 
       <div className="container">
         {(title || icon) && (
-          <div className="page-head">
-            {icon && <span className="icon-chip">{icon}</span>}
+          <div className="page-hero">
             <div>
-              <h2>{title}</h2>
-              {subtitle && <div className="sub">{subtitle}</div>}
+              <div className="page-hero-title">
+                {icon && <span>{icon}</span>}
+                {title}
+              </div>
+              {subtitle && <div className="page-hero-subtitle">{subtitle}</div>}
             </div>
           </div>
         )}
         {children}
       </div>
 
-      <nav className="bottomnav">
+      <nav className="floating-bottom-nav">
         {nav.map((n) => (
-          <Link key={n.href} href={n.href} className={path === n.href ? "active" : ""}>
-            <span className="n-ico">{n.icon}</span>
-            {n.label}
+          <Link key={n.href} href={n.href} className={`bottom-nav-item ${path === n.href ? "active" : ""}`}>
+            <span className="nav-icon">{n.icon}</span>
+            <span>{n.label}</span>
           </Link>
         ))}
       </nav>
@@ -303,27 +324,40 @@ export function AppShell({
 export function EmergencyBanner() {
   return (
     <div className="emergency-banner">
-      <span style={{ fontSize: 20 }}>🚨</span>
-      <span>
-        Khẩn cấp? Gọi ngay <strong>115</strong> — ứng dụng không thay thế kênh cấp cứu.
-      </span>
+      <div className="emergency-text">
+        <span style={{ fontSize: 20 }}>🚨</span>
+        <span>
+          <strong>Dấu hiệu khẩn cấp?</strong> Khó thở, sưng môi lưỡi, choáng váng hãy gọi ngay <strong>115</strong>.
+        </span>
+      </div>
+      <a href="tel:115" className="emergency-btn">
+        📞 GỌI 115
+      </a>
     </div>
   );
 }
 
 export function EmptyState({ icon, text }: { icon: string; text: string }) {
   return (
-    <div className="empty">
-      <div className="e-ico">{icon}</div>
-      <div>{text}</div>
+    <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-secondary)" }}>
+      <div style={{ fontSize: 36, marginBottom: 8 }}>{icon}</div>
+      <div style={{ fontSize: 14 }}>{text}</div>
     </div>
   );
 }
 
 export function SuccessBox({ text }: { text: string }) {
-  return <div className="alertbox alertbox-success">✓ {text}</div>;
+  return (
+    <div style={{ padding: "12px 16px", borderRadius: 12, background: "#dcfce7", color: "#166534", border: "1px solid #bbf7d0", marginBottom: 16, fontSize: 14 }}>
+      ✓ {text}
+    </div>
+  );
 }
 
 export function ErrorBox({ text }: { text: string }) {
-  return <div className="alertbox alertbox-error">{text}</div>;
+  return (
+    <div style={{ padding: "12px 16px", borderRadius: 12, background: "var(--status-danger-bg)", color: "var(--status-danger)", border: "1px solid var(--status-danger-border)", marginBottom: 16, fontSize: 14 }}>
+      ✕ {text}
+    </div>
+  );
 }
