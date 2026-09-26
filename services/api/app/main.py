@@ -36,7 +36,8 @@ from app.modules.consultations.router import router as appointments_router  # no
 from app.modules.triage.router import router as triage_router  # noqa: E402
 from app.modules.guides.router import router as guides_router  # noqa: E402
 from app.modules.notifications.router import router as notifications_router  # noqa: E402
-from app.modules.dashboard.router import router as dashboard_router, admin_router  # noqa: E402
+from app.modules.dashboard.router import router as dashboard_router  # noqa: E402
+from app.modules.admin.router import router as admin_router  # noqa: E402
 
 api.include_router(auth_router)
 api.include_router(doctor_patients_router)  # /patients/assigned ... (trước patients_router)
