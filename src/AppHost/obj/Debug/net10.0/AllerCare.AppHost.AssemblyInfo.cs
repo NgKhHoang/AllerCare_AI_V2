@@ -10,10 +10,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("allercare-apphost-secrets")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("AllerCare.AppHost")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c9b99c1f8fd1230e70fc5fa469ee3457ab61a63c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+457a1e0a6b7915cd08e3bf239d275c4fb05cae75")]
 [assembly: System.Reflection.AssemblyProductAttribute("AllerCare.AppHost")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AllerCare.AppHost")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
