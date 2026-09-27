@@ -13,6 +13,7 @@ app/main.py
 app/models_registry.py
 app/seed_data.py
 app/modules/__init__.py
+app/modules/admin/router.py
 app/modules/ai/__init__.py
 app/modules/ai/adapter.py
 app/modules/ai/chat_router.py

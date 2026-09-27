@@ -22,6 +22,7 @@ var livekit = builder.AddContainer("allercare-livekit", "allercare/livekit:local
 // 3. FastAPI Backend API with Google Gemini AI Integration
 var api = builder.AddDockerfile("allercare-api", "../../services/api")
     .WithHttpEndpoint(port: 8000, targetPort: 8000, name: "api")
+    .WithExternalHttpEndpoints()
     .WithReference(allercareDb)
     .WithEnvironment("DATABASE_URL", ReferenceExpression.Create($"postgresql+psycopg://postgres:{postgresPassword}@allercare-postgres:5432/allercare"))
     .WithEnvironment("AUTH_SECRET", "demo-secret-change-me")
@@ -35,7 +36,8 @@ var api = builder.AddDockerfile("allercare-api", "../../services/api")
 
 // 4. Next.js 14 Web Frontend (Clinical Glassmorphism UI + Voice & OCR Vision)
 var web = builder.AddNpmApp("allercare-web", "../../apps/web", "dev")
-    .WithHttpEndpoint(port: 3000, name: "web")
+    .WithHttpEndpoint(port: 3000, isProxied: false, name: "http")
+    .WithExternalHttpEndpoints()
     .WithEnvironment("API_ORIGIN", "http://localhost:8000")
     .WithEnvironment("PORT", "3000");
 

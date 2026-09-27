@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AllerCare.AppHost")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e0626fd2282bf9f1e717912f5c42487a5c7bb7f1")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d4fff9a74c3fbf7fba9b9ad2e19b48e475b9f0ed")]
 [assembly: System.Reflection.AssemblyProductAttribute("AllerCare.AppHost")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AllerCare.AppHost")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
