@@ -47,7 +47,17 @@ class Settings(BaseSettings):
 
     @property
     def allowed_origins(self) -> list[str]:
-        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+        origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+        defaults = [
+            "https://allercare-ai-v2-web.onrender.com",
+            "https://allercare-web.onrender.com",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ]
+        for d in defaults:
+            if d not in origins:
+                origins.append(d)
+        return origins
 
 
 @lru_cache
