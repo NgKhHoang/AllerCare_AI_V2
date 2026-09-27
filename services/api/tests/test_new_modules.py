@@ -248,9 +248,10 @@ def test_admin_users_lock_and_audit(client: TestClient):
         "/api/v1/auth/login", data={"username": "patient8", "password": "patient123"}
     ).status_code == 200
 
-    log = client.get("/api/v1/admin/audit-log", headers=auth_header(admin))
-    assert log.status_code == 200
-    assert any(e["action"] == "set_user_active" for e in log.json())
+    log_resp = client.get("/api/v1/admin/audit-log", headers=auth_header(admin))
+    assert log_resp.status_code == 200
+    log_items = log_resp.json()["items"] if isinstance(log_resp.json(), dict) else log_resp.json()
+    assert any(e["action"] == "set_user_active" for e in log_items)
 
 
 # ---------------- Người nhà ủy quyền ----------------
