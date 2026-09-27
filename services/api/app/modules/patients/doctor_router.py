@@ -137,10 +137,12 @@ def prescribe_medication(
     from app.modules.notifications.models import Notification
     db.add(
         Notification(
-            user_id=profile.user_id,
+            id=new_id(),
+            for_user_id=profile.user_id,
+            patient_profile_id=profile.id,
             title="Đơn thuốc mới từ Bác sĩ",
-            content=f"{doc_name} vừa kê đơn thuốc mới: {data.raw_name.strip()} ({data.dose or ''} {data.frequency or ''}). Vui lòng xem chi tiết hướng dẫn dùng thuốc.",
-            kind="prescription",
+            body=f"{doc_name} vừa kê đơn thuốc mới: {data.raw_name.strip()} ({data.dose or ''} {data.frequency or ''}). Vui lòng xem chi tiết hướng dẫn dùng thuốc.",
+            kind="med_added",
         )
     )
     

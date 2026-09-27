@@ -17,10 +17,11 @@ bearer_scheme = HTTPBearer(auto_error=False)
 
 
 class CurrentUser:
-    def __init__(self, id: str, username: str, role: str):
+    def __init__(self, id: str, username: str, role: str, full_name: str | None = None):
         self.id = id
         self.username = username
         self.role = role
+        self.full_name = full_name
 
 
 def get_current_user(
@@ -38,7 +39,7 @@ def get_current_user(
     user = db.get(User, user_id)
     if user is None or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Tài khoản không tồn tại hoặc đã bị khóa")
-    return CurrentUser(id=user.id, username=user.username, role=user.role)
+    return CurrentUser(id=user.id, username=user.username, role=user.role, full_name=user.full_name)
 
 
 def require_roles(*roles: str):
