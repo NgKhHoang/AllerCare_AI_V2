@@ -80,10 +80,19 @@ def add_medication(
     user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> MedicationOut:
-    """Người bệnh (hoặc người nhà ủy quyền) khai thuốc từ MỌI nguồn: BV kê, BV khác,
-    tự mua, OTC, TPCN, đông y — kèm ảnh toa/bao bì nếu có. Luôn vào hệ thống ở trạng thái
-    "chưa xác minh" và chờ bác sĩ xác nhận trước khi vào danh sách chính thức."""
-    profile = get_owned_patient_profile(profile_id, user, db)
+    """Người bệnh khai thuốc hoặc Bác sĩ/Dược sĩ thêm thuốc dự kiến / kê đơn."""
+    from app.modules.auth.deps import get_assigned_patient_profile, get_owned_patient_profile
+
+    if user.role in ("doctor", "pharmacist", "nurse"):
+        profile = get_assigned_patient_profile(profile_id, user, db)
+        is_doc = user.role == "doctor"
+    else:
+        profile = get_owned_patient_profile(profile_id, user, db)
+        is_doc = False
+
+    verification = "verified" if (is_doc and not data.is_planned) else "unverified"
+    source_label = data.source_label or (f"Kê bởi {user.full_name or 'Bác sĩ'}" if is_doc else "Khai báo bởi người bệnh")
+
     med = MedicationRecord(
         patient_profile_id=profile.id,
         raw_name=data.raw_name.strip(),
@@ -94,14 +103,14 @@ def add_medication(
         frequency=data.frequency,
         timing=data.timing,
         start_date=data.start_date,
-        prescriber=data.prescriber,
+        prescriber=data.prescriber or (user.full_name if is_doc else None),
         status=data.status or ("active" if data.is_current else "stopped"),
         stop_reason=data.stop_reason,
         last_reaction=data.last_reaction,
         image_url=data.image_url,
-        verification="unverified",
+        verification=verification,
         reported_by_user_id=user.id,
-        source_label=data.source_label or "Khai báo bởi người bệnh",
+        source_label=source_label,
     )
     db.add(med)
     audit_log(db, user, "add_medication", "medication_record", None, f"profile={profile.id}")
@@ -118,13 +127,19 @@ def stop_medication(
     user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    profile = get_owned_patient_profile(profile_id, user, db)
+    from app.modules.auth.deps import get_assigned_patient_profile, get_owned_patient_profile
+
+    if user.role in ("doctor", "pharmacist", "nurse"):
+        profile = get_assigned_patient_profile(profile_id, user, db)
+    else:
+        profile = get_owned_patient_profile(profile_id, user, db)
+
     med = db.get(MedicationRecord, medication_id)
     if med is None or med.patient_profile_id != profile.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy thuốc")
     med.is_current = False
     med.status = "stopped"
-    med.stop_reason = (reason or "Ngừng theo ý người bệnh — chờ bác sĩ xác nhận")[:200]
+    med.stop_reason = (reason or f"Ngừng theo chỉ định của {user.full_name or user.role}")[:200]
     audit_log(db, user, "stop_medication", "medication_record", med.id, med.stop_reason)
     db.commit()
     return {"id": med.id, "status": med.status, "stop_reason": med.stop_reason}
@@ -155,7 +170,13 @@ def add_observation(
     user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ObservationOut:
-    profile = get_owned_patient_profile(profile_id, user, db)
+    from app.modules.auth.deps import get_assigned_patient_profile, get_owned_patient_profile
+
+    if user.role in ("doctor", "pharmacist", "nurse"):
+        profile = get_assigned_patient_profile(profile_id, user, db)
+    else:
+        profile = get_owned_patient_profile(profile_id, user, db)
+
     obs = ClinicalObservation(
         patient_profile_id=profile.id,
         kind=data.kind,
@@ -200,14 +221,23 @@ def add_allergy(
     user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AllergyOut:
-    profile = get_owned_patient_profile(profile_id, user, db)
+    from app.modules.auth.deps import get_assigned_patient_profile, get_owned_patient_profile
+
+    if user.role in ("doctor", "pharmacist", "nurse"):
+        profile = get_assigned_patient_profile(profile_id, user, db)
+        is_doc = user.role == "doctor"
+    else:
+        profile = get_owned_patient_profile(profile_id, user, db)
+        is_doc = False
+
     allergy = AllergyRecord(
         patient_profile_id=profile.id,
         substance=data.substance.strip(),
         reaction=data.reaction,
         severity=data.severity,
-        verification="unverified",
+        verification="verified" if is_doc else "unverified",
         reported_by_user_id=user.id,
+        verified_by_user_id=user.id if is_doc else None,
         onset_date=data.onset_date,
     )
     db.add(allergy)
