@@ -115,6 +115,16 @@ export default function DoctorPortal() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Kê đơn thuốc mới
+  const [prescribeName, setPrescribeName] = useState("");
+  const [prescribeDose, setPrescribeDose] = useState("1 viên/lần");
+  const [prescribeFreq, setPrescribeFreq] = useState("1 lần/ngày");
+  const [prescribeRoute, setPrescribeRoute] = useState("uống");
+  const [prescribeTiming, setPrescribeTiming] = useState("Sau ăn 30 phút");
+  const [prescribeInstructions, setPrescribeInstructions] = useState("");
+  const [prescribing, setPrescribing] = useState(false);
+  const [showPrescribeModal, setShowPrescribeModal] = useState(false);
+
   useEffect(() => {
     const user = getUser();
     if (!getToken() || !user || (user.role !== "doctor" && user.role !== "pharmacist")) {
@@ -215,6 +225,35 @@ export default function DoctorPortal() {
       await openPatient(selected);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thêm được thuốc");
+    }
+  }
+
+  async function handlePrescribe(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selected || !prescribeName.trim()) return;
+    setPrescribing(true);
+    setError("");
+    setSuccess("");
+    try {
+      await api(`/v1/patients/${selected.profile_id}/prescribe`, {
+        method: "POST",
+        body: {
+          raw_name: prescribeName.trim(),
+          dose: prescribeDose.trim() || null,
+          frequency: prescribeFreq.trim() || null,
+          route: prescribeRoute,
+          timing: prescribeTiming.trim() || null,
+          instructions: prescribeInstructions.trim() || null,
+        },
+      });
+      setSuccess(`Đã kê đơn thành công thuốc "${prescribeName.trim()}" cho ${selected.full_name}. Người bệnh đã nhận được thông báo!`);
+      setPrescribeName("");
+      setShowPrescribeModal(false);
+      await openPatient(selected);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Không kê đơn được thuốc");
+    } finally {
+      setPrescribing(false);
     }
   }
 
@@ -435,16 +474,138 @@ export default function DoctorPortal() {
 
           <div className="grid-2">
             <div className="card">
-              <div className="card-title">
-                <span className="t-ico">💊</span> Thuốc
+              <div className="card-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span><span className="t-ico">💊</span> Danh sách thuốc</span>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setShowPrescribeModal(!showPrescribeModal)}
+                >
+                  {showPrescribeModal ? "✕ Đóng" : "+ 🩺 Kê đơn thuốc mới"}
+                </button>
               </div>
+
+              {/* Form Kê đơn thuốc mới của Bác sĩ */}
+              {showPrescribeModal && (
+                <div style={{ background: "rgba(14, 165, 233, 0.08)", border: "1px solid rgba(14, 165, 233, 0.3)", borderRadius: 12, padding: 14, marginBottom: 16 }}>
+                  <div style={{ fontWeight: 700, color: "var(--primary)", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>🩺 Kê đơn thuốc chính thức (Ký bởi Bác sĩ)</span>
+                  </div>
+
+                  {/* Thuốc mẫu nhanh */}
+                  <div style={{ marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, color: "var(--muted)", marginRight: 6 }}>Gợi ý nhanh:</span>
+                    {[
+                      { name: "Fexofenadine 180mg", dose: "1 viên", freq: "1 lần/ngày", timing: "Sau ăn sáng" },
+                      { name: "Cetirizine 10mg", dose: "1 viên", freq: "1 lần/ngày", timing: "Sau ăn tối 20h" },
+                      { name: "Methylprednisolon 16mg", dose: "1 viên", freq: "1 lần/ngày", timing: "Sau ăn no sáng" },
+                      { name: "Kem Hydrocortisone 1%", dose: "Lớp mỏng", freq: "2 lần/ngày", timing: "Sáng & Tối", route: "bôi ngoài da" },
+                    ].map((item) => (
+                      <button
+                        key={item.name}
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        style={{ fontSize: 11, padding: "2px 8px", marginRight: 4, marginBottom: 4 }}
+                        onClick={() => {
+                          setPrescribeName(item.name);
+                          setPrescribeDose(item.dose);
+                          setPrescribeFreq(item.freq);
+                          setPrescribeTiming(item.timing);
+                          if (item.route) setPrescribeRoute(item.route);
+                        }}
+                      >
+                        + {item.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  <form onSubmit={handlePrescribe}>
+                    <div className="field">
+                      <label className="label">Tên thuốc & hàm lượng (*)</label>
+                      <input
+                        className="input"
+                        placeholder="VD: Fexofenadine 180mg, Medrol 16mg..."
+                        value={prescribeName}
+                        onChange={(e) => setPrescribeName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <div className="field">
+                        <label className="label">Liều dùng</label>
+                        <input
+                          className="input"
+                          placeholder="VD: 1 viên/lần"
+                          value={prescribeDose}
+                          onChange={(e) => setPrescribeDose(e.target.value)}
+                        />
+                      </div>
+                      <div className="field">
+                        <label className="label">Tần suất</label>
+                        <input
+                          className="input"
+                          placeholder="VD: 1 lần/ngày, 2 lần/ngày"
+                          value={prescribeFreq}
+                          onChange={(e) => setPrescribeFreq(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <div className="field">
+                        <label className="label">Đường dùng</label>
+                        <select
+                          className="input"
+                          value={prescribeRoute}
+                          onChange={(e) => setPrescribeRoute(e.target.value)}
+                        >
+                          <option value="uống">Uống (Oral)</option>
+                          <option value="bôi ngoài da">Bôi ngoài da (Topical)</option>
+                          <option value="nhỏ mắt/mũi">Nhỏ mắt / Mũi</option>
+                          <option value="tiêm bắp">Tiêm bắp (IM)</option>
+                          <option value="tiêm tĩnh mạch">Tiêm tĩnh mạch (IV)</option>
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label className="label">Thời điểm dùng</label>
+                        <input
+                          className="input"
+                          placeholder="VD: Sau ăn 30 phút, trước ngủ..."
+                          value={prescribeTiming}
+                          onChange={(e) => setPrescribeTiming(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="field">
+                      <label className="label">Lời dặn của bác sĩ</label>
+                      <input
+                        className="input"
+                        placeholder="VD: Uống nhiều nước, nếu nổi mẩn ngừng ngay..."
+                        value={prescribeInstructions}
+                        onChange={(e) => setPrescribeInstructions(e.target.value)}
+                      />
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                      <button className="btn btn-primary btn-sm" type="submit" disabled={prescribing}>
+                        {prescribing ? "Đang kê đơn..." : "✓ Kê đơn & Gửi người bệnh"}
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        type="button"
+                        onClick={() => setShowPrescribeModal(false)}
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
               {meds.length === 0 && <EmptyState icon="💊" text="Chưa có thuốc." />}
               {meds.map((m) => (
                 <div className="list-row" key={m.id}>
                   <div className="list-main">
                     <div className="list-title">{m.raw_name}</div>
                     <div className="list-sub">
-                      {m.is_planned ? "Dự kiến" : "Đang dùng"}
+                      {m.is_planned ? "Dự kiến (Thử nghiệm)" : "Đang điều trị chính thức"}
                       {m.frequency ? ` · ${m.frequency}` : ""}
                     </div>
                   </div>
@@ -461,15 +622,15 @@ export default function DoctorPortal() {
               ))}
               <form onSubmit={addPlannedMed} className="mt16">
                 <div className="field">
-                  <label className="label">Thêm thuốc dự kiến</label>
+                  <label className="label">Thử nghiệm thuốc dự kiến (Simulate MedSafe)</label>
                   <input
                     className="input"
-                    placeholder="VD: Amoxicillin 500mg"
+                    placeholder="VD: Amoxicillin 500mg (để thử tương tác trước khi kê)"
                     value={newDrug}
                     onChange={(e) => setNewDrug(e.target.value)}
                   />
                 </div>
-                <button className="btn btn-secondary btn-sm">+ Thêm</button>
+                <button className="btn btn-secondary btn-sm">+ Thêm vào danh sách thử nghiệm</button>
               </form>
             </div>
 

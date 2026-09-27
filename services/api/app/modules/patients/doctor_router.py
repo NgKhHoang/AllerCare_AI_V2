@@ -38,6 +38,16 @@ class ObservationStatusIn(BaseModel):
     status: str = Field(pattern="^(seen|responded)$")
 
 
+class PrescribeIn(BaseModel):
+    raw_name: str = Field(min_length=1, max_length=200, description="Tên thuốc kèm hàm lượng")
+    dose: str | None = Field(default=None, description="Liều dùng, vd: 1 viên/lần")
+    frequency: str | None = Field(default=None, description="Tần suất, vd: 2 lần/ngày")
+    route: str = Field(default="uống", description="Đường dùng (uống, bôi, tiêm...)")
+    timing: str | None = Field(default=None, description="Thời điểm dùng (sau ăn, trước ngủ...)")
+    start_date: str | None = Field(default=None, description="Ngày bắt đầu dùng")
+    instructions: str | None = Field(default=None, description="Lời dặn bác sĩ")
+
+
 @router.get("/assigned", summary="Danh sách người bệnh được phân công cho bác sĩ hiện tại")
 def list_assigned_patients(
     user: CurrentUser = Depends(require_roles("doctor")),
@@ -90,6 +100,65 @@ def verify_medication(
     audit_log(db, user, "verify_medication", "medication_record", med.id, f"verify={data.verify}")
     db.commit()
     return {"id": med.id, "verification": med.verification}
+
+
+@router.post("/{profile_id}/prescribe", status_code=201, summary="Bác sĩ kê đơn thuốc mới trực tiếp cho người bệnh")
+def prescribe_medication(
+    profile_id: str,
+    data: PrescribeIn,
+    user: CurrentUser = Depends(require_roles("doctor")),
+    db: Session = Depends(get_db),
+) -> dict:
+    profile = get_assigned_patient_profile(profile_id, user, db)
+    
+    doc_name = user.full_name or "BS. Điều trị"
+    source_label = f"Kê bởi {doc_name}"
+    
+    med = MedicationRecord(
+        patient_profile_id=profile.id,
+        raw_name=data.raw_name.strip(),
+        is_current=True,
+        is_planned=False,
+        dose=data.dose,
+        route=data.route,
+        frequency=data.frequency,
+        timing=data.timing,
+        start_date=data.start_date,
+        prescriber=doc_name,
+        status="active",
+        stop_reason=None,
+        verification="verified",  # Bác sĩ kê đơn trực tiếp -> tự động xác minh chính thức
+        reported_by_user_id=user.id,
+        source_label=source_label,
+    )
+    db.add(med)
+    
+    # Tạo thông báo gửi cho người bệnh
+    from app.modules.notifications.models import Notification
+    db.add(
+        Notification(
+            user_id=profile.user_id,
+            title="Đơn thuốc mới từ Bác sĩ",
+            content=f"{doc_name} vừa kê đơn thuốc mới: {data.raw_name.strip()} ({data.dose or ''} {data.frequency or ''}). Vui lòng xem chi tiết hướng dẫn dùng thuốc.",
+            kind="prescription",
+        )
+    )
+    
+    audit_log(db, user, "prescribe_medication", "medication_record", med.id, f"drug={data.raw_name.strip()}")
+    db.commit()
+    db.refresh(med)
+    
+    return {
+        "id": med.id,
+        "raw_name": med.raw_name,
+        "dose": med.dose,
+        "frequency": med.frequency,
+        "route": med.route,
+        "timing": med.timing,
+        "verification": med.verification,
+        "source_label": med.source_label,
+        "status": med.status,
+    }
 
 
 @router.post("/{profile_id}/verify-allergy/{allergy_id}", summary="Bác sĩ xác minh tiền sử dị ứng")
