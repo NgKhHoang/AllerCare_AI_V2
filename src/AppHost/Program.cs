@@ -3,10 +3,11 @@ using Aspire.Hosting.ApplicationModel;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-// 1. PostgreSQL Database Container
+// 1. PostgreSQL Database Container + pgAdmin Web UI
 var postgresPassword = builder.AddParameter("postgres-password", "allercare_demo", secret: true);
 var postgres = builder.AddPostgres("allercare-postgres", password: postgresPassword, port: 5434)
     .WithDataVolume("allercare_pgdata")
+    .WithPgAdmin()
     .WithLifetime(ContainerLifetime.Persistent);
 
 var allercareDb = postgres.AddDatabase("allercare");
