@@ -48,3 +48,10 @@ Thumbs.db
 
 # Docker
 *.log
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
