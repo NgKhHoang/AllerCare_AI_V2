@@ -39,10 +39,11 @@ COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /build/app ./app
 COPY --from=builder /build/alembic ./alembic
 COPY --from=builder /build/alembic.ini ./
+COPY data ./data
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 
 RUN chmod +x /usr/local/bin/entrypoint.sh \
-    # APK/migration cần ghi vào thư mục làm việc (sqlite fallback) — cấp quyền cho user
+    # Cấp quyền cho user
     && chown -R allercare:allercare /srv
 
 USER allercare

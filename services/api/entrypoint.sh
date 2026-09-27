@@ -7,11 +7,11 @@ set -e
 echo "[entrypoint] alembic upgrade head..."
 alembic upgrade head
 
-if [ "${SEED_ON_START:-0}" = "1" ]; then
-  echo "[entrypoint] SEED_ON_START=1 — seed dữ liệu demo (XÓA dữ liệu cũ!)..."
-  python -m app.seed_data
+if [ "${SEED_ON_START:-0}" = "1" ] || [ "${DEMO_MODE:-0}" = "1" ]; then
+  echo "[entrypoint] Seed dữ liệu demo..."
+  python -m app.seed_data || echo "[entrypoint] Seed gặp lỗi hoặc dữ liệu đã tồn tại"
 else
-  echo "[entrypoint] bỏ qua seed (SEED_ON_START!=1) — giữ nguyên dữ liệu hiện có"
+  echo "[entrypoint] Bỏ qua seed — giữ nguyên dữ liệu hiện có"
 fi
 
 echo "[entrypoint] khởi động uvicorn..."
