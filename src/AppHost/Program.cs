@@ -23,7 +23,7 @@ var livekit = builder.AddContainer("allercare-livekit", "allercare/livekit:local
 var api = builder.AddDockerfile("allercare-api", "../../services/api")
     .WithHttpEndpoint(port: 8000, targetPort: 8000, name: "api")
     .WithReference(allercareDb)
-    .WithEnvironment("DATABASE_URL", "postgresql+psycopg://postgres:allercare_demo@allercare-postgres:5432/allercare")
+    .WithEnvironment("DATABASE_URL", ReferenceExpression.Create($"postgresql+psycopg://postgres:{postgresPassword}@allercare-postgres:5432/allercare"))
     .WithEnvironment("AUTH_SECRET", "demo-secret-change-me")
     .WithEnvironment("DEMO_MODE", "1")
     .WithEnvironment("AI_PROVIDER", "gemini")

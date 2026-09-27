@@ -162,15 +162,14 @@ export default function AdminSuperDashboard() {
     error_detail?: string;
   } | null>(null);
 
-  // Global Alerts & Loading
+  // Global Alerts
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
 
   // Verify Role
   useEffect(() => {
     const u = getUser();
-    if (!getToken() || !u || u.role !== "admin") {
+    if (!getToken() || u?.role !== "admin") {
       window.location.href = "/login";
     }
   }, []);
@@ -1039,28 +1038,28 @@ export default function AdminSuperDashboard() {
             <div className="card-title">➕ Tạo mới Tài khoản Người dùng</div>
             <form onSubmit={handleCreateUser} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
-                <label className="label">Tên đăng nhập (Username):</label>
-                <input type="text" className="input" required value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="vd: dr_lan, bs_hung..." />
+                <label className="label" htmlFor="createUserUsername">Tên đăng nhập (Username):</label>
+                <input id="createUserUsername" type="text" className="input" required value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="vd: dr_lan, bs_hung..." />
               </div>
               <div>
-                <label className="label">Mật khẩu khởi tạo:</label>
-                <input type="password" className="input" required minLength={6} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Tối thiểu 6 ký tự" />
+                <label className="label" htmlFor="createUserPassword">Mật khẩu khởi tạo:</label>
+                <input id="createUserPassword" type="password" className="input" required minLength={6} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Tối thiểu 6 ký tự" />
               </div>
               <div>
-                <label className="label">Họ và tên đầy đủ:</label>
-                <input type="text" className="input" required value={newFullName} onChange={(e) => setNewFullName(e.target.value)} placeholder="vd: BS.CKII Nguyễn Văn A" />
+                <label className="label" htmlFor="createUserFullName">Họ và tên đầy đủ:</label>
+                <input id="createUserFullName" type="text" className="input" required value={newFullName} onChange={(e) => setNewFullName(e.target.value)} placeholder="vd: BS.CKII Nguyễn Văn A" />
               </div>
               <div>
-                <label className="label">Vai trò y tế (Role):</label>
-                <select className="input" value={newRole} onChange={(e) => setNewRole(e.target.value)}>
+                <label className="label" htmlFor="createUserRole">Vai trò y tế (Role):</label>
+                <select id="createUserRole" className="input" value={newRole} onChange={(e) => setNewRole(e.target.value)}>
                   {Object.entries(ROLE_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>{v} ({k})</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="label">Số điện thoại liên hệ (Tùy chọn):</label>
-                <input type="tel" className="input" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="09xxxxxxxx" />
+                <label className="label" htmlFor="createUserPhone">Số điện thoại liên hệ (Tùy chọn):</label>
+                <input id="createUserPhone" type="tel" className="input" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="09xxxxxxxx" />
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
@@ -1081,20 +1080,20 @@ export default function AdminSuperDashboard() {
             <div className="card-title">✏️ Chỉnh sửa Tài khoản: {selectedUser.username}</div>
             <form onSubmit={handleUpdateUser} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
-                <label className="label">Họ và tên:</label>
-                <input type="text" className="input" required value={editFullName} onChange={(e) => setEditFullName(e.target.value)} />
+                <label className="label" htmlFor="editUserFullName">Họ và tên:</label>
+                <input id="editUserFullName" type="text" className="input" required value={editFullName} onChange={(e) => setEditFullName(e.target.value)} />
               </div>
               <div>
-                <label className="label">Vai trò y tế:</label>
-                <select className="input" value={editRole} onChange={(e) => setEditRole(e.target.value)}>
+                <label className="label" htmlFor="editUserRole">Vai trò y tế:</label>
+                <select id="editUserRole" className="input" value={editRole} onChange={(e) => setEditRole(e.target.value)}>
                   {Object.entries(ROLE_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>{v} ({k})</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="label">Số điện thoại:</label>
-                <input type="tel" className="input" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+                <label className="label" htmlFor="editUserPhone">Số điện thoại:</label>
+                <input id="editUserPhone" type="tel" className="input" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
@@ -1115,8 +1114,8 @@ export default function AdminSuperDashboard() {
             <div className="card-title">🔑 Đổi Mật khẩu: {selectedUser.username}</div>
             <form onSubmit={handleResetPassword} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
-                <label className="label">Mật khẩu mới:</label>
-                <input type="password" className="input" required minLength={6} value={resetPwInput} onChange={(e) => setResetPwInput(e.target.value)} placeholder="Nhập mật khẩu mới..." />
+                <label className="label" htmlFor="resetUserPwInput">Mật khẩu mới:</label>
+                <input id="resetUserPwInput" type="password" className="input" required minLength={6} value={resetPwInput} onChange={(e) => setResetPwInput(e.target.value)} placeholder="Nhập mật khẩu mới..." />
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowResetPwModal(false)}>Hủy</button>
@@ -1137,12 +1136,12 @@ export default function AdminSuperDashboard() {
             <form onSubmit={handleCreateRule} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
-                  <label className="label">Mã quy tắc (Rule Code):</label>
-                  <input type="text" className="input" required value={ruleCode} onChange={(e) => setRuleCode(e.target.value)} placeholder="vd: DD999, ALLER_X..." />
+                  <label className="label" htmlFor="createRuleCode">Mã quy tắc (Rule Code):</label>
+                  <input id="createRuleCode" type="text" className="input" required value={ruleCode} onChange={(e) => setRuleCode(e.target.value)} placeholder="vd: DD999, ALLER_X..." />
                 </div>
                 <div>
-                  <label className="label">Mức độ cảnh báo:</label>
-                  <select className="input" value={ruleSeverity} onChange={(e) => setRuleSeverity(e.target.value)}>
+                  <label className="label" htmlFor="createRuleSeverity">Mức độ cảnh báo:</label>
+                  <select id="createRuleSeverity" className="input" value={ruleSeverity} onChange={(e) => setRuleSeverity(e.target.value)}>
                     <option value="high">Mức cao (Đỏ - Chống chỉ định)</option>
                     <option value="medium">Mức vừa (Vàng - Thận trọng)</option>
                     <option value="low">Mức thấp (Xanh - Theo dõi)</option>
@@ -1151,8 +1150,8 @@ export default function AdminSuperDashboard() {
               </div>
 
               <div>
-                <label className="label">Loại quy tắc (Rule Type):</label>
-                <select className="input" value={ruleType} onChange={(e) => setRuleType(e.target.value)}>
+                <label className="label" htmlFor="createRuleType">Loại quy tắc (Rule Type):</label>
+                <select id="createRuleType" className="input" value={ruleType} onChange={(e) => setRuleType(e.target.value)}>
                   <option value="drug_drug">Tương tác thuốc-thuốc (drug_drug)</option>
                   <option value="drug_allergy">Dị ứng thuốc (drug_allergy)</option>
                   <option value="duplicate_ingredient">Trùng lặp hoạt chất (duplicate_ingredient)</option>
@@ -1161,18 +1160,18 @@ export default function AdminSuperDashboard() {
               </div>
 
               <div>
-                <label className="label">Tên quy tắc ngắn gọn:</label>
-                <input type="text" className="input" required value={ruleTitle} onChange={(e) => setRuleTitle(e.target.value)} placeholder="vd: Tương tác Paracetamol & Warfarin" />
+                <label className="label" htmlFor="createRuleTitle">Tên quy tắc ngắn gọn:</label>
+                <input id="createRuleTitle" type="text" className="input" required value={ruleTitle} onChange={(e) => setRuleTitle(e.target.value)} placeholder="vd: Tương tác Paracetamol & Warfarin" />
               </div>
 
               <div>
-                <label className="label">Nội dung cảnh báo chi tiết:</label>
-                <textarea className="input" rows={3} required value={ruleMessage} onChange={(e) => setRuleMessage(e.target.value)} placeholder="Hậu quả và hướng xử trí lâm sàng..." />
+                <label className="label" htmlFor="createRuleMessage">Nội dung cảnh báo chi tiết:</label>
+                <textarea id="createRuleMessage" className="input" rows={3} required value={ruleMessage} onChange={(e) => setRuleMessage(e.target.value)} placeholder="Hậu quả và hướng xử trí lâm sàng..." />
               </div>
 
               <div>
-                <label className="label">Điều kiện kích hoạt (Condition JSON):</label>
-                <textarea className="input" rows={2} style={{ fontFamily: "monospace", fontSize: 12 }} value={ruleCondition} onChange={(e) => setRuleCondition(e.target.value)} />
+                <label className="label" htmlFor="createRuleCondition">Điều kiện kích hoạt (Condition JSON):</label>
+                <textarea id="createRuleCondition" className="input" rows={2} style={{ fontFamily: "monospace", fontSize: 12 }} value={ruleCondition} onChange={(e) => setRuleCondition(e.target.value)} />
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
@@ -1193,33 +1192,33 @@ export default function AdminSuperDashboard() {
             <div className="card-title">✏️ Chỉnh sửa Quy tắc: {selectedRule.code}</div>
             <form onSubmit={handleUpdateRule} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
-                <label className="label">Tên quy tắc:</label>
-                <input type="text" className="input" required value={ruleTitle} onChange={(e) => setRuleTitle(e.target.value)} />
+                <label className="label" htmlFor="editRuleTitle">Tên quy tắc:</label>
+                <input id="editRuleTitle" type="text" className="input" required value={ruleTitle} onChange={(e) => setRuleTitle(e.target.value)} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
-                  <label className="label">Mức độ:</label>
-                  <select className="input" value={ruleSeverity} onChange={(e) => setRuleSeverity(e.target.value)}>
+                  <label className="label" htmlFor="editRuleSeverity">Mức độ:</label>
+                  <select id="editRuleSeverity" className="input" value={ruleSeverity} onChange={(e) => setRuleSeverity(e.target.value)}>
                     <option value="high">Mức cao (Đỏ)</option>
                     <option value="medium">Mức vừa (Vàng)</option>
                     <option value="low">Mức thấp</option>
                   </select>
                 </div>
                 <div>
-                  <label className="label">Trạng thái duyệt:</label>
-                  <select className="input" value={ruleStatus} onChange={(e) => setRuleStatus(e.target.value)}>
+                  <label className="label" htmlFor="editRuleStatus">Trạng thái duyệt:</label>
+                  <select id="editRuleStatus" className="input" value={ruleStatus} onChange={(e) => setRuleStatus(e.target.value)}>
                     <option value="approved">Đã duyệt (Active)</option>
                     <option value="draft">Dự thảo (Draft)</option>
                   </select>
                 </div>
               </div>
               <div>
-                <label className="label">Nội dung cảnh báo lâm sàng:</label>
-                <textarea className="input" rows={3} required value={ruleMessage} onChange={(e) => setRuleMessage(e.target.value)} />
+                <label className="label" htmlFor="editRuleMessage">Nội dung cảnh báo lâm sàng:</label>
+                <textarea id="editRuleMessage" className="input" rows={3} required value={ruleMessage} onChange={(e) => setRuleMessage(e.target.value)} />
               </div>
               <div>
-                <label className="label">Điều kiện kích hoạt (JSON):</label>
-                <textarea className="input" rows={2} style={{ fontFamily: "monospace", fontSize: 12 }} value={ruleCondition} onChange={(e) => setRuleCondition(e.target.value)} />
+                <label className="label" htmlFor="editRuleCondition">Điều kiện kích hoạt (JSON):</label>
+                <textarea id="editRuleCondition" className="input" rows={2} style={{ fontFamily: "monospace", fontSize: 12 }} value={ruleCondition} onChange={(e) => setRuleCondition(e.target.value)} />
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
@@ -1240,16 +1239,16 @@ export default function AdminSuperDashboard() {
             <div className="card-title">🧪 Thêm Hoạt chất mới</div>
             <form onSubmit={handleAddIngredient} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
-                <label className="label">Tên hoạt chất (INN):</label>
-                <input type="text" className="input" required value={ingName} onChange={(e) => setIngName(e.target.value)} placeholder="vd: METFORMIN, CEFUROXIME..." />
+                <label className="label" htmlFor="addIngName">Tên hoạt chất (INN):</label>
+                <input id="addIngName" type="text" className="input" required value={ingName} onChange={(e) => setIngName(e.target.value)} placeholder="vd: METFORMIN, CEFUROXIME..." />
               </div>
               <div>
-                <label className="label">Mã phân loại ATC (Tùy chọn):</label>
-                <input type="text" className="input" value={ingAtc} onChange={(e) => setIngAtc(e.target.value)} placeholder="vd: A10BA02" />
+                <label className="label" htmlFor="addIngAtc">Mã phân loại ATC (Tùy chọn):</label>
+                <input id="addIngAtc" type="text" className="input" value={ingAtc} onChange={(e) => setIngAtc(e.target.value)} placeholder="vd: A10BA02" />
               </div>
               <div>
-                <label className="label">Ghi chú dược lý:</label>
-                <input type="text" className="input" value={ingNotes} onChange={(e) => setIngNotes(e.target.value)} placeholder="vd: Nhóm Biguanide điều trị tiểu đường" />
+                <label className="label" htmlFor="addIngNotes">Ghi chú dược lý:</label>
+                <input id="addIngNotes" type="text" className="input" value={ingNotes} onChange={(e) => setIngNotes(e.target.value)} placeholder="vd: Nhóm Biguanide điều trị tiểu đường" />
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowAddIngModal(false)}>Hủy</button>
@@ -1269,16 +1268,16 @@ export default function AdminSuperDashboard() {
             <div className="card-title">💊 Thêm Biệt dược mới</div>
             <form onSubmit={handleAddDrug} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
-                <label className="label">Tên biệt dược:</label>
-                <input type="text" className="input" required value={drugName} onChange={(e) => setDrugName(e.target.value)} placeholder="vd: Panadol Extra, Augmentin..." />
+                <label className="label" htmlFor="addDrugName">Tên biệt dược:</label>
+                <input id="addDrugName" type="text" className="input" required value={drugName} onChange={(e) => setDrugName(e.target.value)} placeholder="vd: Panadol Extra, Augmentin..." />
               </div>
               <div>
-                <label className="label">Hàm lượng:</label>
-                <input type="text" className="input" value={drugStrength} onChange={(e) => setDrugStrength(e.target.value)} placeholder="vd: 500mg/65mg" />
+                <label className="label" htmlFor="addDrugStrength">Hàm lượng:</label>
+                <input id="addDrugStrength" type="text" className="input" value={drugStrength} onChange={(e) => setDrugStrength(e.target.value)} placeholder="vd: 500mg/65mg" />
               </div>
               <div>
-                <label className="label">Dạng bào chế:</label>
-                <input type="text" className="input" value={drugForm} onChange={(e) => setDrugForm(e.target.value)} placeholder="vd: Viên nén, Gói bột, Ống tiêm..." />
+                <label className="label" htmlFor="addDrugForm">Dạng bào chế:</label>
+                <input id="addDrugForm" type="text" className="input" value={drugForm} onChange={(e) => setDrugForm(e.target.value)} placeholder="vd: Viên nén, Gói bột, Ống tiêm..." />
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowAddDrugModal(false)}>Hủy</button>
