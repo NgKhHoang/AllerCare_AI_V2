@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.modules.audit.models import new_id
 from app.modules.auth.deps import (
     CurrentUser,
     audit_log,
@@ -25,7 +26,7 @@ from app.modules.patients.models import (
     User,
 )
 from app.modules.patients.schemas import ProfileOut
-from app.modules.triage.models import ObservationSummary, TriageAssessment
+from app.modules.triage.models import Notification, ObservationSummary, TriageAssessment
 
 router = APIRouter(prefix="/patients", tags=["doctor-portal"])
 
@@ -115,6 +116,7 @@ def prescribe_medication(
     source_label = f"Kê bởi {doc_name}"
     
     med = MedicationRecord(
+        id=new_id(),
         patient_profile_id=profile.id,
         raw_name=data.raw_name.strip(),
         is_current=True,
@@ -134,17 +136,19 @@ def prescribe_medication(
     db.add(med)
     
     # Tạo thông báo gửi cho người bệnh
-    from app.modules.notifications.models import Notification
-    db.add(
-        Notification(
-            id=new_id(),
-            for_user_id=profile.user_id,
-            patient_profile_id=profile.id,
-            title="Đơn thuốc mới từ Bác sĩ",
-            body=f"{doc_name} vừa kê đơn thuốc mới: {data.raw_name.strip()} ({data.dose or ''} {data.frequency or ''}). Vui lòng xem chi tiết hướng dẫn dùng thuốc.",
-            kind="med_added",
+    try:
+        db.add(
+            Notification(
+                id=new_id(),
+                for_user_id=profile.user_id,
+                patient_profile_id=profile.id,
+                title="Đơn thuốc mới từ Bác sĩ",
+                body=f"{doc_name} vừa kê đơn thuốc mới: {data.raw_name.strip()} ({data.dose or ''} {data.frequency or ''}). Vui lòng xem chi tiết hướng dẫn dùng thuốc.",
+                kind="med_added",
+            )
         )
-    )
+    except Exception:
+        pass
     
     audit_log(db, user, "prescribe_medication", "medication_record", med.id, f"drug={data.raw_name.strip()}")
     db.commit()
