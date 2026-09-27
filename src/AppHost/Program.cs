@@ -11,9 +11,10 @@ var postgres = builder.AddPostgres("allercare-postgres", password: postgresPassw
 
 var allercareDb = postgres.AddDatabase("allercare");
 
-// 2. LiveKit WebRTC Video Telehealth Service (Optional for remote video consultation)
+// 2. LiveKit WebRTC Video Telehealth Service (Dev Mode)
 var livekit = builder.AddContainer("allercare-livekit", "allercare/livekit:local")
     .WithHttpEndpoint(port: 7881, targetPort: 7881, name: "livekit-http")
+    .WithArgs("--dev")
     .WithEnvironment("LIVEKIT_KEYS", "devkey: allercare-demo-secret-0123456789ab")
     .WithLifetime(ContainerLifetime.Persistent);
 
@@ -21,7 +22,7 @@ var livekit = builder.AddContainer("allercare-livekit", "allercare/livekit:local
 var api = builder.AddDockerfile("allercare-api", "../../services/api")
     .WithHttpEndpoint(port: 8000, targetPort: 8000, name: "api")
     .WithReference(allercareDb)
-    .WithEnvironment("DATABASE_URL", "postgresql+psycopg://allercare:allercare_demo@allercare-postgres:5432/allercare")
+    .WithEnvironment("DATABASE_URL", "postgresql+psycopg://postgres:allercare_demo@allercare-postgres:5432/allercare")
     .WithEnvironment("AUTH_SECRET", "demo-secret-change-me")
     .WithEnvironment("DEMO_MODE", "1")
     .WithEnvironment("AI_PROVIDER", "gemini")
