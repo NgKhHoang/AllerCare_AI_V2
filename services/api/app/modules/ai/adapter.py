@@ -72,9 +72,9 @@ def _call_gemini_api(
     user_message: str,
     patient_ctx_desc: str,
     api_key: str,
-    model_name: str = "gemini-flash-latest",
+    model_name: str = "gemini-3.5-flash-lite",
 ) -> str | None:
-    """Gọi trực tiếp Google Gemini API qua giao thức REST."""
+    """Gọi trực tiếp Google Gemini API qua giao thức REST với cơ chế tự động fallback model."""
     brain = get_brain()
     
     # Chuẩn bị System Instruction với toàn bộ tri thức y khoa AllerCare
@@ -99,7 +99,11 @@ def _call_gemini_api(
     )
 
     clean_model = model_name.replace("models/", "")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{clean_model}:generateContent"
+    models_to_try = ["gemini-3.5-flash-lite", clean_model, "gemini-3.8-flash", "gemini-flash-latest"]
+    deduped_models = []
+    for m in models_to_try:
+        if m and m not in deduped_models:
+            deduped_models.append(m)
 
     payload = {
         "system_instruction": {
@@ -123,20 +127,22 @@ def _call_gemini_api(
         "x-goog-api-key": api_key,
     }
 
-    try:
-        with httpx.Client(timeout=25.0) as client:
-            resp = client.post(url, json=payload, headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                candidates = data.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    if parts and "text" in parts[0]:
-                        return parts[0]["text"].strip()
-            else:
-                logger.warning(f"Gemini API returned status {resp.status_code}: {resp.text}")
-    except Exception as e:
-        logger.warning(f"Lỗi kết nối Gemini API: {e}. Đang chuyển sang Fallback cục bộ.")
+    with httpx.Client(timeout=40.0) as client:
+        for m in deduped_models:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={api_key}"
+            try:
+                resp = client.post(url, json=payload, headers=headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts and "text" in parts[0]:
+                            return parts[0]["text"].strip()
+                else:
+                    logger.warning(f"Gemini API ({m}) returned status {resp.status_code}: {resp.text[:120]}")
+            except Exception as e:
+                logger.warning(f"Lỗi kết nối Gemini API ({m}): {e}")
     
     return None
 

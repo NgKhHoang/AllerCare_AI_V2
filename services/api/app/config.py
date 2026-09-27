@@ -1,5 +1,8 @@
+import os
+from pathlib import Path
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,8 +14,8 @@ class Settings(BaseSettings):
     AUTH_SECRET: str = "change-me-to-a-long-random-string-in-production"
     AUTH_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
-    AI_PROVIDER: str = "demo"
-    AI_MODEL: str = "demo-rules-chat"
+    AI_PROVIDER: str = "gemini"
+    AI_MODEL: str = "gemini-3.5-flash-lite"
     AI_API_KEY: str = ""
     VIDEO_BASE_URL: str = ""
     LIVEKIT_URL: str = ""
@@ -20,6 +23,27 @@ class Settings(BaseSettings):
     LIVEKIT_API_SECRET: str = ""
     LIVEKIT_TOKEN_TTL_MINUTES: int = 60
     ALLOWED_ORIGINS: str = "http://localhost:3000"
+
+    @model_validator(mode="after")
+    def check_ai_api_key_fallback(self) -> "Settings":
+        if not self.AI_API_KEY:
+            # Dò tìm file .env tại các vị trí khả dĩ
+            candidates = [Path(".env"), Path("/srv/.env"), Path(__file__).resolve().parents[2] / ".env"]
+            for cand in candidates:
+                if cand.is_file():
+                    try:
+                        for line in cand.read_text(encoding="utf-8").splitlines():
+                            line = line.strip()
+                            if line.startswith("AI_API_KEY="):
+                                val = line.split("=", 1)[1].strip().strip('"').strip("'")
+                                if val:
+                                    self.AI_API_KEY = val
+                                    break
+                    except Exception:
+                        pass
+                if self.AI_API_KEY:
+                    break
+        return self
 
     @property
     def allowed_origins(self) -> list[str]:

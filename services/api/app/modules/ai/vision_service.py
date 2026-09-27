@@ -42,8 +42,7 @@ def extract_medications_from_image(image_base64: str, mime_type: str = "image/jp
     )
 
     if api_key:
-        model_name = "gemini-flash-latest"
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+        models_to_try = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-flash-latest"]
         payload = {
             "contents": [
                 {
@@ -69,26 +68,27 @@ def extract_medications_from_image(image_base64: str, mime_type: str = "image/jp
             "x-goog-api-key": api_key,
         }
 
-        try:
-            with httpx.Client(timeout=20.0) as client:
-                resp = client.post(url, json=payload, headers=headers)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts and "text" in parts[0]:
-                            text = parts[0]["text"].strip()
-                            # Trích xuất JSON từ markdown code block nếu có
-                            if "```json" in text:
-                                text = text.split("```json")[1].split("```")[0].strip()
-                            elif "```" in text:
-                                text = text.split("```")[1].split("```")[0].strip()
-                            parsed = json.loads(text)
-                            if isinstance(parsed, list):
-                                return parsed
-        except Exception as e:
-            logger.warning(f"Lỗi gọi Gemini Vision API: {e}")
+        with httpx.Client(timeout=20.0) as client:
+            for m in models_to_try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={api_key}"
+                try:
+                    resp = client.post(url, json=payload, headers=headers)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts and "text" in parts[0]:
+                                text = parts[0]["text"].strip()
+                                if "```json" in text:
+                                    text = text.split("```json")[1].split("```")[0].strip()
+                                elif "```" in text:
+                                    text = text.split("```")[1].split("```")[0].strip()
+                                parsed = json.loads(text)
+                                if isinstance(parsed, list):
+                                    return parsed
+                except Exception as e:
+                    logger.warning(f"Lỗi gọi Gemini Vision API ({m}): {e}")
 
     # Fallback mô phỏng nếu không có API key hoặc lỗi
     return [
