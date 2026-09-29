@@ -92,12 +92,14 @@ class AllergyOut(BaseModel):
 
 
 class TreatmentUpdateIn(BaseModel):
+    condition_id: str | None = Field(default=None, description="ID của loại bệnh (primary hoặc id con)")
     diagnosis: str | None = Field(default=None, max_length=300, description="Loại bệnh người bệnh đang điều trị")
     treatment_status: str = Field(default="active", pattern="^(active|transferred|completed)$", description="Đang điều trị | Đã chuyển viện | Kết thúc điều trị")
     treatment_start_date: str | None = Field(default=None, max_length=20, description="Thời gian bắt đầu điều trị (YYYY-MM-DD)")
     followup_date: str | None = Field(default=None, max_length=20, description="Mốc tái khám (YYYY-MM-DD)")
     admission_note: str | None = Field(default=None, max_length=1000, description="Ghi chú điều trị / lời dặn bác sĩ")
-    chronic_conditions: str | list[str] | None = None
+    new_condition_name: str | None = Field(default=None, max_length=300, description="Tên bệnh mới muốn thêm")
+    chronic_conditions: str | list[dict | str] | None = None
 
 
 class ProfileOut(BaseModel):

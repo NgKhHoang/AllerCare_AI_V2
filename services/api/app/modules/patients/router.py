@@ -1,4 +1,6 @@
 """API hồ sơ người bệnh — phân quyền theo từng hồ sơ, mọi khai báo gắn nhãn unverified."""
+from datetime import datetime, timezone
+import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -70,21 +72,75 @@ def update_treatment(
 
     profile = get_patient_profile_for_access(profile_id, user, db)
 
-    if data.diagnosis is not None:
-        profile.diagnosis = data.diagnosis.strip()
-    if data.treatment_status is not None:
-        profile.treatment_status = data.treatment_status.strip()
-    if data.treatment_start_date is not None:
-        profile.treatment_start_date = data.treatment_start_date.strip() if data.treatment_start_date else None
-    if data.followup_date is not None:
-        profile.followup_date = data.followup_date.strip() if data.followup_date else None
-    if data.admission_note is not None:
-        profile.admission_note = data.admission_note.strip() if data.admission_note else None
-    if data.chronic_conditions is not None:
-        if isinstance(data.chronic_conditions, list):
-            profile.chronic_conditions = json.dumps(data.chronic_conditions, ensure_ascii=False)
-        else:
-            profile.chronic_conditions = data.chronic_conditions
+    # Thêm loại bệnh mới nếu có new_condition_name
+    if data.new_condition_name and data.new_condition_name.strip():
+        new_name = data.new_condition_name.strip()
+        current_list = []
+        if profile.chronic_conditions:
+            try:
+                parsed = json.loads(profile.chronic_conditions)
+                if isinstance(parsed, list):
+                    current_list = parsed
+            except Exception:
+                current_list = []
+        
+        new_cond = {
+            "id": f"cond_{len(current_list)+1}_{int(datetime.now(timezone.utc).timestamp())}",
+            "name": new_name,
+            "status": data.treatment_status or "active",
+            "start_date": data.treatment_start_date or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "followup_date": data.followup_date,
+            "note": data.admission_note or "",
+        }
+        current_list.append(new_cond)
+        profile.chronic_conditions = json.dumps(current_list, ensure_ascii=False)
+        if not profile.diagnosis or profile.diagnosis == "Đang cập nhật":
+            profile.diagnosis = new_name
+            profile.treatment_status = data.treatment_status or "active"
+            profile.treatment_start_date = data.treatment_start_date
+            profile.followup_date = data.followup_date
+            profile.admission_note = data.admission_note
+    else:
+        if data.diagnosis is not None:
+            profile.diagnosis = data.diagnosis.strip() if data.diagnosis else None
+        if data.treatment_status is not None:
+            profile.treatment_status = data.treatment_status.strip()
+        if data.treatment_start_date is not None:
+            profile.treatment_start_date = data.treatment_start_date.strip() if data.treatment_start_date else None
+        if data.followup_date is not None:
+            profile.followup_date = data.followup_date.strip() if data.followup_date else None
+        if data.admission_note is not None:
+            profile.admission_note = data.admission_note.strip() if data.admission_note else None
+        if data.chronic_conditions is not None:
+            if isinstance(data.chronic_conditions, list):
+                profile.chronic_conditions = json.dumps(data.chronic_conditions, ensure_ascii=False)
+            else:
+                profile.chronic_conditions = data.chronic_conditions
+
+        # Nếu có condition_id cụ thể khác primary, cập nhật mục đó trong chronic_conditions
+        if data.condition_id and data.condition_id != "primary" and profile.chronic_conditions:
+            try:
+                parsed = json.loads(profile.chronic_conditions)
+                if isinstance(parsed, list):
+                    updated = False
+                    for c in parsed:
+                        if isinstance(c, dict) and c.get("id") == data.condition_id:
+                            if data.diagnosis:
+                                c["name"] = data.diagnosis
+                            if data.treatment_status:
+                                c["status"] = data.treatment_status
+                            if data.treatment_start_date:
+                                c["start_date"] = data.treatment_start_date
+                            if data.followup_date:
+                                c["followup_date"] = data.followup_date
+                            if data.admission_note is not None:
+                                c["note"] = data.admission_note
+                            updated = True
+                            break
+                    if updated:
+                        profile.chronic_conditions = json.dumps(parsed, ensure_ascii=False)
+            except Exception:
+                pass
 
     # Nếu bác sĩ cập nhật thì gửi thông báo đến người bệnh
     if user.role in ("doctor", "pharmacist"):
@@ -117,6 +173,7 @@ def get_treatment_timeline(
     user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
+    import json
     from app.modules.auth.deps import get_patient_profile_for_access
     from app.modules.consultations.models import Appointment
 
@@ -151,6 +208,63 @@ def get_treatment_timeline(
         future_appts = [a for a in appointments if a.status in ("pending", "confirmed")]
         if future_appts:
             followup_date = future_appts[0].scheduled_at[:10]
+
+    # Xây dựng danh sách các loại bệnh đang điều trị (Conditions List)
+    conditions_list = []
+    if profile.diagnosis:
+        conditions_list.append({
+            "id": "primary",
+            "name": profile.diagnosis,
+            "status": profile.treatment_status or "active",
+            "status_label": st_map.get(profile.treatment_status, "Đang điều trị"),
+            "start_date": start_date,
+            "followup_date": followup_date,
+            "note": profile.admission_note or "",
+        })
+
+    if profile.chronic_conditions:
+        try:
+            parsed = json.loads(profile.chronic_conditions)
+            if isinstance(parsed, list):
+                for idx, c in enumerate(parsed):
+                    if isinstance(c, dict):
+                        c_name = c.get("name") or c.get("diagnosis")
+                        if c_name and c_name != profile.diagnosis:
+                            c_status = c.get("status", "active")
+                            conditions_list.append({
+                                "id": c.get("id") or f"cond_{idx+1}",
+                                "name": c_name,
+                                "status": c_status,
+                                "status_label": st_map.get(c_status, "Đang điều trị"),
+                                "start_date": c.get("start_date") or start_date,
+                                "followup_date": c.get("followup_date") or followup_date,
+                                "note": c.get("note", ""),
+                            })
+                    elif isinstance(c, str) and c.strip():
+                        c_str = c.strip()
+                        if c_str != profile.diagnosis:
+                            conditions_list.append({
+                                "id": f"cond_{idx+1}",
+                                "name": c_str,
+                                "status": "active",
+                                "status_label": "Đang điều trị",
+                                "start_date": start_date,
+                                "followup_date": followup_date,
+                                "note": "",
+                            })
+        except Exception:
+            pass
+
+    if not conditions_list:
+        conditions_list.append({
+            "id": "primary",
+            "name": "Bệnh lý chung / Theo dõi chuyên khoa",
+            "status": profile.treatment_status or "active",
+            "status_label": st_map.get(profile.treatment_status, "Đang điều trị"),
+            "start_date": start_date,
+            "followup_date": followup_date,
+            "note": profile.admission_note or "",
+        })
 
     milestones = []
 
@@ -216,6 +330,7 @@ def get_treatment_timeline(
         "treatment_start_date": start_date,
         "followup_date": followup_date,
         "admission_note": profile.admission_note,
+        "conditions": conditions_list,
         "active_medications": med_items,
         "allergies": [{"id": a.id, "substance": a.substance, "severity": a.severity, "reaction": a.reaction, "verification": a.verification} for a in allergies],
         "milestones": milestones,
