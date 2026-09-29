@@ -127,15 +127,19 @@ def prescribe_medication(
     db.add(med)
 
     # Gửi thông báo trực tiếp đến người bệnh
-    notif = Notification(
-        id=new_id(),
-        user_id=profile.user_id,
-        role="patient",
-        title="🩺 Đơn thuốc mới từ Bác sĩ",
-        message=f"{prescriber_name} đã kê đơn thuốc mới: {data.raw_name}. Liều: {data.dose or 'Theo chỉ định'} ({data.timing or ''}). {data.instructions or ''}",
-        link="/patient/updates",
-    )
-    db.add(notif)
+    try:
+        notif = Notification(
+            id=new_id(),
+            for_user_id=profile.user_id,
+            for_role="patient",
+            patient_profile_id=profile.id,
+            kind="med_added",
+            title="🩺 Đơn thuốc mới từ Bác sĩ",
+            body=f"{prescriber_name} đã kê đơn thuốc mới: {data.raw_name}. Liều: {data.dose or 'Theo chỉ định'} ({data.timing or ''}). {data.instructions or ''}",
+        )
+        db.add(notif)
+    except Exception:
+        pass
 
     audit_log(
         db,

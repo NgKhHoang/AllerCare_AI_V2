@@ -383,7 +383,7 @@ export default function DoctorPortal() {
       )}
 
       {error && <ErrorBox text={error} />}
-      {!selected && success && <SuccessBox text={success} />}
+      {success && <SuccessBox text={success} />}
 
       {!selected && appointments.filter((a) => a.status === "requested").length > 0 && (
         <div className="card">
