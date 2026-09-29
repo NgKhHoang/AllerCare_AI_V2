@@ -848,31 +848,6 @@ export default function DoctorPortal() {
 
           <div className="card">
             <div className="card-title">
-              <span className="t-ico">🩺</span> Triệu chứng / cập nhật
-            </div>
-            {obs.length === 0 && <EmptyState icon="🩺" text="Chưa có cập nhật nào." />}
-            {obs.map((o) => (
-              <div className="list-row" key={o.id}>
-                <div className="list-main">
-                  <div className="list-title">{o.label}</div>
-                  <div className="list-sub">
-                    {o.occurred_at}
-                    {o.value ? ` · ${o.value} ${o.unit ?? ""}` : ""}
-                  </div>
-                </div>
-                {o.status === "sent" ? (
-                  <button className="btn btn-secondary btn-sm" onClick={() => markSeen(o.id)}>
-                    Đánh dấu đã xem
-                  </button>
-                ) : (
-                  <span className="badge badge-ok">Đã xem</span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="card">
-            <div className="card-title">
               <span className="t-ico">🛡</span> Kiểm tra an toàn thuốc (MedSafe)
             </div>
             <p className="muted" style={{ marginBottom: 12 }}>
@@ -917,6 +892,31 @@ export default function DoctorPortal() {
                 </>
               )}
             </div>
+          </div>
+
+          <div className="card">
+            <div className="card-title">
+              <span className="t-ico">🩺</span> Triệu chứng / cập nhật bởi Người Bệnh
+            </div>
+            {obs.length === 0 && <EmptyState icon="🩺" text="Chưa có cập nhật nào." />}
+            {obs.map((o) => (
+              <div className="list-row" key={o.id}>
+                <div className="list-main">
+                  <div className="list-title">{o.label}</div>
+                  <div className="list-sub">
+                    {o.occurred_at}
+                    {o.value ? ` · ${o.value} ${o.unit ?? ""}` : ""}
+                  </div>
+                </div>
+                {o.status === "sent" ? (
+                  <button className="btn btn-secondary btn-sm" onClick={() => markSeen(o.id)}>
+                    Đánh dấu đã xem
+                  </button>
+                ) : (
+                  <span className="badge badge-ok">Đã xem</span>
+                )}
+              </div>
+            ))}
           </div>
 
           <div className="card">
