@@ -577,6 +577,7 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
   }
 
   // ==========================================
+  // ==========================================
   // VIEW 1: TRANG 1 - DANH SÁCH BỆNH & TIỀN SỬ DỊ ỨNG
   // ==========================================
   return (
@@ -584,52 +585,15 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
       {error && <ErrorBox text={error} />}
       {success && <SuccessBox text={success} />}
 
-      {/* 1. MỤC TIỀN SỬ DỊ ỨNG */}
-      <div style={{ paddingBottom: 16, borderBottom: "1px solid var(--border-default)", marginBottom: 18 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
-            ⚠️ TIỀN SỬ DỊ ỨNG ({data.allergies?.length || 0})
-          </h4>
-        </div>
-
-        {data.allergies && data.allergies.length > 0 ? (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {data.allergies.map((a) => (
-              <div
-                key={a.id}
-                style={{
-                  padding: "6px 12px",
-                  background: "#fff1f2",
-                  border: "1px solid #fecdd3",
-                  borderRadius: 8,
-                  fontSize: "0.85rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <strong style={{ color: "#e11d48" }}>{a.substance}</strong>
-                {a.reaction && <span style={{ color: "#881337" }}>({a.reaction})</span>}
-                <VerifiedBadge verification={a.verification || "unverified"} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="muted" style={{ fontSize: "0.85rem", fontStyle: "italic", margin: 0 }}>
-            ✅ Chưa ghi nhận tiền sử dị ứng thuốc/thực phẩm.
-          </p>
-        )}
-      </div>
-
-      {/* 2. MỤC CÁC LOẠI BỆNH ĐANG ĐIỀU TRỊ */}
-      <div>
+      {/* 1. MỤC CÁC LOẠI BỆNH ĐANG ĐIỀU TRỊ */}
+      <div style={{ paddingBottom: 18, borderBottom: "1px solid var(--border-default)", marginBottom: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
           <div>
             <h4 style={{ margin: 0, fontSize: "1rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
               🩺 CÁC LOẠI BỆNH ĐANG ĐIỀU TRỊ ({data.conditions?.length || 0})
             </h4>
             <span style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
-              Chọn một loại bệnh bên dưới để xem chi tiết phác đồ & cây timeline
+              Bấm vào từng loại bệnh bên dưới để xem chi tiết phác đồ, mốc thời gian & cây timeline
             </span>
           </div>
 
@@ -670,7 +634,7 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
                 <input
                   type="text"
                   className="input"
-                  placeholder="VD: Viêm loét dạ dày tá tràng, Bệnh mạch vành..."
+                  placeholder="VD: Viêm loét dạ dày tá tràng, Bệnh mạch vành, Đái tháo đường..."
                   value={newCondName}
                   onChange={(e) => setNewCondName(e.target.value)}
                   required
@@ -750,7 +714,7 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
                   style={{
                     padding: "16px 18px",
                     background: "var(--bg-surface, #ffffff)",
-                    border: `1px solid ${cfg.border}`,
+                    border: `1.5px solid ${cfg.border}`,
                     borderRadius: 12,
                     cursor: "pointer",
                     transition: "all 0.2s ease-in-out",
@@ -760,8 +724,8 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
                     justifyContent: "space-between",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                    e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.08)";
+                    e.currentTarget.style.transform = "translateY(-3px)";
+                    e.currentTarget.style.boxShadow = "0 8px 20px rgba(2, 132, 199, 0.12)";
                     e.currentTarget.style.borderColor = "#0284c7";
                   }}
                   onMouseLeave={(e) => {
@@ -772,7 +736,7 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
                 >
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
-                      <span style={{ fontSize: "0.75rem", color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>
+                      <span style={{ fontSize: "0.78rem", color: "#0284c7", fontWeight: 800, background: "#e0f2fe", padding: "2px 8px", borderRadius: 6 }}>
                         Loại {index + 1}
                       </span>
                       <span className={cfg.badge} style={{ fontSize: "0.75rem" }}>
@@ -780,7 +744,7 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
                       </span>
                     </div>
 
-                    <h4 style={{ margin: "0 0 6px", fontSize: "1.05rem", color: "var(--text-primary)", fontWeight: 700 }}>
+                    <h4 style={{ margin: "0 0 6px", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: 700 }}>
                       🩺 {cond.name}
                     </h4>
 
@@ -806,10 +770,10 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
                       alignItems: "center",
                       color: "#0284c7",
                       fontSize: "0.85rem",
-                      fontWeight: 600,
+                      fontWeight: 700,
                     }}
                   >
-                    <span>Xem Timeline & phác đồ</span>
+                    <span>Xem chi tiết phác đồ & Timeline</span>
                     <span>➔</span>
                   </div>
                 </div>
@@ -821,6 +785,43 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
             icon="🩺"
             text="Chưa có thông tin loại bệnh điều trị. Bác sĩ có thể bấm nút 'Thêm loại bệnh điều trị' ở trên để khởi tạo phác đồ cho bệnh nhân."
           />
+        )}
+      </div>
+
+      {/* 2. MỤC TIỀN SỬ DỊ ỨNG */}
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
+            ⚠️ TIỀN SỬ DỊ ỨNG ({data.allergies?.length || 0})
+          </h4>
+        </div>
+
+        {data.allergies && data.allergies.length > 0 ? (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {data.allergies.map((a) => (
+              <div
+                key={a.id}
+                style={{
+                  padding: "6px 12px",
+                  background: "#fff1f2",
+                  border: "1px solid #fecdd3",
+                  borderRadius: 8,
+                  fontSize: "0.85rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <strong style={{ color: "#e11d48" }}>{a.substance}</strong>
+                {a.reaction && <span style={{ color: "#881337" }}>({a.reaction})</span>}
+                <VerifiedBadge verification={a.verification || "unverified"} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="muted" style={{ fontSize: "0.85rem", fontStyle: "italic", margin: 0 }}>
+            ✅ Chưa ghi nhận tiền sử dị ứng thuốc/thực phẩm.
+          </p>
         )}
       </div>
     </div>
