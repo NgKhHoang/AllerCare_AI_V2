@@ -497,6 +497,30 @@ def list_allergies(
     return [AllergyOut.model_validate(a) for a in rows]
 
 
+@router.delete("/{profile_id}/medications/{medication_id}", summary="Xóa một thuốc khỏi hồ sơ")
+def delete_medication(
+    profile_id: str,
+    medication_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    from app.modules.auth.deps import get_assigned_patient_profile, get_owned_patient_profile
+
+    if user.role in ("doctor", "pharmacist", "nurse"):
+        profile = get_assigned_patient_profile(profile_id, user, db)
+    else:
+        profile = get_owned_patient_profile(profile_id, user, db)
+
+    med = db.get(MedicationRecord, medication_id)
+    if med is None or med.patient_profile_id != profile.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy thuốc")
+    raw_name = med.raw_name
+    db.delete(med)
+    audit_log(db, user, "delete_medication", "medication_record", medication_id, f"deleted {raw_name}")
+    db.commit()
+    return {"status": "ok", "deleted_id": medication_id, "message": f"Đã xóa thuốc {raw_name}"}
+
+
 @router.post("/{profile_id}/allergies", status_code=201, summary="Khai báo tiền sử dị ứng")
 def add_allergy(
     profile_id: str,
@@ -517,14 +541,38 @@ def add_allergy(
         patient_profile_id=profile.id,
         substance=data.substance.strip(),
         reaction=data.reaction,
-        severity=data.severity,
+        severity=data.severity or "medium",
         verification="verified" if is_doc else "unverified",
         reported_by_user_id=user.id,
         verified_by_user_id=user.id if is_doc else None,
         onset_date=data.onset_date,
     )
     db.add(allergy)
-    audit_log(db, user, "add_allergy", "allergy_record", None, f"profile={profile.id}")
+    audit_log(db, user, "add_allergy", "allergy_record", None, f"profile={profile.id}, substance={data.substance}")
     db.commit()
     db.refresh(allergy)
     return AllergyOut.model_validate(allergy)
+
+
+@router.delete("/{profile_id}/allergies/{allergy_id}", summary="Xóa một tiền sử dị ứng")
+def delete_allergy(
+    profile_id: str,
+    allergy_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    from app.modules.auth.deps import get_assigned_patient_profile, get_owned_patient_profile
+
+    if user.role in ("doctor", "pharmacist", "nurse"):
+        profile = get_assigned_patient_profile(profile_id, user, db)
+    else:
+        profile = get_owned_patient_profile(profile_id, user, db)
+
+    alg = db.get(AllergyRecord, allergy_id)
+    if alg is None or alg.patient_profile_id != profile.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy tiền sử dị ứng")
+    substance = alg.substance
+    db.delete(alg)
+    audit_log(db, user, "delete_allergy", "allergy_record", allergy_id, f"deleted {substance}")
+    db.commit()
+    return {"status": "ok", "deleted_id": allergy_id, "message": f"Đã xóa tiền sử dị ứng {substance}"}

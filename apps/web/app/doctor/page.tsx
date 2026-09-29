@@ -32,6 +32,7 @@ interface Allergy {
   id: string;
   substance: string;
   reaction: string | null;
+  severity?: string | null;
   verification: string;
 }
 interface Observation {
@@ -125,6 +126,13 @@ export default function DoctorPortal() {
   const [prescribeInstructions, setPrescribeInstructions] = useState("");
   const [prescribing, setPrescribing] = useState(false);
   const [showPrescribeModal, setShowPrescribeModal] = useState(false);
+
+  // Khai báo tiền sử dị ứng mới
+  const [showAddAllergyModal, setShowAddAllergyModal] = useState(false);
+  const [allergySubstance, setAllergySubstance] = useState("");
+  const [allergyReaction, setAllergyReaction] = useState("");
+  const [allergySeverity, setAllergySeverity] = useState("medium");
+  const [addingAllergy, setAddingAllergy] = useState(false);
 
   useEffect(() => {
     const user = getUser();
@@ -255,6 +263,58 @@ export default function DoctorPortal() {
       setError(e instanceof Error ? e.message : "Không kê đơn được thuốc");
     } finally {
       setPrescribing(false);
+    }
+  }
+
+  async function handleAddAllergy(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selected || !allergySubstance.trim()) return;
+    setAddingAllergy(true);
+    setError("");
+    try {
+      await api(`/v1/patients/${selected.profile_id}/allergies`, {
+        method: "POST",
+        body: {
+          substance: allergySubstance.trim(),
+          reaction: allergyReaction.trim() || null,
+          severity: allergySeverity,
+        },
+      });
+      setSuccess(`Đã ghi nhận tiền sử dị ứng "${allergySubstance.trim()}" cho ${selected.full_name}`);
+      setAllergySubstance("");
+      setAllergyReaction("");
+      setShowAddAllergyModal(false);
+      await openPatient(selected);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Không thêm được tiền sử dị ứng");
+    } finally {
+      setAddingAllergy(false);
+    }
+  }
+
+  async function deleteAllergy(allergyId: string, substance: string) {
+    if (!selected) return;
+    if (!confirm(`Bạn có chắc chắn muốn xóa tiền sử dị ứng "${substance}" của người bệnh?`)) return;
+    setError("");
+    try {
+      await api(`/v1/patients/${selected.profile_id}/allergies/${allergyId}`, { method: "DELETE" });
+      setAllergies((prev) => prev.filter((a) => a.id !== allergyId));
+      setSuccess(`Đã xóa dị ứng "${substance}"`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Không xóa được tiền sử dị ứng");
+    }
+  }
+
+  async function deleteMed(medId: string, name: string) {
+    if (!selected) return;
+    if (!confirm(`Bạn có chắc chắn muốn xóa thuốc "${name}" khỏi danh sách?`)) return;
+    setError("");
+    try {
+      await api(`/v1/patients/${selected.profile_id}/medications/${medId}`, { method: "DELETE" });
+      setMeds((prev) => prev.filter((m) => m.id !== medId));
+      setSuccess(`Đã xóa thuốc "${name}" khỏi hồ sơ`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Không xóa được thuốc");
     }
   }
 
@@ -625,6 +685,14 @@ export default function DoctorPortal() {
                     >
                       {m.verification === "verified" ? "Bỏ xác minh" : "Xác minh"}
                     </button>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      style={{ color: "#e11d48", borderColor: "#fecdd3", backgroundColor: "#fff1f2" }}
+                      onClick={() => deleteMed(m.id, m.raw_name)}
+                      title="Xóa thuốc"
+                    >
+                      🗑️ Xóa
+                    </button>
                   </div>
                 </div>
               ))}
@@ -643,17 +711,118 @@ export default function DoctorPortal() {
             </div>
 
             <div className="card">
-              <div className="card-title">
-                <span className="t-ico">🚫</span> Dị ứng
+              <div className="card-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div className="card-title" style={{ margin: 0 }}>
+                  <span className="t-ico">🚫</span> Dị ứng & Tiền sử phản vệ
+                </div>
+                <button
+                  className="btn btn-primary btn-sm"
+                  style={{ fontSize: 12, padding: "5px 12px" }}
+                  onClick={() => setShowAddAllergyModal(!showAddAllergyModal)}
+                >
+                  {showAddAllergyModal ? "Đóng form" : "+ ⚠️ Thêm tiền sử dị ứng"}
+                </button>
               </div>
+
+              {showAddAllergyModal && (
+                <div
+                  style={{
+                    backgroundColor: "#fff1f2",
+                    border: "1px solid #fecdd3",
+                    borderRadius: 10,
+                    padding: 14,
+                    marginBottom: 16,
+                  }}
+                >
+                  <div style={{ fontWeight: 600, fontSize: 13, color: "#9f1239", marginBottom: 6 }}>
+                    ⚠️ Khai báo dị ứng thuốc / thức ăn / dị nguyên
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                    <span style={{ fontSize: 11, color: "#64748b", alignSelf: "center" }}>Gợi ý nhanh:</span>
+                    {[
+                      { name: "Penicillin (Kháng sinh)", r: "Nổi mề đay, mẩn ngứa" },
+                      { name: "Aspirin / NSAIDs", r: "Khó thở dạng hen, phù mạch" },
+                      { name: "Cephalosporin", r: "Phát ban đỏ toàn thân" },
+                      { name: "Cản quang chứa Iod", r: "Sốc phản vệ, tụt huyết áp" },
+                      { name: "Hải sản / Tôm cua", r: "Sưng môi, ngứa họng" },
+                    ].map((item) => (
+                      <button
+                        key={item.name}
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        style={{ fontSize: 11, padding: "2px 8px", backgroundColor: "#fff" }}
+                        onClick={() => {
+                          setAllergySubstance(item.name);
+                          setAllergyReaction(item.r);
+                        }}
+                      >
+                        + {item.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  <form onSubmit={handleAddAllergy}>
+                    <div className="field">
+                      <label className="label">Tên tác nhân / dị nguyên (*)</label>
+                      <input
+                        className="input"
+                        placeholder="VD: Penicillin, Ciprofloxacin, Tôm cua..."
+                        value={allergySubstance}
+                        onChange={(e) => setAllergySubstance(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <div className="field">
+                        <label className="label">Biểu hiện phản ứng</label>
+                        <input
+                          className="input"
+                          placeholder="VD: Mề đay, khó thở, sốc phản vệ..."
+                          value={allergyReaction}
+                          onChange={(e) => setAllergyReaction(e.target.value)}
+                        />
+                      </div>
+                      <div className="field">
+                        <label className="label">Mức độ nghiêm trọng</label>
+                        <select
+                          className="input"
+                          value={allergySeverity}
+                          onChange={(e) => setAllergySeverity(e.target.value)}
+                        >
+                          <option value="mild">Nhẹ (Mild - chỉ mẩn đỏ nhẹ)</option>
+                          <option value="medium">Trung bình (Medium - mề đay diện rộng)</option>
+                          <option value="severe">Nặng (Severe - phù mạch, co thắt phế quản)</option>
+                          <option value="fatal">Nguy kịch (Fatal - sốc phản vệ)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                      <button className="btn btn-primary btn-sm" type="submit" disabled={addingAllergy} style={{ backgroundColor: "#e11d48", borderColor: "#be123c" }}>
+                        {addingAllergy ? "Đang lưu..." : "✓ Lưu tiền sử dị ứng"}
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        type="button"
+                        onClick={() => setShowAddAllergyModal(false)}
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
               {allergies.length === 0 && (
                 <EmptyState icon="✅" text="Không có tiền sử dị ứng đã ghi nhận." />
               )}
               {allergies.map((a) => (
                 <div className="list-row" key={a.id}>
                   <div className="list-main">
-                    <div className="list-title">{a.substance}</div>
-                    <div className="list-sub">{a.reaction ?? "—"}</div>
+                    <div className="list-title" style={{ color: "#9f1239", fontWeight: 600 }}>{a.substance}</div>
+                    <div className="list-sub">
+                      {a.reaction ?? "—"}
+                      {a.severity ? ` · Mức độ: ${a.severity}` : ""}
+                    </div>
                   </div>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     <VerifiedBadge verification={a.verification} />
@@ -662,6 +831,14 @@ export default function DoctorPortal() {
                       onClick={() => verifyAllergy(a.id, a.verification !== "verified")}
                     >
                       {a.verification === "verified" ? "Bỏ" : "Xác minh"}
+                    </button>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      style={{ color: "#e11d48", borderColor: "#fecdd3", backgroundColor: "#fff1f2" }}
+                      onClick={() => deleteAllergy(a.id, a.substance)}
+                      title="Xóa dị ứng"
+                    >
+                      🗑️ Xóa
                     </button>
                   </div>
                 </div>
