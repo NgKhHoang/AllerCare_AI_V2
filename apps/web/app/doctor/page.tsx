@@ -134,6 +134,9 @@ export default function DoctorPortal() {
   const [allergySeverity, setAllergySeverity] = useState("medium");
   const [addingAllergy, setAddingAllergy] = useState(false);
 
+  // AI AssistiveTouch Modal
+  const [showAiModal, setShowAiModal] = useState(false);
+
   useEffect(() => {
     const user = getUser();
     if (!getToken() || !user || (user.role !== "doctor" && user.role !== "pharmacist")) {
@@ -382,6 +385,13 @@ export default function DoctorPortal() {
       setError(e instanceof Error ? e.message : "Không tạo được tóm tắt");
     } finally {
       setSummaryLoading(false);
+    }
+  }
+
+  function openAiAssistant() {
+    setShowAiModal(true);
+    if (!aiSummary && !summaryLoading) {
+      loadAiSummary();
     }
   }
 
@@ -921,63 +931,6 @@ export default function DoctorPortal() {
 
           <div className="card">
             <div className="card-title">
-              <span className="t-ico">🤖</span> AI tóm tắt diễn biến
-            </div>
-            <p className="muted" style={{ marginBottom: 12 }}>
-              AI tổng hợp triệu chứng, thuốc theo nguồn, dị ứng và phân luồng gần nhất — chỉ để nắm
-              nhanh, không chẩn đoán.
-            </p>
-            <button className="btn btn-secondary" onClick={loadAiSummary} disabled={summaryLoading}>
-              {summaryLoading ? "Đang tổng hợp…" : "🤖 Tạo tóm tắt diễn biến"}
-            </button>
-            {aiSummary && (
-              <div className="mt16">
-                <div className="alertbox alertbox-neutral">
-                  <div className="alertbox-title">Tóm tắt</div>
-                  <div style={{ fontSize: 14 }}>{aiSummary.summary}</div>
-                </div>
-                {aiSummary.highlights.map((h, i) => (
-                  <div
-                    key={i}
-                    className={h.startsWith("🚨") || h.startsWith("⚠") ? "alertbox alertbox-danger" : h.startsWith("?") ? "alertbox alertbox-warning" : "alertbox alertbox-neutral"}
-                    style={{ marginTop: 8, fontSize: 14 }}
-                  >
-                    {h}
-                  </div>
-                ))}
-                <div className="grid-2" style={{ marginTop: 10 }}>
-                  {aiSummary.medications_by_source.length > 0 && (
-                    <div className="card" style={{ boxShadow: "none" }}>
-                      <div className="card-title"><span className="t-ico">💊</span> Thuốc theo nguồn</div>
-                      {aiSummary.medications_by_source.map((l, i) => (
-                        <div key={i} style={{ fontSize: 13, marginBottom: 6 }}>{l}</div>
-                      ))}
-                    </div>
-                  )}
-                  {aiSummary.symptoms.length > 0 && (
-                    <div className="card" style={{ boxShadow: "none" }}>
-                      <div className="card-title"><span className="t-ico">🩺</span> Triệu chứng gần đây</div>
-                      {aiSummary.symptoms.slice(0, 5).map((l, i) => (
-                        <div key={i} style={{ fontSize: 13, marginBottom: 6 }}>{l}</div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {aiSummary.triage_recent.length > 0 && (
-                  <div style={{ fontSize: 13, marginTop: 6 }}>
-                    <strong>Phân luồng gần nhất:</strong>
-                    {aiSummary.triage_recent.map((l, i) => (
-                      <div key={i}>{l}</div>
-                    ))}
-                  </div>
-                )}
-                <div className="source" style={{ marginTop: 8 }}>{aiSummary.disclaimer}</div>
-              </div>
-            )}
-          </div>
-
-          <div className="card">
-            <div className="card-title">
               <span className="t-ico">🔍</span> Xếp hạng tác nhân nghi ngờ (MedSafe AI)
             </div>
             <p className="muted" style={{ marginBottom: 12 }}>
@@ -1087,6 +1040,327 @@ export default function DoctorPortal() {
               );
             })}
           </div>
+
+          {/* Floating AssistiveTouch AI Button */}
+          <div
+            style={{
+              position: "fixed",
+              bottom: 80,
+              right: 24,
+              zIndex: 999,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            <button
+              onClick={openAiAssistant}
+              style={{
+                width: 58,
+                height: 58,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #0284c7 0%, #2563eb 50%, #4f46e5 100%)",
+                color: "#ffffff",
+                border: "3px solid #ffffff",
+                boxShadow: "0 10px 25px -5px rgba(37, 99, 235, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.3)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 26,
+                transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                position: "relative",
+              }}
+              title="AI Tóm tắt diễn biến ca bệnh"
+            >
+              🤖
+              {summaryLoading && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: -2,
+                    right: -2,
+                    width: 14,
+                    height: 14,
+                    borderRadius: "50%",
+                    backgroundColor: "#22c55e",
+                    border: "2px solid #fff",
+                  }}
+                />
+              )}
+            </button>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#0369a1",
+                backgroundColor: "rgba(255, 255, 255, 0.95)",
+                padding: "2px 8px",
+                borderRadius: 10,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                backdropFilter: "blur(4px)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              AI Tóm tắt
+            </span>
+          </div>
+
+          {/* AI Summary Popup Modal (Assistive Overlay) */}
+          {showAiModal && (
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(15, 23, 42, 0.55)",
+                backdropFilter: "blur(4px)",
+                zIndex: 1050,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 16,
+              }}
+              onClick={() => setShowAiModal(false)}
+            >
+              <div
+                style={{
+                  backgroundColor: "#ffffff",
+                  borderRadius: 20,
+                  maxWidth: 680,
+                  width: "100%",
+                  maxHeight: "88vh",
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                  boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                  border: "1px solid rgba(226, 232, 240, 0.8)",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div
+                  style={{
+                    padding: "16px 20px",
+                    borderBottom: "1px solid #e2e8f0",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: "50%",
+                        backgroundColor: "#0284c7",
+                        color: "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 20,
+                        boxShadow: "0 4px 10px rgba(2, 132, 199, 0.3)",
+                      }}
+                    >
+                      🤖
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 16, color: "#0f172a" }}>
+                        AI Tóm tắt diễn biến ca bệnh
+                      </div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>
+                        Bệnh nhân: <strong>{selected.full_name}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={loadAiSummary}
+                      disabled={summaryLoading}
+                      style={{ fontSize: 12 }}
+                    >
+                      🔄 {summaryLoading ? "Đang tổng hợp…" : "Làm mới"}
+                    </button>
+                    <button
+                      onClick={() => setShowAiModal(false)}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: "50%",
+                        border: "none",
+                        backgroundColor: "rgba(0, 0, 0, 0.06)",
+                        cursor: "pointer",
+                        fontSize: 16,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#475569",
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                {/* Modal Content */}
+                <div style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
+                  {summaryLoading && !aiSummary && (
+                    <div style={{ textAlign: "center", padding: "40px 0" }}>
+                      <div style={{ fontSize: 36, marginBottom: 12 }}>🤖</div>
+                      <div style={{ fontWeight: 600, color: "#0284c7", fontSize: 15 }}>
+                        AI đang tổng hợp dữ liệu lâm sàng & diễn biến…
+                      </div>
+                      <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>
+                        Đang phân tích triệu chứng, nguồn thuốc và tiền sử dị ứng
+                      </div>
+                    </div>
+                  )}
+
+                  {aiSummary && (
+                    <div>
+                      <div
+                        style={{
+                          backgroundColor: "#f8fafc",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 12,
+                          padding: 14,
+                          marginBottom: 14,
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "#0369a1", marginBottom: 6 }}>
+                          📝 Tóm tắt nhanh:
+                        </div>
+                        <div style={{ fontSize: 14, lineHeight: 1.6, color: "#1e293b" }}>
+                          {aiSummary.summary}
+                        </div>
+                      </div>
+
+                      {aiSummary.highlights.length > 0 && (
+                        <div style={{ marginBottom: 14 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: "#475569", marginBottom: 6 }}>
+                            🚨 Điểm lưu ý & Cảnh báo:
+                          </div>
+                          {aiSummary.highlights.map((h, i) => (
+                            <div
+                              key={i}
+                              className={
+                                h.startsWith("🚨") || h.startsWith("⚠")
+                                  ? "alertbox alertbox-danger"
+                                  : h.startsWith("?")
+                                  ? "alertbox alertbox-warning"
+                                  : "alertbox alertbox-neutral"
+                              }
+                              style={{ marginTop: 6, fontSize: 13, padding: "8px 12px" }}
+                            >
+                              {h}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="grid-2" style={{ gap: 12, marginBottom: 14 }}>
+                        {aiSummary.medications_by_source.length > 0 && (
+                          <div
+                            style={{
+                              backgroundColor: "#f0fdf4",
+                              border: "1px solid #bbf7d0",
+                              borderRadius: 10,
+                              padding: 12,
+                            }}
+                          >
+                            <div style={{ fontWeight: 600, fontSize: 13, color: "#166534", marginBottom: 6 }}>
+                              💊 Thuốc theo nguồn
+                            </div>
+                            {aiSummary.medications_by_source.map((l, i) => (
+                              <div key={i} style={{ fontSize: 12.5, color: "#14532d", marginBottom: 4 }}>
+                                • {l}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {aiSummary.symptoms.length > 0 && (
+                          <div
+                            style={{
+                              backgroundColor: "#f0f9ff",
+                              border: "1px solid #bae6fd",
+                              borderRadius: 10,
+                              padding: 12,
+                            }}
+                          >
+                            <div style={{ fontWeight: 600, fontSize: 13, color: "#0369a1", marginBottom: 6 }}>
+                              🩺 Triệu chứng gần đây
+                            </div>
+                            {aiSummary.symptoms.slice(0, 5).map((l, i) => (
+                              <div key={i} style={{ fontSize: 12.5, color: "#0c4a6e", marginBottom: 4 }}>
+                                • {l}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {aiSummary.triage_recent.length > 0 && (
+                        <div
+                          style={{
+                            backgroundColor: "#faf5ff",
+                            border: "1px solid #e9d5ff",
+                            borderRadius: 10,
+                            padding: 12,
+                            marginBottom: 12,
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, fontSize: 13, color: "#6b21a8", marginBottom: 4 }}>
+                            ⚖️ Phân luồng gần nhất:
+                          </div>
+                          {aiSummary.triage_recent.map((l, i) => (
+                            <div key={i} style={{ fontSize: 12.5, color: "#581c87" }}>
+                              • {l}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#94a3b8",
+                          borderTop: "1px solid #f1f5f9",
+                          paddingTop: 10,
+                          marginTop: 10,
+                          fontStyle: "italic",
+                        }}
+                      >
+                        ℹ️ {aiSummary.disclaimer}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal Footer */}
+                <div
+                  style={{
+                    padding: "12px 20px",
+                    borderTop: "1px solid #e2e8f0",
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    backgroundColor: "#f8fafc",
+                  }}
+                >
+                  <button className="btn btn-secondary btn-sm" onClick={() => setShowAiModal(false)}>
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </AppShell>
