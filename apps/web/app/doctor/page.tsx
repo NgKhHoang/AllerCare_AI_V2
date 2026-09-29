@@ -11,6 +11,7 @@ import {
   SuccessBox,
   VerifiedBadge,
 } from "../../components/ui";
+import { TreatmentTimeline } from "../../components/TreatmentTimeline";
 
 interface AssignedPatient {
   profile_id: string;
@@ -471,6 +472,13 @@ export default function DoctorPortal() {
               <div className="s-label">Chưa xem</div>
             </div>
           </div>
+
+          {/* CÂY TIMELINE QUÁ TRÌNH ĐIỀU TRỊ & LOẠI BỆNH (BÁC SĨ) */}
+          <TreatmentTimeline
+            profileId={selected.profile_id}
+            isDoctor={true}
+            onRefresh={() => openPatient(selected)}
+          />
 
           <div className="grid-2">
             <div className="card">

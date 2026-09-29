@@ -70,8 +70,11 @@ class PatientProfile(Base):
     dob: Mapped[str | None] = mapped_column(String(10), nullable=True)  # YYYY-MM-DD
     gender: Mapped[str | None] = mapped_column(String(20), nullable=True)
     chronic_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON list
-    diagnosis: Mapped[str | None] = mapped_column(Text, nullable=True)  # chẩn đoán nhập viện hiện tại
-    admission_note: Mapped[str | None] = mapped_column(Text, nullable=True)  # tóm tắt nhập viện (S/O/A/P)
+    diagnosis: Mapped[str | None] = mapped_column(Text, nullable=True)  # chẩn đoán / loại bệnh điều trị
+    treatment_status: Mapped[str] = mapped_column(String(30), default="active")  # active | transferred | completed
+    treatment_start_date: Mapped[str | None] = mapped_column(String(20), nullable=True)  # YYYY-MM-DD
+    followup_date: Mapped[str | None] = mapped_column(String(20), nullable=True)  # YYYY-MM-DD
+    admission_note: Mapped[str | None] = mapped_column(Text, nullable=True)  # tóm tắt nhập viện / ghi chú
     assigned_doctor_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 

@@ -23,6 +23,7 @@ from app.modules.patients.schemas import (
     ObservationIn,
     ObservationOut,
     ProfileOut,
+    TreatmentUpdateIn,
 )
 
 router = APIRouter(prefix="/patients", tags=["patients"])
@@ -53,6 +54,173 @@ def get_profile(
     audit_log(db, user, "view_profile", "patient_profile", profile.id)
     db.commit()
     return profile
+
+
+@router.put("/{profile_id}/treatment", summary="Cập nhật Loại bệnh đang điều trị, trạng thái và mốc tái khám")
+def update_treatment(
+    profile_id: str,
+    data: TreatmentUpdateIn,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProfileOut:
+    import json
+    from app.modules.auth.deps import get_patient_profile_for_access
+    from app.modules.triage.models import Notification
+    from app.modules.audit.models import new_id
+
+    profile = get_patient_profile_for_access(profile_id, user, db)
+
+    if data.diagnosis is not None:
+        profile.diagnosis = data.diagnosis.strip()
+    if data.treatment_status is not None:
+        profile.treatment_status = data.treatment_status.strip()
+    if data.treatment_start_date is not None:
+        profile.treatment_start_date = data.treatment_start_date.strip() if data.treatment_start_date else None
+    if data.followup_date is not None:
+        profile.followup_date = data.followup_date.strip() if data.followup_date else None
+    if data.admission_note is not None:
+        profile.admission_note = data.admission_note.strip() if data.admission_note else None
+    if data.chronic_conditions is not None:
+        if isinstance(data.chronic_conditions, list):
+            profile.chronic_conditions = json.dumps(data.chronic_conditions, ensure_ascii=False)
+        else:
+            profile.chronic_conditions = data.chronic_conditions
+
+    # Nếu bác sĩ cập nhật thì gửi thông báo đến người bệnh
+    if user.role in ("doctor", "pharmacist"):
+        doc_name = user.full_name or user.username
+        st_map = {
+            "active": "Đang điều trị",
+            "transferred": "Đã chuyển viện",
+            "completed": "Kết thúc điều trị",
+        }
+        notif = Notification(
+            id=new_id(),
+            for_user_id=profile.user_id,
+            for_role="patient",
+            patient_profile_id=profile.id,
+            kind="treatment_updated",
+            title="🩺 Cập nhật phác đồ điều trị từ Bác sĩ",
+            body=f"Bác sĩ {doc_name} đã cập nhật tiến trình điều trị: {profile.diagnosis or 'Phác đồ mới'}. Trạng thái: {st_map.get(profile.treatment_status, 'Đang điều trị')}. Mốc tái khám: {profile.followup_date or 'Theo hẹn'}.",
+        )
+        db.add(notif)
+
+    audit_log(db, user, "update_treatment", "patient_profile", profile.id, f"status={profile.treatment_status}")
+    db.commit()
+    db.refresh(profile)
+    return ProfileOut.model_validate(profile)
+
+
+@router.get("/{profile_id}/timeline", summary="Lấy dữ liệu Cây timeline ngang quá trình điều trị")
+def get_treatment_timeline(
+    profile_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    from app.modules.auth.deps import get_patient_profile_for_access
+    from app.modules.consultations.models import Appointment
+
+    profile = get_patient_profile_for_access(profile_id, user, db)
+    meds = (
+        db.query(MedicationRecord)
+        .filter(MedicationRecord.patient_profile_id == profile.id)
+        .order_by(MedicationRecord.created_at.asc())
+        .all()
+    )
+    allergies = (
+        db.query(AllergyRecord)
+        .filter(AllergyRecord.patient_profile_id == profile.id)
+        .all()
+    )
+    appointments = (
+        db.query(Appointment)
+        .filter(Appointment.patient_user_id == profile.user_id)
+        .order_by(Appointment.scheduled_at.asc())
+        .all()
+    )
+
+    st_map = {
+        "active": "Đang điều trị",
+        "transferred": "Đã chuyển viện",
+        "completed": "Kết thúc điều trị",
+    }
+
+    start_date = profile.treatment_start_date or (profile.created_at.strftime("%Y-%m-%d") if profile.created_at else "2026-09-01")
+    followup_date = profile.followup_date
+    if not followup_date and appointments:
+        future_appts = [a for a in appointments if a.status in ("pending", "confirmed")]
+        if future_appts:
+            followup_date = future_appts[0].scheduled_at[:10]
+
+    milestones = []
+
+    # Mốc 1: Bắt đầu điều trị
+    milestones.append({
+        "step": 1,
+        "type": "start",
+        "date": start_date,
+        "title": "Bắt đầu điều trị",
+        "diagnosis": profile.diagnosis or "Theo dõi & điều trị chuyên khoa",
+        "badge": "Khởi đầu",
+        "badge_cls": "badge badge-info",
+        "description": f"Chẩn đoán: {profile.diagnosis or 'Chưa nhập'}. Bác sĩ tiếp nhận ca bệnh.",
+        "icon": "🚩",
+    })
+
+    # Mốc 2: Các mốc sử dụng thuốc
+    med_items = []
+    for m in meds:
+        if m.is_current:
+            med_items.append({
+                "id": m.id,
+                "name": m.raw_name,
+                "dose": m.dose or "Theo chỉ định",
+                "timing": m.timing or "8h sáng và 20h tối",
+                "frequency": m.frequency or "Hàng ngày",
+                "prescriber": m.prescriber or m.source_label or "Bác sĩ kê",
+                "verification": m.verification,
+                "status": m.status,
+            })
+
+    med_date = meds[0].start_date if (meds and meds[0].start_date) else start_date
+    milestones.append({
+        "step": 2,
+        "type": "medications",
+        "date": med_date,
+        "title": f"Phác đồ thuốc ({len(med_items)} loại đang dùng)",
+        "badge": "Đang dùng",
+        "badge_cls": "badge badge-ok",
+        "items": med_items,
+        "description": "Tuân thủ uống thuốc đúng liều và thời điểm chỉ định.",
+        "icon": "💊",
+    })
+
+    # Mốc 3: Mốc tái khám
+    milestones.append({
+        "step": 3,
+        "type": "followup",
+        "date": followup_date or "Dự kiến 2-4 tuần",
+        "title": "Mốc tái khám định kỳ",
+        "badge": "Tái khám",
+        "badge_cls": "badge badge-warning" if followup_date else "badge badge-neutral",
+        "description": f"Lịch hẹn khám và đánh giá lại đáp ứng thuốc cùng Bác sĩ điều trị. Ngày: {followup_date or 'Cần hẹn lịch'}",
+        "icon": "🗓️",
+    })
+
+    return {
+        "profile_id": profile.id,
+        "full_name": profile.full_name,
+        "diagnosis": profile.diagnosis or "Đang cập nhật",
+        "treatment_status": profile.treatment_status or "active",
+        "treatment_status_label": st_map.get(profile.treatment_status, "Đang điều trị"),
+        "treatment_start_date": start_date,
+        "followup_date": followup_date,
+        "admission_note": profile.admission_note,
+        "active_medications": med_items,
+        "allergies": [{"id": a.id, "substance": a.substance, "severity": a.severity, "reaction": a.reaction, "verification": a.verification} for a in allergies],
+        "milestones": milestones,
+    }
+
 
 
 @router.get("/{profile_id}/medications", summary="Danh sách thuốc của hồ sơ")

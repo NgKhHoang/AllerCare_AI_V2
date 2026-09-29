@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, getToken } from "../../lib/api";
 import { AppShell, EmergencyBanner, EmptyState, VerifiedBadge } from "../../components/ui";
+import { TreatmentTimeline } from "../../components/TreatmentTimeline";
 
 interface Profile {
   id: string;
@@ -37,21 +38,23 @@ export default function PatientHome() {
   const [allergies, setAllergies] = useState<Allergy[]>([]);
   const [error, setError] = useState("");
 
+  async function reload() {
+    try {
+      const p = await api<Profile>("/v1/patients/me/profile");
+      setProfile(p);
+      setMeds(await api<Medication[]>(`/v1/patients/${p.id}/medications`));
+      setAllergies(await api<Allergy[]>(`/v1/patients/${p.id}/allergies`));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không tải được hồ sơ");
+    }
+  }
+
   useEffect(() => {
     if (!getToken()) {
       window.location.href = "/login";
       return;
     }
-    (async () => {
-      try {
-        const p = await api<Profile>("/v1/patients/me/profile");
-        setProfile(p);
-        setMeds(await api<Medication[]>(`/v1/patients/${p.id}/medications`));
-        setAllergies(await api<Allergy[]>(`/v1/patients/${p.id}/allergies`));
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Không tải được hồ sơ");
-      }
-    })();
+    reload();
   }, []);
 
   if (!profile && !error) {
@@ -147,6 +150,15 @@ export default function PatientHome() {
           <span style={{ fontSize: 12, fontWeight: 700, color: "#7c3aed" }}>Xem hướng dẫn →</span>
         </Link>
       </div>
+
+      {/* CÂY TIMELINE QUÁ TRÌNH ĐIỀU TRỊ & LOẠI BỆNH ĐANG ĐIỀU TRỊ (BỆNH NHÂN) */}
+      {profile?.id && (
+        <TreatmentTimeline
+          profileId={profile.id}
+          isDoctor={false}
+          onRefresh={reload}
+        />
+      )}
 
       {/* Stats Row */}
       <div className="grid-3">

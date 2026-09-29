@@ -91,12 +91,27 @@ class AllergyOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class TreatmentUpdateIn(BaseModel):
+    diagnosis: str | None = Field(default=None, max_length=300, description="Loại bệnh người bệnh đang điều trị")
+    treatment_status: str = Field(default="active", pattern="^(active|transferred|completed)$", description="Đang điều trị | Đã chuyển viện | Kết thúc điều trị")
+    treatment_start_date: str | None = Field(default=None, max_length=20, description="Thời gian bắt đầu điều trị (YYYY-MM-DD)")
+    followup_date: str | None = Field(default=None, max_length=20, description="Mốc tái khám (YYYY-MM-DD)")
+    admission_note: str | None = Field(default=None, max_length=1000, description="Ghi chú điều trị / lời dặn bác sĩ")
+    chronic_conditions: str | list[str] | None = None
+
+
 class ProfileOut(BaseModel):
     id: str
     full_name: str
     dob: str | None
     gender: str | None
     chronic_conditions: str | None
+    diagnosis: str | None = None
+    treatment_status: str = "active"
+    treatment_start_date: str | None = None
+    followup_date: str | None = None
+    admission_note: str | None = None
     assigned_doctor_id: str | None
 
     model_config = {"from_attributes": True}
+

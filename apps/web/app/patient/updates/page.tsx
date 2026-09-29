@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import { api, getToken } from "../../../lib/api";
 import { AppShell, EmptyState, ErrorBox, SuccessBox, VerifiedBadge } from "../../../components/ui";
+import { TreatmentTimeline } from "../../../components/TreatmentTimeline";
 
 interface Profile {
   id: string;
@@ -195,6 +196,15 @@ export default function PatientUpdates() {
     >
       {error && <ErrorBox text={error} />}
       {success && <SuccessBox text={success} />}
+
+      {/* CÂY TIMELINE QUÁ TRÌNH ĐIỀU TRỊ & LOẠI BỆNH ĐANG ĐIỀU TRỊ */}
+      {profile?.id && (
+        <TreatmentTimeline
+          profileId={profile.id}
+          isDoctor={false}
+          onRefresh={reload}
+        />
+      )}
 
       {/* SECTION 1: ĐƠN THUỐC DO BÁC SĨ KÊ */}
       <div className="card" style={{ borderLeft: "4px solid var(--brand-primary, #0284C7)", marginBottom: 16 }}>
