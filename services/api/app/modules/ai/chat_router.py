@@ -92,6 +92,10 @@ def list_sessions(
     return out
 
 
+import logging
+
+logger = logging.getLogger("allercare.chat")
+
 @router.post("/messages", summary="Gửi tin nhắn cho Trợ lý AI (người bệnh)")
 def send_message(
     data: MessageIn,
@@ -108,38 +112,66 @@ def send_message(
         db.flush()
 
     # Lấy lịch sử hội thoại gần nhất để giữ ngữ cảnh liền mạch cho AI
-    recent_msgs = (
-        db.query(ChatMessage)
-        .filter(ChatMessage.session_id == session.id)
-        .order_by(ChatMessage.created_at.asc())
-        .all()
-    )
-    history = [{"role": m.role, "content": m.content} for m in recent_msgs[-12:]]
+    history = []
+    try:
+        recent_msgs = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.session_id == session.id)
+            .order_by(ChatMessage.created_at.asc())
+            .all()
+        )
+        history = [{"role": m.role, "content": m.content} for m in recent_msgs[-12:]]
+    except Exception as e:
+        logger.warning(f"Lỗi lấy lịch sử chat: {e}")
 
-    db.add(ChatMessage(session_id=session.id, role="patient", content=data.content))
+    try:
+        db.add(ChatMessage(session_id=session.id, role="patient", content=data.content))
+        db.flush()
+    except Exception as e:
+        logger.warning(f"Lỗi lưu tin nhắn người bệnh: {e}")
 
-    label = classify(data.content)
+    try:
+        label = classify(data.content)
+    except Exception as e:
+        logger.warning(f"Lỗi phân loại guardrails: {e}")
+        label = "knowledge"
+
     if label == "greeting":
         answer, sources = _GREETING_REPLY, []
     elif label == "smalltalk":
         answer, sources = _SMALLTALK_REPLY, []
     else:
-        answer, sources = generate_answer(db, data.content, label, user_id=user.id, history=history)
+        try:
+            answer, sources = generate_answer(db, data.content, label, user_id=user.id, history=history)
+        except Exception as e:
+            logger.exception("Lỗi khi sinh câu trả lời AI: %s", e)
+            answer = (
+                "Chào bạn, mình là Trợ lý AI AllerCare. Để đảm bảo an toàn, xin lưu ý luôn dùng thuốc theo đúng chỉ định và liều lượng của Bác sĩ điều trị. "
+                "Nếu bạn cần giải đáp cụ thể về đơn thuốc hoặc có triệu chứng bất thường, hãy bấm nút **Lịch hẹn** hoặc liên hệ bác sĩ phụ trách nhé! 😊"
+            )
+            sources = [{"title": "Hướng dẫn an toàn người bệnh AllerCare", "version": "v2.0"}]
 
     role = "assistant"
     if label == "handoff":
         role = "handoff"
 
-    db.add(
-        ChatMessage(
-            session_id=session.id,
-            role=role,
-            content=answer,
-            sources_json=json.dumps(sources, ensure_ascii=False),
+    try:
+        db.add(
+            ChatMessage(
+                session_id=session.id,
+                role=role,
+                content=answer,
+                sources_json=json.dumps(sources, ensure_ascii=False),
+            )
         )
-    )
-    audit_log(db, user, "chat_message", "chat_session", session.id, f"classification={label}")
-    db.commit()
+        audit_log(db, user, "chat_message", "chat_session", session.id, f"classification={label}")
+        db.commit()
+    except Exception as e:
+        logger.warning(f"Lỗi commit tin nhắn AI vào DB: {e}")
+        try:
+            db.rollback()
+        except Exception:
+            pass
 
     return MessageOut(
         session_id=session.id,

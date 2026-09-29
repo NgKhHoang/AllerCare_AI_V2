@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     AUTH_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
     AI_PROVIDER: str = "gemini"
-    AI_MODEL: str = "gemini-3.8-flash"
+    AI_MODEL: str = "gemini-1.5-flash"
     AI_API_KEY: str = ""
     VIDEO_BASE_URL: str = ""
     LIVEKIT_URL: str = ""
@@ -26,6 +26,13 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def check_ai_api_key_fallback(self) -> "Settings":
+        if not self.AI_API_KEY:
+            for env_key in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "AI_API_KEY"):
+                val = os.environ.get(env_key, "").strip()
+                if val:
+                    self.AI_API_KEY = val
+                    break
+
         if not self.AI_API_KEY:
             # Dò tìm file .env hoặc appsettings.json
             candidates = [
@@ -44,10 +51,13 @@ class Settings(BaseSettings):
                             if data.get("AI_API_KEY"):
                                 self.AI_API_KEY = data["AI_API_KEY"].strip()
                                 break
+                            if data.get("GEMINI_API_KEY"):
+                                self.AI_API_KEY = data["GEMINI_API_KEY"].strip()
+                                break
                         else:
                             for line in text.splitlines():
                                 line = line.strip()
-                                if line.startswith("AI_API_KEY="):
+                                if line.startswith(("AI_API_KEY=", "GEMINI_API_KEY=")):
                                     val = line.split("=", 1)[1].strip().strip('"').strip("'")
                                     if val:
                                         self.AI_API_KEY = val

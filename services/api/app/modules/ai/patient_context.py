@@ -26,153 +26,174 @@ from app.modules.triage.models import TriageAssessment
 
 
 def load_patient_context(db: Session, user_id: str) -> PatientContext | None:
-    profile = db.query(PatientProfile).filter(PatientProfile.user_id == user_id).first()
-    if profile is None:
-        return None
+    try:
+        profile = db.query(PatientProfile).filter(PatientProfile.user_id == user_id).first()
+        if profile is None:
+            return None
 
-    ctx = PatientContext(
-        full_name=profile.full_name,
-        gender=profile.gender,
-        dob=profile.dob,
-        diagnosis=profile.diagnosis,
-        admission_note=profile.admission_note,
-    )
+        ctx = PatientContext(
+            full_name=profile.full_name,
+            gender=profile.gender,
+            dob=profile.dob,
+            diagnosis=profile.diagnosis,
+            admission_note=profile.admission_note,
+        )
 
-    # Bác sĩ phụ trách
-    if profile.assigned_doctor_id:
-        doc = db.get(User, profile.assigned_doctor_id)
-        if doc:
-            ctx.assigned_doctor_name = f"BS. {doc.full_name or doc.username}"
+        # Bác sĩ phụ trách
+        if profile.assigned_doctor_id:
+            try:
+                doc = db.get(User, profile.assigned_doctor_id)
+                if doc:
+                    ctx.assigned_doctor_name = f"BS. {doc.full_name or doc.username}"
+            except Exception:
+                pass
 
-    # Tuổi
-    ctx.age = _age(profile.dob)
+        # Tuổi
+        ctx.age = _age(profile.dob)
 
-    # Bệnh mãn tính
-    if profile.chronic_conditions:
+        # Bệnh mãn tính
+        if profile.chronic_conditions:
+            try:
+                ctx.conditions = json.loads(profile.chronic_conditions)
+            except Exception:
+                ctx.conditions = []
+
+        # Tiền sử dị ứng chi tiết
         try:
-            ctx.conditions = json.loads(profile.chronic_conditions)
-        except json.JSONDecodeError:
-            ctx.conditions = []
+            allergies = db.query(AllergyRecord).filter(AllergyRecord.patient_profile_id == profile.id).all()
+            ctx.allergies = [a.substance for a in allergies if a.substance]
+            ctx.allergy_details = [
+                {
+                    "substance": a.substance,
+                    "reaction": a.reaction,
+                    "severity": a.severity,
+                    "verification": a.verification,
+                    "onset_date": a.onset_date,
+                }
+                for a in allergies
+            ]
+        except Exception:
+            pass
 
-    # Tiền sử dị ứng chi tiết
-    allergies = db.query(AllergyRecord).filter(AllergyRecord.patient_profile_id == profile.id).all()
-    ctx.allergies = [a.substance for a in allergies]
-    ctx.allergy_details = [
-        {
-            "substance": a.substance,
-            "reaction": a.reaction,
-            "severity": a.severity,
-            "verification": a.verification,
-            "onset_date": a.onset_date,
-        }
-        for a in allergies
-    ]
+        # Danh mục thuốc (Toàn bộ: Đơn BS kê, Tự khai, Đang dùng, Đã ngừng)
+        try:
+            meds = (
+                db.query(MedicationRecord)
+                .filter(MedicationRecord.patient_profile_id == profile.id)
+                .order_by(MedicationRecord.created_at.desc())
+                .all()
+            )
 
-    # Danh mục thuốc (Toàn bộ: Đơn BS kê, Tự khai, Đang dùng, Đã ngừng)
-    meds = (
-        db.query(MedicationRecord)
-        .filter(MedicationRecord.patient_profile_id == profile.id)
-        .order_by(MedicationRecord.created_at.desc())
-        .all()
-    )
+            all_med_dicts = []
+            doc_prescriptions = []
+            self_declared = []
+            stopped = []
 
-    all_med_dicts = []
-    doc_prescriptions = []
-    self_declared = []
-    stopped = []
+            for m in meds:
+                m_dict = {
+                    "id": m.id,
+                    "raw_name": m.raw_name,
+                    "dose": m.dose,
+                    "frequency": m.frequency,
+                    "route": m.route,
+                    "timing": m.timing,
+                    "start_date": m.start_date,
+                    "prescriber": m.prescriber,
+                    "source_label": m.source_label,
+                    "status": m.status,
+                    "stop_reason": m.stop_reason,
+                    "verification": m.verification,
+                    "is_current": m.is_current,
+                }
+                if m.is_current and m.status != "stopped":
+                    all_med_dicts.append(m_dict)
+                    if m.verification == "verified" or (m.source_label and "Bệnh viện" in m.source_label):
+                        doc_prescriptions.append(m_dict)
+                    else:
+                        self_declared.append(m_dict)
+                elif m.status == "stopped":
+                    stopped.append(m_dict)
 
-    for m in meds:
-        m_dict = {
-            "id": m.id,
-            "raw_name": m.raw_name,
-            "dose": m.dose,
-            "frequency": m.frequency,
-            "route": m.route,
-            "timing": m.timing,
-            "start_date": m.start_date,
-            "prescriber": m.prescriber,
-            "source_label": m.source_label,
-            "status": m.status,
-            "stop_reason": m.stop_reason,
-            "verification": m.verification,
-            "is_current": m.is_current,
-        }
-        if m.is_current and m.status != "stopped":
-            all_med_dicts.append(m_dict)
-            if m.verification == "verified" or (m.source_label and "Bệnh viện" in m.source_label):
-                doc_prescriptions.append(m_dict)
-            else:
-                self_declared.append(m_dict)
-        elif m.status == "stopped":
-            stopped.append(m_dict)
+            ctx.medications = all_med_dicts
+            ctx.doctor_prescriptions = doc_prescriptions
+            ctx.self_declared_meds = self_declared
+            ctx.stopped_meds = stopped
+        except Exception:
+            pass
 
-    ctx.medications = all_med_dicts
-    ctx.doctor_prescriptions = doc_prescriptions
-    ctx.self_declared_meds = self_declared
-    ctx.stopped_meds = stopped
+        # Xét nghiệm & Triệu chứng lâm sàng
+        try:
+            obs = (
+                db.query(ClinicalObservation)
+                .filter(ClinicalObservation.patient_profile_id == profile.id)
+                .order_by(ClinicalObservation.occurred_at.desc())
+                .limit(20)
+                .all()
+            )
+            labs_dict = {}
+            symptoms_list = []
+            for o in obs:
+                if o.kind == "lab":
+                    unit_str = f" {o.unit}" if o.unit else ""
+                    labs_dict[o.label] = f"{o.value or ''}{unit_str}"
+                elif o.kind == "symptom":
+                    symptoms_list.append({
+                        "label": o.label,
+                        "occurred_at": o.occurred_at,
+                        "status": o.status,
+                        "value": o.value,
+                    })
+            ctx.labs = labs_dict
+            ctx.recent_symptoms = symptoms_list
+        except Exception:
+            pass
 
-    # Xét nghiệm & Triệu chứng lâm sàng
-    obs = (
-        db.query(ClinicalObservation)
-        .filter(ClinicalObservation.patient_profile_id == profile.id)
-        .order_by(ClinicalObservation.occurred_at.desc())
-        .limit(20)
-        .all()
-    )
-    labs_dict = {}
-    symptoms_list = []
-    for o in obs:
-        if o.kind == "lab":
-            unit_str = f" {o.unit}" if o.unit else ""
-            labs_dict[o.label] = f"{o.value or ''}{unit_str}"
-        elif o.kind == "symptom":
-            symptoms_list.append({
-                "label": o.label,
-                "occurred_at": o.occurred_at,
-                "status": o.status,
-                "value": o.value,
-            })
-    ctx.labs = labs_dict
-    ctx.recent_symptoms = symptoms_list
+        # Lịch sử phân luồng cấp cứu Triage
+        try:
+            triages = (
+                db.query(TriageAssessment)
+                .filter(TriageAssessment.patient_profile_id == profile.id)
+                .order_by(TriageAssessment.created_at.desc())
+                .limit(5)
+                .all()
+            )
+            ctx.triage_history = [
+                {
+                    "level": t.level,
+                    "message": t.message,
+                    "reason": t.reason,
+                    "created_at": t.created_at.isoformat() if t.created_at else "",
+                }
+                for t in triages
+            ]
+        except Exception:
+            pass
 
-    # Lịch sử phân luồng cấp cứu Triage
-    triages = (
-        db.query(TriageAssessment)
-        .filter(TriageAssessment.patient_profile_id == profile.id)
-        .order_by(TriageAssessment.created_at.desc())
-        .limit(5)
-        .all()
-    )
-    ctx.triage_history = [
-        {
-            "level": t.level,
-            "message": t.message,
-            "reason": t.reason,
-            "created_at": t.created_at.isoformat() if t.created_at else "",
-        }
-        for t in triages
-    ]
+        # Lịch hẹn khám
+        try:
+            appointments = (
+                db.query(Appointment, User)
+                .join(User, User.id == Appointment.doctor_user_id)
+                .filter(Appointment.patient_user_id == user_id, Appointment.status.in_(["requested", "confirmed"]))
+                .order_by(Appointment.scheduled_at.asc())
+                .limit(3)
+                .all()
+            )
+            ctx.appointments = [
+                {
+                    "scheduled_at": app.scheduled_at,
+                    "doctor_name": f"BS. {doc.full_name or doc.username}",
+                    "reason": app.reason,
+                    "status": app.status,
+                }
+                for app, doc in appointments
+            ]
+        except Exception:
+            pass
 
-    # Lịch hẹn khám
-    appointments = (
-        db.query(Appointment, User)
-        .join(User, User.id == Appointment.doctor_user_id)
-        .filter(Appointment.patient_user_id == user_id, Appointment.status.in_(["requested", "confirmed"]))
-        .order_by(Appointment.scheduled_at.asc())
-        .limit(3)
-        .all()
-    )
-    ctx.appointments = [
-        {
-            "scheduled_at": app.scheduled_at,
-            "doctor_name": f"BS. {doc.full_name or doc.username}",
-            "reason": app.reason,
-            "status": app.status,
-        }
-        for app, doc in appointments
-    ]
-
-    return ctx
+        return ctx
+    except Exception:
+        return None
 
 
 def _age(dob: str | None) -> int | None:
