@@ -120,6 +120,7 @@ export const PATIENT_NAV: NavItem[] = [
 
 export const DOCTOR_NAV: NavItem[] = [
   { href: "/doctor", label: "Danh sách ca", icon: "🩺" },
+  { href: "/doctor/ai-suspect", label: "AI gợi ý tác nhân", icon: "🔍" },
   { href: "/pharmacist", label: "Quy tắc", icon: "📋" },
   { href: "/notifications", label: "Thông báo", icon: "🔔" },
 ];

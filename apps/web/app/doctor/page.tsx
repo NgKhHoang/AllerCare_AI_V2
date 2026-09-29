@@ -1001,116 +1001,49 @@ export default function DoctorPortal() {
             ))}
           </div>
 
-          <div className="card">
-            <div className="card-title">
-              <span className="t-ico">🔍</span> Xếp hạng tác nhân nghi ngờ (MedSafe AI)
-            </div>
-            <p className="muted" style={{ marginBottom: 12 }}>
-              Nhập mô tả phản ứng + thuốc của lần phản ứng trước (toa cũ). AI xếp hạng theo
-              nguyên tắc WHO — bạn phải xác nhận trước khi ghi hồ sơ dị ứng.
-            </p>
-            <div className="field">
-              <label className="label">Mô tả phản ứng + thời điểm khởi phát</label>
-              <textarea
-                className="textarea"
-                rows={2}
-                placeholder="VD: Mẩn đỏ toàn thân + khó thở 15 phút sau uống Cefaclor; tái diễn lần 2"
-                value={reaction}
-                onChange={(e) => setReaction(e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label className="label">Thuốc lần phản ứng trước (toa cũ), cách nhau bằng dấu phẩy</label>
-              <input
-                className="input"
-                placeholder="VD: Cefaclor 500mg, Kapredin, Paracetamol"
-                value={prevDrugs}
-                onChange={(e) => setPrevDrugs(e.target.value)}
-              />
-            </div>
-            <button
-              className="btn btn-primary"
-              onClick={runSuspectRanking}
-              disabled={loading || !reaction.trim()}
-            >
-              {loading ? "Đang xếp hạng…" : "🔍 Xếp hạng tác nhân nghi ngờ"}
-            </button>
-            {suspect && (
-              <div className="mt16">
-                <div className="alertbox alertbox-warning">
-                  <div className="alertbox-title">Kết quả xếp hạng (AI gợi ý — chưa kết luận)</div>
-                  <div style={{ fontSize: 14 }}>{suspect.summary}</div>
+          {/* Shortcut to Dedicated AI Suspect Page */}
+          <div
+            className="card"
+            style={{
+              background: "linear-gradient(135deg, #f8fafc 0%, #f0f9ff 100%)",
+              border: "1px solid #bae6fd",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              marginTop: 12,
+            }}
+            onClick={() => router.push(`/doctor/ai-suspect?profile=${selected.profile_id}`)}
+          >
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 12,
+                    backgroundColor: "#0284c7",
+                    color: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 20,
+                    boxShadow: "0 4px 10px rgba(2, 132, 199, 0.3)",
+                  }}
+                >
+                  🔍
                 </div>
-                {suspect.ranking.map((s) => (
-                  <div className="list-row" key={s.rank}>
-                    <div className="list-main">
-                      <div className="list-title">
-                        #{s.rank} {s.drug} {" "}
-                        <span className={
-                          s.level === "high" ? "badge badge-danger" : s.level === "possible" ? "badge badge-warning" : "badge badge-neutral"
-                        }>
-                          {s.level === "high" ? "Nghi ngờ cao" : s.level === "possible" ? "Có thể" : "Thấp"}
-                        </span>
-                      </div>
-                      <div className="list-sub">{s.reasons.join(" · ")}</div>
-                    </div>
-                    <span className="badge badge-info">{s.score} điểm</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "#0f172a" }}>
+                    AI gợi ý tác nhân & Hướng dẫn dùng thuốc
                   </div>
-                ))}
-                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                  <button className="btn btn-primary btn-sm" onClick={confirmSuspect}>
-                    ✓ Xác nhận nghi ngờ #{1} → ghi hồ sơ dị ứng
-                  </button>
-                  <button className="btn btn-secondary btn-sm" onClick={() => setSuspect(null)}>
-                    Đóng
-                  </button>
+                  <div style={{ fontSize: 12.5, color: "#64748b" }}>
+                    Chuyển sang trang riêng để xếp hạng tác nhân nghi ngờ theo WHO và duyệt hướng dẫn dùng thuốc
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
-
-          <div className="card">
-            <div className="card-title">
-              <span className="t-ico">📖</span> Hướng dẫn dùng thuốc (AI soạn → bạn duyệt)
+              <span className="btn btn-primary btn-sm" style={{ fontSize: 12 }}>
+                Mở trang AI gợi ý tác nhân →
+              </span>
             </div>
-            <p className="muted" style={{ marginBottom: 12 }}>
-              Chọn một thuốc trong toa để AI soạn hướng dẫn dễ hiểu. Bạn duyệt trước khi gửi người
-              bệnh — AI không được thay đổi liều hay thêm/bỏ thuốc.
-            </p>
-            {meds.length === 0 && <EmptyState icon="💊" text="Chưa có thuốc để soạn hướng dẫn." />}
-            {meds.map((m) => {
-              const g = guides.find((x) => x.medication_id === m.id);
-              return (
-                <div className="list-row" key={m.id}>
-                  <div className="list-main">
-                    <div className="list-title">{m.raw_name}</div>
-                    {g && (
-                      <div className="list-sub">
-                        Hướng dẫn: {g.status === "approved" ? "✓ Đã duyệt" : "Bản nháp"}
-                        {g.acknowledgment === "understood"
-                          ? " · Người bệnh ĐÃ HIỂU"
-                          : g.acknowledgment === "not_understood"
-                          ? " · Người bệnh CHƯA hiểu — cần liên hệ"
-                          : ""}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {!g && (
-                      <button className="btn btn-secondary btn-sm" onClick={() => draftGuide(m.id)}>
-                        🤖 Soạn nháp
-                      </button>
-                    )}
-                    {g && g.status === "draft" && (
-                      <button className="btn btn-primary btn-sm" onClick={() => approveGuide(g.id)}>
-                        ✓ Duyệt & gửi
-                      </button>
-                    )}
-                    {g && g.status === "approved" && <span className="badge badge-ok">Đã gửi</span>}
-                  </div>
-                </div>
-              );
-            })}
           </div>
 
           {/* Floating AssistiveTouch AI Button */}
