@@ -72,12 +72,12 @@ def _call_gemini_api(
     user_message: str,
     patient_ctx_desc: str,
     api_key: str,
-    model_name: str = "gemini-3.5-flash-lite",
+    model_name: str = "gemini-1.5-flash",
+    history: list[dict] | None = None,
 ) -> str | None:
-    """Gọi trực tiếp Google Gemini API qua giao thức REST với cơ chế tự động fallback model."""
+    """Gọi trực tiếp Google Gemini API qua giao thức REST với cơ chế tự động fallback model và hỗ trợ ngữ cảnh nhiều lượt (multi-turn)."""
     brain = get_brain()
-    
-    # Chuẩn bị System Instruction với toàn bộ tri thức y khoa AllerCare
+
     system_instruction_text = (
         "Bạn là Trợ lý AI AllerCare — Nền tảng theo dõi và hỗ trợ sử dụng thuốc an toàn chuyên khoa Da liễu & Dị ứng lâm sàng.\n\n"
         "=== BỘ QUY TẮC BẮT BUỘC ===\n"
@@ -85,7 +85,8 @@ def _call_gemini_api(
         "2. Trong tình huống khẩn cấp (khó thở, sưng môi lưỡi, đau thắt ngực, nghi ngờ sốc phản vệ), yêu cầu bệnh nhân GỌI 115 hoặc đến cấp cứu NGAY.\n"
         "3. Trả lời bằng tiếng Việt, giọng điệu ấm áp, ân cần, câu từ ngắn gọn, dễ hiểu cho người bệnh và người cao tuổi.\n"
         "4. Mọi gợi ý, cảnh báo và giải thích phải dựa trên cơ sở khoa học y tế được cung cấp bên dưới và ghi rõ nguồn tham khảo.\n"
-        "5. Luôn nhắc nhở: Quyết định cuối cùng thuộc về Bác sĩ điều trị.\n\n"
+        "5. Luôn nhớ ngữ cảnh các câu hỏi và câu trả lời trước đó trong cuộc trò chuyện để trả lời liền mạch, chính xác.\n"
+        "6. Luôn nhắc nhở: Quyết định cuối cùng thuộc về Bác sĩ điều trị.\n\n"
         "=== HỒ SƠ BỆNH NHÂN ĐANG CHAT ===\n"
         f"{patient_ctx_desc if patient_ctx_desc else 'Chưa có thông tin hồ sơ cụ thể.'}\n\n"
         "=== NGUYÊN TẮC CHIA LIỀU CỦA BÁC SĨ (dosing_principles.md) ===\n"
@@ -98,25 +99,37 @@ def _call_gemini_api(
         "Hệ thống đã nạp 633 cặp tương tác thuốc chống chỉ định và thận trọng của Bộ Y tế. Khi người dùng hỏi về phối hợp thuốc, hãy phân tích dựa trên cơ chế, hậu quả và hướng xử trí chuẩn y khoa.\n"
     )
 
-    clean_model = model_name.replace("models/", "")
-    models_to_try = ["gemini-3.5-flash-lite", clean_model, "gemini-3.8-flash", "gemini-flash-latest"]
+    clean_model = model_name.replace("models/", "") if model_name else "gemini-3.5-flash-lite"
+    models_to_try = [clean_model, "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest"]
     deduped_models = []
     for m in models_to_try:
         if m and m not in deduped_models:
             deduped_models.append(m)
+    if not deduped_models:
+        deduped_models = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.8-flash"]
+
+
+
+    contents = []
+    if history:
+        # Lấy tối đa 10 tin nhắn gần nhất để giữ ngữ cảnh mà không làm quá tải token
+        for h in history[-10:]:
+            role = "model" if h.get("role") in ("assistant", "model", "bot") else "user"
+            content = h.get("content", "").strip()
+            if content:
+                contents.append({"role": role, "parts": [{"text": content}]})
+
+    # Đảm bảo tin nhắn mới nhất là tin cuối
+    if not contents or contents[-1]["parts"][0]["text"] != user_message:
+        contents.append({"role": "user", "parts": [{"text": user_message}]})
 
     payload = {
         "system_instruction": {
             "parts": [{"text": system_instruction_text}]
         },
-        "contents": [
-            {
-                "role": "user",
-                "parts": [{"text": user_message}]
-            }
-        ],
+        "contents": contents,
         "generationConfig": {
-            "temperature": 0.3,
+            "temperature": 0.4,
             "topP": 0.95,
             "maxOutputTokens": 2048,
         }
@@ -127,7 +140,7 @@ def _call_gemini_api(
         "x-goog-api-key": api_key,
     }
 
-    with httpx.Client(timeout=40.0) as client:
+    with httpx.Client(timeout=35.0) as client:
         for m in deduped_models:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={api_key}"
             try:
@@ -140,10 +153,10 @@ def _call_gemini_api(
                         if parts and "text" in parts[0]:
                             return parts[0]["text"].strip()
                 else:
-                    logger.warning(f"Gemini API ({m}) returned status {resp.status_code}: {resp.text[:120]}")
+                    logger.warning(f"Gemini API ({m}) returned status {resp.status_code}: {resp.text[:150]}")
             except Exception as e:
                 logger.warning(f"Lỗi kết nối Gemini API ({m}): {e}")
-    
+
     return None
 
 
@@ -152,6 +165,7 @@ def generate_answer(
     user_message: str,
     classification: str,
     user_id: str | None = None,
+    history: list[dict] | None = None,
 ) -> tuple[str, list[dict]]:
     """Sinh câu trả lời. Sử dụng Gemini nếu có cấu hình, tự động fallback an toàn."""
     # 0. Hàng rào an toàn tuyệt đối (Guardrails)
@@ -164,7 +178,7 @@ def generate_answer(
 
     settings = get_settings()
     patient_ctx = load_patient_context(db, user_id) if (db and user_id) else None
-    patient_desc = patient_ctx.describe() if patient_ctx else ""
+    patient_desc = patient_ctx.describe_deep() if patient_ctx else ""
 
     # 1. Thử gọi Gemini API nếu có API KEY
     api_key = settings.AI_API_KEY.strip()
@@ -175,27 +189,98 @@ def generate_answer(
             patient_ctx_desc=patient_desc,
             api_key=api_key,
             model_name=model_name,
+            history=history,
         )
         if gemini_response:
             sources = [
                 {
-                    "title": "Google Gemini 1.5 Flash (Grounded on AllerCare Medical Knowledge)",
+                    "title": "Google Gemini 1.5 Flash (Deep EHR & Medical Knowledge Grounding)",
                     "version": model_name,
-                    "file": "data/ai_knowledge/",
+                    "file": "Database & data/ai_knowledge/",
                 },
                 {
-                    "title": "Danh mục tương tác thuốc — Bộ Y tế",
-                    "version": "QĐ 5948/QĐ-BYT",
-                    "file": "data/safety/safety_rules.json",
+                    "title": "Hồ sơ bệnh án điện tử người bệnh & Danh mục BYT",
+                    "version": "Hồ sơ cá thể hóa",
+                    "file": "Database PostgreSQL",
                 }
             ]
             return gemini_response, sources
 
     # 2. FALLBACK NỘI BỘ (Chạy cục bộ 100% khi không có mạng hoặc chưa cấu hình API Key)
+    msg_low = user_message.lower()
+
+    # 2.0. Trả lời câu hỏi trực tiếp về Đơn thuốc của bệnh nhân từ Database
+    if patient_ctx and any(kw in msg_low for kw in ("đơn thuốc", "thuốc của tôi", "bác sĩ kê", "thuốc đang uống", "tôi đang dùng thuốc gì", "danh sách thuốc")):
+        if patient_ctx.doctor_prescriptions:
+            med_lines = []
+            for m in patient_ctx.doctor_prescriptions:
+                details = f"- **{m.get('raw_name')}**"
+                sub = []
+                if m.get('dose'): sub.append(f"Liều: {m.get('dose')}")
+                if m.get('frequency'): sub.append(f"Tần suất: {m.get('frequency')}")
+                if m.get('timing'): sub.append(f"Thời điểm: {m.get('timing')}")
+                if m.get('route'): sub.append(f"Đường dùng: {m.get('route')}")
+                if sub: details += f" ({', '.join(sub)})"
+                med_lines.append(details)
+            doc_str = f" do {patient_ctx.assigned_doctor_name} kê đơn" if patient_ctx.assigned_doctor_name else ""
+            reply = (
+                f"Theo hồ sơ bệnh án điện tử của bạn, hiện tại bạn đang có các thuốc sau{doc_str}:\n\n"
+                + "\n".join(med_lines)
+                + "\n\n👉 Hãy uống thuốc đúng liều lượng và thời điểm như bác sĩ đã chỉ định nhé!"
+            )
+            return reply, [{"title": "Hồ sơ Đơn thuốc Bác sĩ kê", "version": "Database"}]
+
+    # 2.0b. Trả lời câu hỏi về thời điểm uống thuốc / giờ uống
+    if patient_ctx and any(kw in msg_low for kw in ("uống lúc nào", "mấy giờ uống", "thời điểm uống", "trước hay sau ăn")):
+        if patient_ctx.doctor_prescriptions:
+            timing_lines = [
+                f"- **{m.get('raw_name')}**: {m.get('timing') or 'Theo chỉ định của bác sĩ'}"
+                for m in patient_ctx.doctor_prescriptions
+            ]
+            reply = (
+                "Thời điểm uống các thuốc trong đơn của bạn như sau:\n\n"
+                + "\n".join(timing_lines)
+                + "\n\n👉 Nếu cần điều chỉnh giờ uống cho phù hợp sinh hoạt, hãy trao đổi thêm với bác sĩ điều trị."
+            )
+            return reply, [{"title": "Lịch uống thuốc theo y lệnh Bác sĩ", "version": "Database"}]
+
+    # 2.0c. Trả lời câu hỏi về Tiền sử Dị ứng từ Database
+    if patient_ctx and any(kw in msg_low for kw in ("tôi dị ứng", "dị ứng thuốc gì", "tiền sử dị ứng")):
+        if patient_ctx.allergy_details:
+            al_lines = [
+                f"- **{a.get('substance')}**: Biểu hiện {a.get('reaction', 'dị ứng')} (Mức độ: {a.get('severity', 'đã ghi nhận')})"
+                for a in patient_ctx.allergy_details
+            ]
+            reply = (
+                f"Hồ sơ của bạn đã ghi nhận tiền sử dị ứng với **{len(patient_ctx.allergy_details)} loại** sau:\n\n"
+                + "\n".join(al_lines)
+                + "\n\n⚠️ Hệ thống AllerCare sẽ tự động chặn mọi đơn thuốc mới có chứa các hoạt chất dị ứng này."
+            )
+            return reply, [{"title": "Tiền sử Dị ứng thuốc Người bệnh", "version": "Database"}]
+
+    # 2.0d. Trả lời câu hỏi về Chỉ số Xét nghiệm / Chức năng Thận / Gan từ Database
+    if patient_ctx and any(kw in msg_low for kw in ("xét nghiệm", "chức năng thận", "chức năng gan", "crcl", "creatinine", "egfr")):
+        if patient_ctx.labs:
+            lab_lines = [f"- **{k}**: {v}" for k, v in patient_ctx.labs.items()]
+            reply = (
+                "Các chỉ số xét nghiệm gần nhất trong hồ sơ của bạn gồm:\n\n"
+                + "\n".join(lab_lines)
+                + "\n\n👉 Bác sĩ điều trị đã dựa trên các chỉ số này để tính toán chia liều thuốc an toàn nhất cho bạn."
+            )
+            return reply, [{"title": "Kết quả Xét nghiệm Lâm sàng", "version": "Database"}]
+
     brain = get_brain()
 
-    # 2.1. Tra cứu tương tác thuốc Bộ Y tế
+    # 2.1. Tra cứu tương tác thuốc Bộ Y tế (trong tin nhắn hiện tại hoặc kết hợp ngữ cảnh lịch sử)
     interaction = brain.find_interaction_in_message(user_message)
+    if not interaction and history:
+        for h in reversed(history[-4:]):
+            prev_text = h.get("content", "")
+            combo_text = f"{prev_text} {user_message}"
+            interaction = brain.find_interaction_in_message(combo_text)
+            if interaction:
+                break
+
     if interaction:
         act1 = interaction.get("act1", "")
         act2 = interaction.get("act2", "")
@@ -220,17 +305,25 @@ def generate_answer(
         ]
         return text, sources
 
-    # 2.2. Tra cứu liều dùng theo ví dụ bác sĩ
+    # 2.2. Tra cứu liều dùng theo ví dụ bác sĩ (tìm trong câu hiện tại hoặc ngược về lịch sử)
     drug_query = _extract_drug_query(message=user_message)
+    if not drug_query and history:
+        for h in reversed(history[-6:]):
+            prev_content = h.get("content", "")
+            found_drug = _extract_drug_query(prev_content)
+            if found_drug:
+                drug_query = found_drug
+                break
+
     mentions_dose = any(
         kw in user_message.lower()
-        for kw in ("liều", "lưu", "viên", "lần/ngày", "ngày mấy", "bao nhiêu", "cách dùng", "uống sao", "uống như")
+        for kw in ("liều", "lưu", "viên", "lần/ngày", "ngày mấy", "bao nhiêu", "cách dùng", "uống sao", "uống như", "khi nào", "trước ăn", "sau ăn", "tác dụng phụ", "uống tiếp")
     )
-    if drug_query and (mentions_dose or "?" in user_message or len(user_message) < 80):
+    if drug_query and (mentions_dose or "?" in user_message or len(user_message) < 100):
         text, sug = build_dose_answer(brain, drug_query, patient_ctx)
         sources = [
             {
-                "title": "Kho kiến thức AI — ví dụ chia liều của bác sĩ",
+                "title": f"Kho kiến thức AI — hướng dẫn dùng thuốc {drug_query.title()}",
                 "version": sug.example_id or "dosing_examples",
                 "file": "ai_knowledge/dosing_examples.json",
             }
@@ -238,7 +331,7 @@ def generate_answer(
         return text, sources
 
     # 2.3. Nguyên tắc chia liều chung
-    if any(kw in user_message.lower() for kw in ("chia liều", "phân chia liều", "nguyên tắc liều", "cách bác sĩ")):
+    if any(kw in user_message.lower() for kw in ("chia liều", "phân chia liều", "nguyên tắc liều", "cách bác sĩ", "nguyên tắc dùng thuốc")):
         principles = brain.retrieve_principles(user_message, limit=3)
         if principles:
             text = (
@@ -265,4 +358,13 @@ def generate_answer(
         )
         return answer, [{"title": best.title, "version": best.version}]
 
-    return OUT_OF_SCOPE_REPLY, []
+    # 2.5. Phản hồi tự nhiên hỗ trợ người bệnh khi hỏi tiếp trong hội thoại
+    fallback_helpful_reply = (
+        "Cảm ơn câu hỏi của bạn. Để đảm bảo an toàn tuyệt đối khi dùng thuốc:\n\n"
+        "- Hãy tuân thủ đúng liều lượng và thời gian do bác sĩ điều trị đã chỉ định.\n"
+        "- Không tự ý dừng thuốc đột ngột hoặc tự ý đổi sang thuốc khác.\n"
+        "- Nếu bạn cảm thấy mệt mỏi, nổi mẩn ngứa bất thường hoặc có thắc mắc cụ thể về một loại thuốc, hãy gửi tên thuốc cụ thể cho mình hoặc bấm nút **Lịch hẹn** để trao đổi trực tiếp cùng bác sĩ phụ trách nhé! 😊"
+    )
+    return fallback_helpful_reply, [{"title": "Hướng dẫn an toàn người bệnh AllerCare", "version": "v2.0"}]
+
+

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-const DEMO_ACCOUNTS = [
+const INITIAL_DEMO_ACCOUNTS = [
   { label: "Bệnh nhân (patient1)", username: "patient1", password: "patient123", icon: "👤", role: "Người bệnh" },
   { label: "Ca 02 Phản vệ Cefaclor", username: "case02", password: "patient123", icon: "⚠️", role: "Ca dị ứng mẫu" },
   { label: "BS. Nguyễn Văn An", username: "doctor1", password: "doctor123", icon: "🩺", role: "Bác sĩ" },
@@ -14,10 +14,22 @@ const DEMO_ACCOUNTS = [
 ];
 
 export default function LoginPage() {
+  const [accounts, setAccounts] = useState(INITIAL_DEMO_ACCOUNTS);
   const [username, setUsername] = useState("patient1");
   const [password, setPassword] = useState("patient123");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/v1/auth/demo-users")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setAccounts(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleLogin(e?: React.FormEvent, customUser?: string, customPass?: string) {
     if (e) e.preventDefault();
@@ -55,7 +67,7 @@ export default function LoginPage() {
     }
   }
 
-  function quickLogin(acc: (typeof DEMO_ACCOUNTS)[number]) {
+  function quickLogin(acc: (typeof INITIAL_DEMO_ACCOUNTS)[number]) {
     setUsername(acc.username);
     setPassword(acc.password);
     handleLogin(undefined, acc.username, acc.password);
@@ -119,7 +131,7 @@ export default function LoginPage() {
             ⚡ CHỌN TÀI KHOẢN DEMO ĐĂNG NHẬP NHANH (1-CLICK)
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {DEMO_ACCOUNTS.map((acc) => (
+            {accounts.map((acc) => (
               <button
                 key={acc.username}
                 type="button"

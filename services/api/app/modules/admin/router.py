@@ -21,7 +21,7 @@ from app.modules.audit.models import AuditEvent, new_id
 from app.modules.auth.deps import CurrentUser, audit_log, require_roles
 from app.modules.auth.security import hash_password
 from app.modules.medications.models import Drug, DrugIngredient, Ingredient
-from app.modules.patients.models import User
+from app.modules.patients.models import CareAssignment, PatientProfile, User
 from app.modules.safety.check_models import Alert, SafetyCheck
 from app.modules.safety.knowledge_models import KnowledgeSource, SafetyRule
 from app.modules.triage.models import TriageAssessment
@@ -39,6 +39,7 @@ class UserCreateSchema(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=160)
     role: str = Field(..., description="patient, doctor, nurse, pharmacist, leader, admin, caregiver")
     phone: Optional[str] = None
+    assigned_doctor_id: Optional[str] = None
     is_active: bool = True
 
 
@@ -46,6 +47,7 @@ class UserUpdateSchema(BaseModel):
     full_name: Optional[str] = None
     role: Optional[str] = None
     phone: Optional[str] = None
+    assigned_doctor_id: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -166,6 +168,10 @@ def list_users(
         kw = f"%{q.strip()}%"
         query = query.filter(or_(User.username.ilike(kw), User.full_name.ilike(kw), User.phone.ilike(kw)))
     rows = query.order_by(User.role, User.username).all()
+
+    # Tạo map profile cho vai trò patient
+    profiles = {p.user_id: p for p in db.query(PatientProfile).all()}
+
     return [
         {
             "id": u.id,
@@ -173,6 +179,7 @@ def list_users(
             "full_name": u.full_name,
             "role": u.role,
             "phone": u.phone,
+            "assigned_doctor_id": profiles.get(u.id).assigned_doctor_id if profiles.get(u.id) else None,
             "is_active": u.is_active,
             "created_at": u.created_at.isoformat() if u.created_at else "",
         }
@@ -201,6 +208,26 @@ def create_user(
         created_at=datetime.now(timezone.utc),
     )
     db.add(new_user)
+    db.flush()
+
+    # Nếu tạo bệnh nhân mới -> Tự động khởi tạo PatientProfile và phân công CareAssignment
+    if new_user.role == "patient":
+        profile = PatientProfile(
+            id=new_id(),
+            user_id=new_user.id,
+            full_name=new_user.full_name,
+            assigned_doctor_id=body.assigned_doctor_id.strip() if body.assigned_doctor_id else None,
+        )
+        db.add(profile)
+        if body.assigned_doctor_id:
+            assignment = CareAssignment(
+                id=new_id(),
+                doctor_id=body.assigned_doctor_id.strip(),
+                patient_user_id=new_user.id,
+                active=True,
+            )
+            db.add(assignment)
+
     audit_log(db, user, "create_user", "user", new_user.id, f"username={new_user.username}, role={new_user.role}")
     db.commit()
     db.refresh(new_user)
@@ -234,6 +261,36 @@ def update_user(
         if target.id == user.id and not body.is_active:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Không thể tự vô hiệu hóa tài khoản của bạn")
         target.is_active = body.is_active
+
+    # Cập nhật hồ sơ bệnh nhân và phân công bác sĩ nếu là bệnh nhân
+    if target.role == "patient" or body.role == "patient":
+        profile = db.query(PatientProfile).filter(PatientProfile.user_id == target.id).first()
+        if not profile:
+            profile = PatientProfile(
+                id=new_id(),
+                user_id=target.id,
+                full_name=target.full_name,
+                assigned_doctor_id=body.assigned_doctor_id.strip() if body.assigned_doctor_id else None,
+            )
+            db.add(profile)
+        else:
+            profile.full_name = target.full_name
+            if body.assigned_doctor_id is not None:
+                profile.assigned_doctor_id = body.assigned_doctor_id.strip() if body.assigned_doctor_id else None
+
+        if body.assigned_doctor_id is not None and body.assigned_doctor_id.strip():
+            doc_id = body.assigned_doctor_id.strip()
+            # Cập nhật / tạo CareAssignment
+            assignment = (
+                db.query(CareAssignment)
+                .filter(CareAssignment.patient_user_id == target.id)
+                .first()
+            )
+            if assignment:
+                assignment.doctor_id = doc_id
+                assignment.active = True
+            else:
+                db.add(CareAssignment(id=new_id(), doctor_id=doc_id, patient_user_id=target.id, active=True))
 
     audit_log(db, user, "update_user", "user", target.id, f"updated fields: {body.model_dump(exclude_unset=True)}")
     db.commit()

@@ -27,6 +27,7 @@ interface AdminUser {
   full_name: string;
   role: string;
   phone?: string | null;
+  assigned_doctor_id?: string | null;
   is_active: boolean;
   created_at: string;
 }
@@ -107,9 +108,11 @@ export default function AdminSuperDashboard() {
   const [newFullName, setNewFullName] = useState("");
   const [newRole, setNewRole] = useState("doctor");
   const [newPhone, setNewPhone] = useState("");
+  const [newDoctorId, setNewDoctorId] = useState("");
   const [editFullName, setEditFullName] = useState("");
   const [editRole, setEditRole] = useState("doctor");
   const [editPhone, setEditPhone] = useState("");
+  const [editDoctorId, setEditDoctorId] = useState("");
   const [resetPwInput, setResetPwInput] = useState("");
 
   // Safety Rules State
@@ -249,6 +252,9 @@ export default function AdminSuperDashboard() {
     if (activeTab === "audit") loadAuditLogs();
   }, [activeTab, loadStats, loadUsers, loadRules, loadCatalog, loadAuditLogs]);
 
+  // Danh sách bác sĩ phục vụ phân công
+  const doctorsList = users.filter((u) => u.role === "doctor" && u.is_active);
+
   // --- USER ACTIONS ---
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
@@ -263,6 +269,7 @@ export default function AdminSuperDashboard() {
           full_name: newFullName,
           role: newRole,
           phone: newPhone || null,
+          assigned_doctor_id: newRole === "patient" ? (newDoctorId || null) : null,
           is_active: true,
         },
       });
@@ -272,6 +279,7 @@ export default function AdminSuperDashboard() {
       setNewPassword("");
       setNewFullName("");
       setNewPhone("");
+      setNewDoctorId("");
       loadUsers();
       loadStats();
     } catch (err) {
@@ -291,9 +299,10 @@ export default function AdminSuperDashboard() {
           full_name: editFullName,
           role: editRole,
           phone: editPhone || null,
+          assigned_doctor_id: editRole === "patient" ? (editDoctorId || null) : null,
         },
       });
-      setSuccess(`Đã cập nhật thông tin tài khoản "${selectedUser.username}"`);
+      setSuccess(`Đã cập nhật thông tin tài khoản "${selectedUser.username}" thành công`);
       setShowEditUserModal(false);
       loadUsers();
     } catch (err) {
@@ -723,44 +732,52 @@ export default function AdminSuperDashboard() {
           {users.length === 0 && <EmptyState icon="👤" text="Không tìm thấy tài khoản nào." />}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {users.map((u) => (
-              <div className="list-row" key={u.id} style={{ alignItems: "center" }}>
-                <div className="list-main">
-                  <div className="list-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span>{u.full_name}</span>
-                    <span className="muted" style={{ fontWeight: 400 }}>({u.username})</span>
-                    <span className="badge badge-neutral" style={{ fontSize: 11 }}>
-                      {ROLE_LABELS[u.role] ?? u.role}
-                    </span>
-                    {!u.is_active && <span className="badge badge-danger">Đang bị khóa</span>}
+            {users.map((u) => {
+              const assignedDoc = u.assigned_doctor_id ? doctorsList.find((d) => d.id === u.assigned_doctor_id) : null;
+              return (
+                <div className="list-row" key={u.id} style={{ alignItems: "center" }}>
+                  <div className="list-main">
+                    <div className="list-title" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span>{u.full_name}</span>
+                      <span className="muted" style={{ fontWeight: 400 }}>({u.username})</span>
+                      <span className="badge badge-neutral" style={{ fontSize: 11 }}>
+                        {ROLE_LABELS[u.role] ?? u.role}
+                      </span>
+                      {u.role === "patient" && (
+                        <span className={assignedDoc ? "badge badge-info" : "badge badge-warning"} style={{ fontSize: 11 }}>
+                          {assignedDoc ? `🩺 Phụ trách: ${assignedDoc.full_name}` : "⚠️ Chưa phân công BS"}
+                        </span>
+                      )}
+                      {!u.is_active && <span className="badge badge-danger">Đang bị khóa</span>}
+                    </div>
+                    <div className="list-sub">
+                      {u.phone ? `📞 ${u.phone} · ` : ""}
+                      Tạo ngày: {u.created_at ? new Date(u.created_at).toLocaleDateString("vi-VN") : "—"}
+                    </div>
                   </div>
-                  <div className="list-sub">
-                    {u.phone ? `📞 ${u.phone} · ` : ""}
-                    Tạo ngày: {u.created_at ? new Date(u.created_at).toLocaleDateString("vi-VN") : "—"}
-                  </div>
-                </div>
 
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {u.role !== "admin" && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {u.role !== "admin" && (
+                      <button
+                        className={`btn btn-sm ${u.is_active ? "btn-secondary" : "btn-primary"}`}
+                        onClick={() => handleToggleUserActive(u)}
+                      >
+                        {u.is_active ? "Khóa" : "Mở khóa"}
+                      </button>
+                    )}
                     <button
-                      className={`btn btn-sm ${u.is_active ? "btn-secondary" : "btn-primary"}`}
-                      onClick={() => handleToggleUserActive(u)}
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => {
+                        setSelectedUser(u);
+                        setEditFullName(u.full_name);
+                        setEditRole(u.role);
+                        setEditPhone(u.phone || "");
+                        setEditDoctorId(u.assigned_doctor_id || "");
+                        setShowEditUserModal(true);
+                      }}
                     >
-                      {u.is_active ? "Khóa" : "Mở khóa"}
+                      ✏️ Sửa
                     </button>
-                  )}
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => {
-                      setSelectedUser(u);
-                      setEditFullName(u.full_name);
-                      setEditRole(u.role);
-                      setEditPhone(u.phone || "");
-                      setShowEditUserModal(true);
-                    }}
-                  >
-                    ✏️ Sửa
-                  </button>
                   <button
                     className="btn btn-secondary btn-sm"
                     onClick={() => {
@@ -778,8 +795,9 @@ export default function AdminSuperDashboard() {
                   )}
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
         </div>
       )}
 
@@ -1050,13 +1068,33 @@ export default function AdminSuperDashboard() {
                 <input id="createUserFullName" type="text" className="input" required value={newFullName} onChange={(e) => setNewFullName(e.target.value)} placeholder="vd: BS.CKII Nguyễn Văn A" />
               </div>
               <div>
-                <label className="label" htmlFor="createUserRole">Vai trò y tế (Role):</label>
+                <label className="label" htmlFor="createUserRole">Vai trò y tế / Chức vụ:</label>
                 <select id="createUserRole" className="input" value={newRole} onChange={(e) => setNewRole(e.target.value)}>
                   {Object.entries(ROLE_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>{v} ({k})</option>
                   ))}
                 </select>
               </div>
+
+              {newRole === "patient" && (
+                <div style={{ background: "var(--brand-50, #F0F9FF)", padding: 12, borderRadius: 8, border: "1px solid var(--brand-300, #7DD3FC)" }}>
+                  <label className="label" htmlFor="createAssignedDoc" style={{ color: "var(--brand-900, #0C4A6E)", fontWeight: 700 }}>
+                    🩺 Phân công Bác sĩ phụ trách:
+                  </label>
+                  <select id="createAssignedDoc" className="input" value={newDoctorId} onChange={(e) => setNewDoctorId(e.target.value)}>
+                    <option value="">-- Chọn bác sĩ phụ trách ca bệnh --</option>
+                    {doctorsList.map((doc) => (
+                      <option key={doc.id} value={doc.id}>
+                        {doc.full_name} ({doc.username})
+                      </option>
+                    ))}
+                  </select>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+                    Bác sĩ được chọn sẽ nhận ca bệnh này ngay trên Bảng điều khiển lâm sàng.
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="label" htmlFor="createUserPhone">Số điện thoại liên hệ (Tùy chọn):</label>
                 <input id="createUserPhone" type="tel" className="input" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="09xxxxxxxx" />
@@ -1080,17 +1118,34 @@ export default function AdminSuperDashboard() {
             <div className="card-title">✏️ Chỉnh sửa Tài khoản: {selectedUser.username}</div>
             <form onSubmit={handleUpdateUser} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
-                <label className="label" htmlFor="editUserFullName">Họ và tên:</label>
+                <label className="label" htmlFor="editUserFullName">Họ và tên / Danh xưng:</label>
                 <input id="editUserFullName" type="text" className="input" required value={editFullName} onChange={(e) => setEditFullName(e.target.value)} />
               </div>
               <div>
-                <label className="label" htmlFor="editUserRole">Vai trò y tế:</label>
+                <label className="label" htmlFor="editUserRole">Vai trò y tế / Chức vụ:</label>
                 <select id="editUserRole" className="input" value={editRole} onChange={(e) => setEditRole(e.target.value)}>
                   {Object.entries(ROLE_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>{v} ({k})</option>
                   ))}
                 </select>
               </div>
+
+              {editRole === "patient" && (
+                <div style={{ background: "var(--brand-50, #F0F9FF)", padding: 12, borderRadius: 8, border: "1px solid var(--brand-300, #7DD3FC)" }}>
+                  <label className="label" htmlFor="editAssignedDoc" style={{ color: "var(--brand-900, #0C4A6E)", fontWeight: 700 }}>
+                    🩺 Phân công Bác sĩ phụ trách:
+                  </label>
+                  <select id="editAssignedDoc" className="input" value={editDoctorId} onChange={(e) => setEditDoctorId(e.target.value)}>
+                    <option value="">-- Chưa phân công bác sĩ --</option>
+                    {doctorsList.map((doc) => (
+                      <option key={doc.id} value={doc.id}>
+                        {doc.full_name} ({doc.username})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="label" htmlFor="editUserPhone">Số điện thoại:</label>
                 <input id="editUserPhone" type="tel" className="input" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />

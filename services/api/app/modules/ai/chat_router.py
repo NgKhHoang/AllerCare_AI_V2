@@ -107,6 +107,15 @@ def send_message(
         db.add(session)
         db.flush()
 
+    # Lấy lịch sử hội thoại gần nhất để giữ ngữ cảnh liền mạch cho AI
+    recent_msgs = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.session_id == session.id)
+        .order_by(ChatMessage.created_at.asc())
+        .all()
+    )
+    history = [{"role": m.role, "content": m.content} for m in recent_msgs[-12:]]
+
     db.add(ChatMessage(session_id=session.id, role="patient", content=data.content))
 
     label = classify(data.content)
@@ -115,7 +124,7 @@ def send_message(
     elif label == "smalltalk":
         answer, sources = _SMALLTALK_REPLY, []
     else:
-        answer, sources = generate_answer(db, data.content, label, user_id=user.id)
+        answer, sources = generate_answer(db, data.content, label, user_id=user.id, history=history)
 
     role = "assistant"
     if label == "handoff":

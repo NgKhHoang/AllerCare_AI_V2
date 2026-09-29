@@ -42,7 +42,7 @@ def extract_medications_from_image(image_base64: str, mime_type: str = "image/jp
     )
 
     if api_key:
-        models_to_try = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-flash-latest"]
+        models_to_try = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
         payload = {
             "contents": [
                 {

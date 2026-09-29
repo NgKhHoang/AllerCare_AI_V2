@@ -20,6 +20,8 @@ interface Medication {
   dose: string | null;
   frequency: string | null;
   timing: string | null;
+  prescriber?: string | null;
+  source_label?: string | null;
   verification: string;
 }
 interface Allergy {
@@ -96,14 +98,14 @@ export default function PatientHome() {
         <Link className="smart-tile" href="/patient/updates">
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div className="tile-icon" style={{ background: "var(--brand-50)", color: "var(--brand-600)" }}>
-              📸
+              💊
             </div>
             <div>
-              <div className="tile-title">Quét đơn thuốc AI</div>
-              <div className="tile-desc">Chụp ảnh đơn thuốc — Gemini tự động nhận diện và đối soát</div>
+              <div className="tile-title">Đơn thuốc & Khai báo thuốc</div>
+              <div className="tile-desc">Xem đơn thuốc bác sĩ kê và khai báo thuốc đang dùng từ các nguồn</div>
             </div>
           </div>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--brand-600)" }}>Thực hiện ngay →</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--brand-600)" }}>Xem đơn thuốc →</span>
         </Link>
 
         <Link className="smart-tile" href="/patient/chat">
@@ -167,23 +169,34 @@ export default function PatientHome() {
         {/* Thuốc của tôi */}
         <div className="card">
           <div className="card-title">
-            <span className="t-ico">💊</span> Danh sách thuốc của tôi
+            <span className="t-ico">💊</span> Danh sách thuốc của tôi ({meds.length})
           </div>
-          {meds.length === 0 && <EmptyState icon="💊" text="Chưa khai báo thuốc nào." />}
+          {meds.length === 0 && <EmptyState icon="💊" text="Chưa có thông tin thuốc nào." />}
           {meds.map((m) => (
-            <div className="list-row" key={m.id}>
+            <div
+              className="list-row"
+              key={m.id}
+              style={{
+                background: m.verification === "verified" ? "#F0FDF4" : undefined,
+                borderColor: m.verification === "verified" ? "#BBF7D0" : undefined,
+              }}
+            >
               <div className="list-main">
-                <div className="list-title">{m.raw_name}</div>
-                <div className="list-sub">
-                  {m.dose ? `Liều: ${m.dose}` : ""} {m.timing ? `· ${m.timing}` : ""}
+                <div className="list-title" style={{ color: m.verification === "verified" ? "#166534" : undefined, fontWeight: 700 }}>
+                  {m.verification === "verified" ? "🩺 " : "💊 "}{m.raw_name}
+                </div>
+                <div className="list-sub" style={{ marginTop: 2 }}>
+                  {m.prescriber || m.source_label ? <span>🏥 {m.prescriber || m.source_label} </span> : null}
+                  {m.timing ? `· ⏰ ${m.timing}` : ""}
+                  {m.frequency ? ` · 🔄 ${m.frequency}` : ""}
                 </div>
               </div>
               <VerifiedBadge verification={m.verification} />
             </div>
           ))}
           <div style={{ marginTop: 12, textAlign: "right" }}>
-            <Link href="/patient/updates" className="btn btn-secondary btn-sm">
-              + Khai báo thêm thuốc
+            <Link href="/patient/updates" className="btn btn-primary btn-sm">
+              📋 Xem chi tiết đơn thuốc & khai báo
             </Link>
           </div>
         </div>

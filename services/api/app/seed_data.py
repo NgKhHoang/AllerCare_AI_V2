@@ -186,20 +186,23 @@ def run() -> None:
                     )
                 )
             for med in case.get("meds", []):
+                doc_name = f"BS. {doctor.full_name or doctor.username}"
+                is_self = med.get("is_self_declared", False)
                 db.add(
                     MedicationRecord(
                         patient_profile_id=p.id,
                         raw_name=med["raw_name"],
                         is_current=med.get("is_current", True),
                         is_planned=med.get("is_planned", False),
+                        dose=med.get("dose"),
                         frequency=med.get("frequency"),
                         route=med.get("route", "uống"),
-                        timing=med.get("timing"),
-                        start_date=med.get("start_date"),
-                        prescriber=med.get("source"),
-                        verification=med.get("verification", "unverified"),
-                        source_label=med.get("source", "Khai báo bởi người bệnh"),
-                        reported_by_user_id=u.id,
+                        timing=med.get("timing") or ("8h sáng và 20h tối sau ăn" if med.get("is_current") else None),
+                        start_date=med.get("start_date") or "2026-09-01",
+                        prescriber=med.get("prescriber") or (None if is_self else doc_name),
+                        verification=med.get("verification") or ("unverified" if is_self else "verified"),
+                        source_label=med.get("source") or ("Khai báo bởi người bệnh" if is_self else f"Bệnh viện Thống Nhất ({doc_name})"),
+                        reported_by_user_id=u.id if is_self else doctor.id,
                     )
                 )
             for lab in case.get("labs", []):

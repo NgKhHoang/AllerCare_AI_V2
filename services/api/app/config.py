@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     AUTH_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
     AI_PROVIDER: str = "gemini"
-    AI_MODEL: str = "gemini-3.5-flash-lite"
+    AI_MODEL: str = "gemini-3.8-flash"
     AI_API_KEY: str = ""
     VIDEO_BASE_URL: str = ""
     LIVEKIT_URL: str = ""
@@ -27,18 +27,31 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def check_ai_api_key_fallback(self) -> "Settings":
         if not self.AI_API_KEY:
-            # Dò tìm file .env tại các vị trí khả dĩ
-            candidates = [Path(".env"), Path("/srv/.env"), Path(__file__).resolve().parents[2] / ".env"]
+            # Dò tìm file .env hoặc appsettings.json
+            candidates = [
+                Path(".env"),
+                Path("/srv/.env"),
+                Path(__file__).resolve().parents[2] / ".env",
+                Path(__file__).resolve().parents[3] / "src" / "AppHost" / "appsettings.json",
+            ]
             for cand in candidates:
                 if cand.is_file():
                     try:
-                        for line in cand.read_text(encoding="utf-8").splitlines():
-                            line = line.strip()
-                            if line.startswith("AI_API_KEY="):
-                                val = line.split("=", 1)[1].strip().strip('"').strip("'")
-                                if val:
-                                    self.AI_API_KEY = val
-                                    break
+                        text = cand.read_text(encoding="utf-8")
+                        if cand.suffix == ".json":
+                            import json
+                            data = json.loads(text)
+                            if data.get("AI_API_KEY"):
+                                self.AI_API_KEY = data["AI_API_KEY"].strip()
+                                break
+                        else:
+                            for line in text.splitlines():
+                                line = line.strip()
+                                if line.startswith("AI_API_KEY="):
+                                    val = line.split("=", 1)[1].strip().strip('"').strip("'")
+                                    if val:
+                                        self.AI_API_KEY = val
+                                        break
                     except Exception:
                         pass
                 if self.AI_API_KEY:

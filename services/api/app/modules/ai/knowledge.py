@@ -70,27 +70,122 @@ class DoseExample:
 
 @dataclass
 class PatientContext:
-    """Bối cảnh hồ sơ của chính người bệnh đang chat (duy nhất được phép dùng)."""
+    """Bối cảnh hồ sơ lâm sàng toàn diện của người bệnh đang chat từ Database."""
 
     full_name: str = ""
     age: int | None = None
     gender: str | None = None
+    dob: str | None = None
+    diagnosis: str | None = None
+    admission_note: str | None = None
+    assigned_doctor_name: str | None = None
     conditions: list[str] = field(default_factory=list)
     allergies: list[str] = field(default_factory=list)
+    allergy_details: list[dict] = field(default_factory=list)
     medications: list[dict] = field(default_factory=list)
+    doctor_prescriptions: list[dict] = field(default_factory=list)
+    self_declared_meds: list[dict] = field(default_factory=list)
+    stopped_meds: list[dict] = field(default_factory=list)
     labs: dict[str, str] = field(default_factory=dict)
+    recent_symptoms: list[dict] = field(default_factory=list)
+    triage_history: list[dict] = field(default_factory=list)
+    appointments: list[dict] = field(default_factory=list)
 
     def describe(self) -> str:
         parts = []
+        if self.full_name:
+            parts.append(f"Họ tên: {self.full_name}")
         if self.age is not None:
             parts.append(f"{self.age} tuổi")
         if self.gender:
             parts.append(self.gender.lower())
         if self.conditions:
-            parts.append("bệnh: " + ", ".join(self.conditions))
+            parts.append("Bệnh lý nền: " + ", ".join(self.conditions))
         if self.allergies:
-            parts.append("dị ứng: " + ", ".join(self.allergies))
+            parts.append("Dị ứng: " + ", ".join(self.allergies))
         return "; ".join(parts) if parts else ""
+
+    def describe_deep(self) -> str:
+        """Tạo chuỗi bối cảnh lâm sàng chi tiết nạp vào System Instruction của AI."""
+        lines = [
+            f"👤 HỌ TÊN: {self.full_name or 'Chưa rõ'} | Tuổi: {self.age if self.age is not None else 'Chưa rõ'} | Giới tính: {self.gender or 'Chưa rõ'}",
+        ]
+        if self.assigned_doctor_name:
+            lines.append(f"🩺 Bác sĩ điều trị phụ trách: {self.assigned_doctor_name}")
+        if self.diagnosis:
+            lines.append(f"🏥 Chẩn đoán lâm sàng hiện tại: {self.diagnosis}")
+        if self.admission_note:
+            lines.append(f"📝 Tóm tắt bệnh án nhập viện: {self.admission_note}")
+        if self.conditions:
+            lines.append(f"📋 Bệnh lý nền mạn tính: {', '.join(self.conditions)}")
+
+        # Tiền sử dị ứng
+        if self.allergy_details:
+            allergy_str = "; ".join(
+                f"{a.get('substance')} (Mức độ: {a.get('severity', 'chưa rõ')}, Biểu hiện: {a.get('reaction', 'dị ứng')}, Trạng thái: {a.get('verification', 'chưa xác minh')})"
+                for a in self.allergy_details
+            )
+            lines.append(f"🚫 TIỀN SỬ DỊ ỨNG THUỐC ({len(self.allergy_details)} loại): {allergy_str}")
+        elif self.allergies:
+            lines.append(f"🚫 TIỀN SỬ DỊ ỨNG THUỐC: {', '.join(self.allergies)}")
+        else:
+            lines.append("🚫 Tiền sử dị ứng: Chưa ghi nhận dị ứng thuốc.")
+
+        # Đơn thuốc Bác sĩ kê
+        if self.doctor_prescriptions:
+            doc_med_lines = []
+            for m in self.doctor_prescriptions:
+                details = f"- {m.get('raw_name')}"
+                sub = []
+                if m.get('dose'): sub.append(f"Liều: {m.get('dose')}")
+                if m.get('frequency'): sub.append(f"Tần suất: {m.get('frequency')}")
+                if m.get('timing'): sub.append(f"Thời điểm: {m.get('timing')}")
+                if m.get('route'): sub.append(f"Đường dùng: {m.get('route')}")
+                if m.get('prescriber'): sub.append(f"Người kê: {m.get('prescriber')}")
+                if sub: details += f" ({', '.join(sub)})"
+                doc_med_lines.append(details)
+            lines.append("💊 ĐƠN THUỐC BÁC SĨ ĐANG KÊ CHO BỆNH NHÂN:\n" + "\n".join(doc_med_lines))
+
+        # Thuốc tự khai báo
+        if self.self_declared_meds:
+            self_med_lines = [
+                f"- {m.get('raw_name')} (Nguồn: {m.get('source_label', 'Tự mua')}, Liều: {m.get('dose', 'chưa rõ')}, Trạng thái: {m.get('status', 'đang dùng')})"
+                for m in self.self_declared_meds
+            ]
+            lines.append("📋 THUỐC BỆNH NHÂN TỰ KHAI BÁO DÙNG THÊM:\n" + "\n".join(self_med_lines))
+
+        # Thuốc đã ngừng
+        if self.stopped_meds:
+            stopped_lines = [
+                f"- {m.get('raw_name')} (Lý do ngừng: {m.get('stop_reason', 'không rõ')})"
+                for m in self.stopped_meds
+            ]
+            lines.append("🛑 THUỐC ĐÃ NGỪNG GẦN ĐÂY:\n" + "\n".join(stopped_lines))
+
+        # Chỉ số xét nghiệm (Thận, gan, huyết học...)
+        if self.labs:
+            lab_str = ", ".join(f"{k}: {v}" for k, v in self.labs.items() if v)
+            lines.append(f"🧪 CHỈ SỐ XÉT NGHIỆM LÂM SÀNG (Bao gồm chức năng thận/gan): {lab_str}")
+
+        # Triệu chứng gần nhất
+        if self.recent_symptoms:
+            symp_lines = [
+                f"- {s.get('label')} (Thời điểm: {s.get('occurred_at', '')}, Trạng thái: {s.get('status', '')})"
+                for s in self.recent_symptoms[:5]
+            ]
+            lines.append("⚠️ TRIỆU CHỨNG LÂM SÀNG BÁO CÁO GẦN ĐÂY:\n" + "\n".join(symp_lines))
+
+        # Lịch sử phân luồng cấp cứu Triage gần nhất
+        if self.triage_history:
+            last_triage = self.triage_history[0]
+            lines.append(f"🚦 LẦN PHÂN LUỒNG TRIAGE GẦN NHẤT: Mức [{last_triage.get('level', '').upper()}] - {last_triage.get('message', '')} ({last_triage.get('reason', '')})")
+
+        # Lịch hẹn khám
+        if self.appointments:
+            app_str = "; ".join(f"{a.get('scheduled_at')} (với {a.get('doctor_name', 'Bác sĩ')})" for a in self.appointments[:2])
+            lines.append(f"📅 LỊCH HẸN KHÁM TIẾP THEO: {app_str}")
+
+        return "\n\n".join(lines)
 
 
 class AIBrain:

@@ -7,6 +7,7 @@ import json
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -54,10 +55,22 @@ def list_assigned_patients(
     user: CurrentUser = Depends(require_roles("doctor")),
     db: Session = Depends(get_db),
 ) -> list[dict]:
+    # Lấy danh sách bệnh nhân từ cả assigned_doctor_id và CareAssignment
+    assigned_user_ids = [
+        r[0]
+        for r in db.query(CareAssignment.patient_user_id)
+        .filter(CareAssignment.doctor_id == user.id, CareAssignment.active == True)
+        .all()
+    ]
+
+    cond = PatientProfile.assigned_doctor_id == user.id
+    if assigned_user_ids:
+        cond = or_(cond, PatientProfile.user_id.in_(assigned_user_ids))
+
     rows = (
         db.query(PatientProfile, User)
         .join(User, User.id == PatientProfile.user_id)
-        .filter(PatientProfile.assigned_doctor_id == user.id)
+        .filter(cond)
         .order_by(PatientProfile.full_name)
         .all()
     )
@@ -82,6 +95,68 @@ def list_assigned_patients(
             }
         )
     return result
+
+
+@router.post("/{profile_id}/prescribe", summary="Bác sĩ kê đơn thuốc cho người bệnh")
+def prescribe_medication(
+    profile_id: str,
+    data: PrescribeIn,
+    user: CurrentUser = Depends(require_roles("doctor")),
+    db: Session = Depends(get_db),
+) -> dict:
+    profile = get_assigned_patient_profile(profile_id, user, db)
+
+    prescriber_name = f"BS. {user.full_name or user.username}"
+    med = MedicationRecord(
+        id=new_id(),
+        patient_profile_id=profile.id,
+        raw_name=data.raw_name.strip(),
+        is_current=True,
+        is_planned=False,
+        dose=data.dose.strip() if data.dose else None,
+        route=data.route.strip() if data.route else "uống",
+        frequency=data.frequency.strip() if data.frequency else None,
+        timing=data.timing.strip() if data.timing else None,
+        start_date=data.start_date.strip() if data.start_date else None,
+        prescriber=prescriber_name,
+        status="active",
+        verification="verified",
+        reported_by_user_id=user.id,
+        source_label=f"Bệnh viện kê ({prescriber_name})",
+    )
+    db.add(med)
+
+    # Gửi thông báo trực tiếp đến người bệnh
+    notif = Notification(
+        id=new_id(),
+        user_id=profile.user_id,
+        role="patient",
+        title="🩺 Đơn thuốc mới từ Bác sĩ",
+        message=f"{prescriber_name} đã kê đơn thuốc mới: {data.raw_name}. Liều: {data.dose or 'Theo chỉ định'} ({data.timing or ''}). {data.instructions or ''}",
+        link="/patient/updates",
+    )
+    db.add(notif)
+
+    audit_log(
+        db,
+        user,
+        "prescribe_medication",
+        "medication_record",
+        med.id,
+        f"Prescribed {data.raw_name} for patient {profile.full_name}",
+    )
+    db.commit()
+    db.refresh(med)
+    return {
+        "id": med.id,
+        "raw_name": med.raw_name,
+        "dose": med.dose,
+        "frequency": med.frequency,
+        "timing": med.timing,
+        "verification": med.verification,
+        "prescriber": med.prescriber,
+        "message": "Kê đơn thuốc thành công",
+    }
 
 
 @router.post("/{profile_id}/verify-medication/{medication_id}", summary="Bác sĩ xác minh thuốc")
