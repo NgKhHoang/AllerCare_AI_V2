@@ -126,13 +126,13 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
       setError("");
       await api(`/v1/patients/${profileId}/treatment`, {
         method: "PUT",
-        body: JSON.stringify({
+        body: {
           diagnosis: editDiagnosis,
           treatment_status: editStatus,
           treatment_start_date: editStartDate,
           followup_date: editFollowupDate,
           admission_note: editNote,
-        }),
+        },
       });
       setSuccess("Cập nhật tiến trình & loại bệnh điều trị thành công!");
       setIsEditing(false);
