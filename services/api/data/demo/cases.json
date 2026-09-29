@@ -1,0 +1,298 @@
+[
+  {
+    "username": "patient1",
+    "name": "Lê Văn Cường",
+    "dob": "1980-05-12",
+    "gender": "Nam",
+    "conditions": ["Tăng huyết áp", "Đái tháo đường típ 2"],
+    "doctor": "doctor1",
+    "allergies": [
+      { "substance": "Penicillin", "reaction": "Nổi mề đay toàn thân", "severity": "medium", "verification": "verified" }
+    ],
+    "meds": [
+      { "raw_name": "Glucophage 850mg", "is_current": true, "is_planned": false, "frequency": "1 viên x 2 lần/ngày", "route": "uống" },
+      { "raw_name": "Amlodipin 5mg", "is_current": true, "is_planned": false, "frequency": "1 viên/ngày", "route": "uống" },
+      { "raw_name": "Amoxicillin 500mg", "is_current": false, "is_planned": true, "frequency": "1 viên x 3 lần/ngày", "route": "uống" }
+    ],
+    "labs": [
+      { "label": "CrCl (tính theo Cockcroft-Gault)", "value": "52", "unit": "ml/min" }
+    ]
+  },
+  {
+    "username": "patient2",
+    "name": "Phạm Thị Dung",
+    "dob": "1992-11-03",
+    "gender": "Nữ",
+    "conditions": [],
+    "doctor": "doctor1",
+    "allergies": [],
+    "meds": [
+      { "raw_name": "Paracetamol 500mg", "is_current": true, "is_planned": false, "frequency": "1-2 viên mỗi 6h khi cần", "route": "uống" },
+      { "raw_name": "Panadol Extra 500mg", "is_current": true, "is_planned": false, "frequency": null, "route": "uống" }
+    ],
+    "labs": []
+  },
+  {
+    "username": "patient3",
+    "name": "Hoàng Minh Đức",
+    "dob": "1975-02-28",
+    "gender": "Nam",
+    "conditions": ["Rung nhĩ", "Tăng huyết áp"],
+    "doctor": "doctor1",
+    "allergies": [],
+    "meds": [
+      { "raw_name": "Warfarin 3mg", "is_current": true, "is_planned": false, "frequency": "1 viên/ngày", "route": "uống" },
+      { "raw_name": "Aspirin 81mg", "is_current": true, "is_planned": false, "frequency": "1 viên/ngày", "route": "uống" }
+    ],
+    "labs": []
+  },
+  {
+    "username": "patient4",
+    "name": "Vũ Thị Giang",
+    "dob": "1968-07-19",
+    "gender": "Nữ",
+    "conditions": ["Đái tháo đường típ 2"],
+    "doctor": "doctor1",
+    "allergies": [
+      { "substance": "Aspirin", "reaction": "Phù mạch", "severity": "high", "verification": "verified" }
+    ],
+    "meds": [
+      { "raw_name": "Metformin 500mg", "is_current": true, "is_planned": false, "frequency": "1 viên x 2 lần/ngày", "route": "uống" }
+    ],
+    "labs": []
+  },
+  {
+    "username": "patient5",
+    "name": "Đỗ Quốc Huy",
+    "dob": "1999-01-15",
+    "gender": "Nam",
+    "conditions": [],
+    "doctor": "doctor1",
+    "allergies": [],
+    "meds": [
+      { "raw_name": "Thuốc dân gian ABC", "is_current": true, "is_planned": false, "frequency": null, "route": "uống" }
+    ],
+    "labs": []
+  },
+  {
+    "username": "patient6",
+    "name": "Bùi Thị Hoa",
+    "dob": "1985-09-09",
+    "gender": "Nữ",
+    "conditions": [],
+    "doctor": "doctor2",
+    "allergies": [],
+    "meds": [],
+    "labs": []
+  },
+  {
+    "username": "patient7",
+    "name": "Ngô Văn Ích",
+    "dob": "1959-12-30",
+    "gender": "Nam",
+    "conditions": [],
+    "doctor": "doctor2",
+    "allergies": [
+      { "substance": "Sulfamethoxazole", "reaction": "Ban đỏ", "severity": "medium", "verification": "verified" }
+    ],
+    "meds": [],
+    "labs": []
+  },
+  {
+    "username": "patient8",
+    "name": "Lý Thanh Jame",
+    "dob": "2001-04-02",
+    "gender": "Nam",
+    "conditions": [],
+    "doctor": "doctor1",
+    "allergies": [],
+    "meds": [],
+    "labs": []
+  },
+
+  {
+    "username": "case01",
+    "name": "NGUYỄN THỊ NGUYỆT",
+    "dob": "1980-01-01",
+    "gender": "Nữ",
+    "diagnosis": "Phản vệ độ I do thuốc - Chấn thương phần mềm chậu - cột sống thắt lưng ngày 1",
+    "admission_note": "BN nữ 46 tuổi, nhập viện vì ngứa và sưng phù mi mắt sau tiêm Diclofenac giảm đau chấn thương lưng-mông. Tại cấp cứu xử trí Vinsolon 40mg 2A, Dimedrol 10mg 5A, Fentanyl 1/2A, giảm ngứa giảm phù rồi nhập khoa. Sinh hiệu: M 89 l/p, HA 140/90, Nhiệt 36.5, NT 19 l/p. Phù nhẹ 2 mi mắt, sưng nhẹ vùng môi.",
+    "doctor": "doctor1",
+    "conditions": [],
+    "allergies": [
+      { "substance": "Ibuprofen", "reaction": "Phản vệ độ I (sưng phù mi mắt, ngứa) sau tiêm Diclofenac — dị ứng chéo NSAID nghi ngờ", "severity": "high", "verification": "verified" }
+    ],
+    "meds": [
+      { "raw_name": "Methylprednisolon 16 16mg", "is_current": true, "is_planned": false, "frequency": "16mg/ngày", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Fatelmed 180 180mg", "is_current": true, "is_planned": false, "frequency": "180mg x 1 lần/ngày", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" }
+    ],
+    "labs": []
+  },
+  {
+    "username": "case02",
+    "name": "NGUYỄN KÈO",
+    "dob": "1966-01-01",
+    "gender": "Nam",
+    "diagnosis": "Phản vệ độ I nghi do Cefaclor",
+    "admission_note": "BN nam 60 tuổi, nhập viện vì đỏ da toàn thân + khó thở sau uống toa thuốc gồm Cefaclor, Kapredin, dorithricin, paracetamol (15 phút sau uống). Tiền sử: Phản vệ độ I nghi do Cefaclor 04/2026. Tại cấp cứu: Vinsolon 40mg 2A, Dimedrol 10mg 5A, Adrenalin 1/2A, sau xử trí giảm khó thở giảm đỏ da.",
+    "doctor": "doctor1",
+    "conditions": [],
+    "allergies": [
+      { "substance": "Cefaclor", "reaction": "Phản vệ độ I (mẩn đỏ toàn thân + khó thở) — tái diễn 2 lần (04/2026 và hiện tại)", "severity": "high", "verification": "verified" }
+    ],
+    "meds": [
+      { "raw_name": "Methylprednisolon 16 16mg", "is_current": true, "is_planned": false, "frequency": "16mg/ngày", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Fatelmed 180 180mg", "is_current": true, "is_planned": false, "frequency": "180mg x 1 lần/ngày", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" }
+    ],
+    "labs": []
+  },
+  {
+    "username": "case03",
+    "name": "LANG THANH BÌNH",
+    "dob": "1979-01-01",
+    "gender": "Nam",
+    "diagnosis": "Nhọt da vùng vai (P)",
+    "admission_note": "BN nam 47 tuổi, nhọt vùng vai (P) 1 tuần, sưng nóng đỏ đau tăng, sốt 1 ngày. Vùng vai (P) có nốt viêm đỏ tím 1-1.5cm trung tâm có mủ, quầng hồng ban, phù nề nhẹ. Tiền sử: Viêm gan B mạn - Viêm gan C. P: kháng sinh, giảm đau.",
+    "doctor": "doctor1",
+    "conditions": ["Viêm gan B mạn", "Viêm gan C"],
+    "allergies": [],
+    "meds": [
+      { "raw_name": "Rocephin 1g I.V", "is_current": true, "is_planned": false, "frequency": "1g/ngày tiêm truyền", "route": "truyền tĩnh mạch", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Sodium Chloride Injection 0,9% - 100ml", "is_current": true, "is_planned": false, "frequency": "phối hợp truyền thuốc", "route": "truyền tĩnh mạch", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Partamol Tab. 500mg", "is_current": true, "is_planned": false, "frequency": "1 viên x 3 lần/ngày khi cần", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Zinc 10 70mg", "is_current": true, "is_planned": false, "frequency": "1 viên/ngày", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Afusic 2%; 15g (kl/kl)", "is_current": true, "is_planned": false, "frequency": "bôi 2 lần/ngày", "route": "bôi da", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" }
+    ],
+    "labs": []
+  },
+  {
+    "username": "case04",
+    "name": "BÙI THỊ ÁNH HÀ",
+    "dob": "1983-01-01",
+    "gender": "Nữ",
+    "diagnosis": "Thiếu máu mạn mức độ nặng / Loạn sản tủy xương",
+    "admission_note": "BN truyền máu được 15 phút, tỉnh, tiếp xúc tốt, da niêm nhợt, M 75 l/p, HA 110/70, Nhiệt 36.6, NT 19 l/p, tim đều, phổi trong, bụng mềm.",
+    "doctor": "doctor2",
+    "conditions": ["Loạn sản tủy xương", "Thiếu máu mạn mức độ nặng"],
+    "allergies": [],
+    "meds": [],
+    "labs": []
+  },
+  {
+    "username": "case05",
+    "name": "LIÊU KIM NGUYÊN",
+    "dob": "2000-01-01",
+    "gender": "Nữ",
+    "diagnosis": "Bệnh vảy nến thể thông thường",
+    "admission_note": "BN tỉnh, tiếp xúc tốt, sinh hiệu ổn, da niêm hồng, giảm đỏ ngứa da cẳng chân 2 bên, không đau khớp, tim nhịp đều, phổi trong, bụng mềm.",
+    "doctor": "doctor2",
+    "conditions": ["Bệnh vảy nến thể thông thường"],
+    "allergies": [],
+    "meds": [],
+    "labs": []
+  },
+  {
+    "username": "case06",
+    "name": "NGUYỄN THỊ HỒNG NGÂN",
+    "dob": "1985-01-01",
+    "gender": "Nữ",
+    "diagnosis": "Phản vệ độ I nghi do Vacxin dại; Bệnh mày đay dị ứng",
+    "admission_note": "BN tỉnh, tiếp xúc tốt. Da còn hồng ban, còn ngứa. Chẩn đoán: Phản vệ độ I nghi do Vacxin dại; trào ngược dạ dày - thực quản không kèm viêm thực quản; mày đay dị ứng.",
+    "doctor": "doctor2",
+    "conditions": ["Bệnh trào ngược dạ dày - thực quản không kèm viêm thực quản", "Bệnh mày đay dị ứng"],
+    "allergies": [
+      { "substance": "Vacxin dại", "reaction": "Phản vệ độ I nghi do Vacxin dại", "severity": "high", "verification": "verified" }
+    ],
+    "meds": [],
+    "labs": []
+  },
+  {
+    "username": "case07",
+    "name": "NGUYỄN VĂN ĐÊ",
+    "dob": "1941-01-01",
+    "gender": "Nam",
+    "diagnosis": "Đợt cấp viêm da cơ địa / THA - ĐTĐ típ 2 - Rối loạn lipid máu",
+    "admission_note": "Tiền căn viêm da cơ địa nhiều năm, hay khám lấy thuốc ở PK 208, nay hết thuốc, ngứa nhiều nên nhập viện. Mảng hồng ban dày sừng rải rác, nhiều vết cào gãi, ngứa nhiều. P: Corticoid bôi + uống ngắn ngày, kháng histamin, dưỡng ẩm tích cực, ổn định bệnh nền.",
+    "doctor": "doctor1",
+    "conditions": ["Tăng huyết áp", "Đái tháo đường típ 2", "Rối loạn lipid máu", "Viêm da cơ địa"],
+    "allergies": [],
+    "meds": [
+      { "raw_name": "Methylprednisolon 16 16mg", "is_current": true, "is_planned": false, "frequency": "16mg/ngày ngắn ngày", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Rupaton 10mg", "is_current": true, "is_planned": false, "frequency": "10mg tối mỗi ngày", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" }
+    ],
+    "labs": []
+  },
+  {
+    "username": "case08",
+    "name": "LÒ TUẤN ĐẠT",
+    "dob": "2004-01-01",
+    "gender": "Nam",
+    "diagnosis": "Đang cập nhật hồ sơ",
+    "admission_note": "Hồ sơ đang được nhập bổ sung (mã 26950798).",
+    "doctor": "doctor1",
+    "conditions": [],
+    "allergies": [],
+    "meds": [],
+    "labs": []
+  },
+  {
+    "username": "case09",
+    "name": "TRƯƠNG QUỐC CHÍNH",
+    "dob": "1971-01-01",
+    "gender": "Nam",
+    "diagnosis": "Viêm mô bào vùng chẩm / THA - ĐTĐ típ 2 - bệnh thận mạn",
+    "admission_note": "BN đau nhiều vùng sang thương da, rỉ dịch mủ vàng. Không sốt, không khó thở. Vùng chẩm có khối sưng đau nóng đỏ 7x8cm, nhiều lỗ rò mủ vàng đục. M 80 l/p, HA 140/70. Cổ mềm, không yếu liệt chi. P: kháng sinh, kháng viêm, giảm đau, ổn định bệnh nền.",
+    "doctor": "doctor1",
+    "conditions": ["Tăng huyết áp", "Đái tháo đường típ 2", "Bệnh thận mạn"],
+    "allergies": [],
+    "meds": [
+      { "raw_name": "Methylprednisolon 16 16mg", "is_current": true, "is_planned": false, "frequency": "16mg/ngày", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Partamol Tab. 500mg", "is_current": true, "is_planned": false, "frequency": "1 viên x 3 lần/ngày khi cần", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Afusic 2%; 15g (kl/kl)", "is_current": true, "is_planned": false, "frequency": "bôi 2 lần/ngày", "route": "bôi da", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" }
+    ],
+    "labs": []
+  },
+  {
+    "username": "case10",
+    "name": "TÔ THỊ THƠM",
+    "dob": "1944-01-01",
+    "gender": "Nữ",
+    "diagnosis": "Phản vệ độ I chưa rõ dị nguyên; Bệnh mày đay dị ứng; Trào ngược dạ dày - thực quản",
+    "admission_note": "Dược sĩ báo hết Nexium. Chẩn đoán: Phản vệ độ I chưa rõ dị nguyên; bệnh mày đay dị ứng; bệnh trào ngược dạ dày - thực quản không kèm viêm thực quản. Thuốc nghi ngờ cần xếp hạng: Nexium (Esomeprazole).",
+    "doctor": "doctor2",
+    "conditions": ["Bệnh mày đay dị ứng", "Bệnh trào ngược dạ dày - thực quản không kèm viêm thực quản"],
+    "allergies": [
+      { "substance": "Nexium (Esomeprazole)", "reaction": "Phản vệ độ I chưa rõ dị nguyên — Nexium là tác nhân nghi ngờ", "severity": "medium", "verification": "unverified" }
+    ],
+    "meds": [
+      { "raw_name": "Nexium Mups 40mg", "is_current": true, "is_planned": false, "frequency": "40mg trước ăn sáng", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" }
+    ],
+    "labs": []
+  },
+  {
+    "username": "case11",
+    "name": "CAO THỊ LỆ THU",
+    "dob": "1960-01-01",
+    "gender": "Nữ",
+    "diagnosis": "Bệnh nấm da thân bội nhiễm / THA - ĐTĐ típ 2 - Nấm da",
+    "admission_note": "Tiếp tục thuốc bệnh nền (BN tự mua): Tăng huyết áp (Bisoprolol 2.5mg + Losartan 100mg + Trimetazidin 80mg + Clopidogrel 75mg), Rối loạn lipid máu (Eznsimva 10/20), ĐTĐ típ 2 (Metformin 1000mg). Chẩn đoán kèm: Viêm da cơ địa khác; Sẩn ngứa khác; Mày đay dị ứng; Trào ngược dạ dày - thực quản.",
+    "doctor": "doctor2",
+    "conditions": ["Tăng huyết áp", "Đái tháo đường típ 2", "Rối loạn lipid máu", "Bệnh mày đay dị ứng", "Bệnh trào ngược dạ dày - thực quản không kèm viêm thực quản"],
+    "allergies": [],
+    "meds": [
+      { "raw_name": "Cepmox-Clav 875 mg/125 mg", "is_current": true, "is_planned": false, "frequency": "1 viên x 2 lần/ngày", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Methylprednisolon 16 16mg", "is_current": true, "is_planned": false, "frequency": "16mg/ngày", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Tiphapred M 4 4mg", "is_current": true, "is_planned": false, "frequency": "4mg/ngày", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Fatelmed 180 180mg", "is_current": true, "is_planned": false, "frequency": "180mg x 1 lần/ngày", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Neurontin 300mg", "is_current": true, "is_planned": false, "frequency": "300mg tối", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Nexium Mups 40mg", "is_current": true, "is_planned": false, "frequency": "40mg trước ăn sáng", "route": "uống", "source": "Bệnh viện Thống Nhất kê", "verification": "verified" },
+      { "raw_name": "Bisoprolol 2.5mg", "is_current": true, "is_planned": false, "frequency": "2.5mg mỗi sáng", "route": "uống", "source": "Tự mua theo bệnh nhân khai", "verification": "unverified" },
+      { "raw_name": "Losartan 100mg", "is_current": true, "is_planned": false, "frequency": "100mg mỗi sáng", "route": "uống", "source": "Tự mua theo bệnh nhân khai", "verification": "unverified" },
+      { "raw_name": "Trimetazidin 80mg", "is_current": true, "is_planned": false, "frequency": "80mg x 2 lần/ngày", "route": "uống", "source": "Tự mua theo bệnh nhân khai", "verification": "unverified" },
+      { "raw_name": "Clopidogrel 75mg", "is_current": true, "is_planned": false, "frequency": "75mg mỗi sáng", "route": "uống", "source": "Tự mua theo bệnh nhân khai", "verification": "unverified" },
+      { "raw_name": "Eznsimva 10/20", "is_current": true, "is_planned": false, "frequency": "1 viên tối", "route": "uống", "source": "Tự mua theo bệnh nhân khai", "verification": "unverified" },
+      { "raw_name": "Metformin 1000mg", "is_current": true, "is_planned": false, "frequency": "1000mg sau ăn tối", "route": "uống", "source": "Tự mua theo bệnh nhân khai", "verification": "unverified" }
+    ],
+    "labs": []
+  }
+]
