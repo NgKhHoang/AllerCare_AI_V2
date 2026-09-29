@@ -167,6 +167,9 @@ def run() -> None:
                 gender=case.get("gender"),
                 chronic_conditions=json.dumps(case.get("conditions", []), ensure_ascii=False),
                 diagnosis=case.get("diagnosis"),
+                treatment_status=case.get("treatment_status", "active"),
+                treatment_start_date=case.get("treatment_start_date", "2026-09-01"),
+                followup_date=case.get("followup_date", "2026-10-15"),
                 admission_note=case.get("admission_note"),
                 assigned_doctor_id=doctor.id,
             )
