@@ -618,3 +618,48 @@ body {
   color: var(--text-secondary);
   font-size: 13px;
 }
+
+/* Quick Stats Row */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 640px) {
+  .stat-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stat {
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.stat:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+  border-color: var(--brand-300);
+}
+
+.stat .s-num {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--brand-600);
+  line-height: 1.2;
+}
+
+.stat .s-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}

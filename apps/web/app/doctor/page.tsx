@@ -530,16 +530,88 @@ export default function DoctorPortal() {
         <>
           <div className="stat-row">
             <div className="stat">
-              <div className="s-num">{meds.length}</div>
-              <div className="s-label">Thuốc</div>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  backgroundColor: "#eff6ff",
+                  border: "1px solid #bfdbfe",
+                  color: "#0284c7",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 22,
+                  flexShrink: 0,
+                }}
+              >
+                💊
+              </div>
+              <div>
+                <div className="s-num">{meds.length}</div>
+                <div className="s-label">Thuốc đang dùng</div>
+              </div>
             </div>
+
             <div className="stat">
-              <div className="s-num">{allergies.length}</div>
-              <div className="s-label">Dị ứng</div>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  backgroundColor: allergies.length > 0 ? "#fff1f2" : "#f8fafc",
+                  border: allergies.length > 0 ? "1px solid #fecdd3" : "1px solid #e2e8f0",
+                  color: allergies.length > 0 ? "#e11d48" : "#94a3b8",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 22,
+                  flexShrink: 0,
+                }}
+              >
+                🚫
+              </div>
+              <div>
+                <div
+                  className="s-num"
+                  style={{ color: allergies.length > 0 ? "#e11d48" : "inherit" }}
+                >
+                  {allergies.length}
+                </div>
+                <div className="s-label">Tiền sử dị ứng</div>
+              </div>
             </div>
+
             <div className="stat">
-              <div className="s-num">{obs.filter((o) => o.status === "sent").length}</div>
-              <div className="s-label">Chưa xem</div>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  backgroundColor: obs.filter((o) => o.status === "sent").length > 0 ? "#fffbeb" : "#f8fafc",
+                  border: obs.filter((o) => o.status === "sent").length > 0 ? "1px solid #fde68a" : "1px solid #e2e8f0",
+                  color: obs.filter((o) => o.status === "sent").length > 0 ? "#d97706" : "#94a3b8",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 22,
+                  flexShrink: 0,
+                }}
+              >
+                🩺
+              </div>
+              <div>
+                <div
+                  className="s-num"
+                  style={{
+                    color:
+                      obs.filter((o) => o.status === "sent").length > 0 ? "#d97706" : "inherit",
+                  }}
+                >
+                  {obs.filter((o) => o.status === "sent").length}
+                </div>
+                <div className="s-label">Cập nhật chưa xem</div>
+              </div>
             </div>
           </div>
 
