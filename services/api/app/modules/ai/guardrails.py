@@ -20,10 +20,13 @@ EMERGENCY_PATTERNS = [
 ]
 
 REFUSAL_PATTERNS = [
-    r"^(kê\s+đơn|bốc\s+thuốc)\s+cho\s+tôi",
-    r"^(cho|xin)\s+tôi\s+(xin\s+)?đơn\s+thuốc",
-    r"^kê\s+hộ\s+tôi\s+đơn",
-    r"^tôi\s+muốn\s+tự\s+(tăng|gấp\s+đôi)\s+liều",
+    r"(tăng|giảm)\s+liều",
+    r"(đổi|thay)\s+thuốc",
+    r"(cho|xin)\s+(.*)?đơn",
+    r"kê\s+(.*)?đơn",
+    r"(mua|kê)\s+thuốc\s+gì",
+    r"bốc\s+thuốc",
+    r"tự\s+(tăng|gấp\s+đôi)\s+liều",
 ]
 
 HANDOFF_PATTERNS = [

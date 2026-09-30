@@ -51,7 +51,7 @@ def test_patient3_drug_drug_high(client: TestClient):
     pid = _profile_id(client, login(client, "patient3", "patient123"))
     out = _run_check(client, d1, pid)
     assert out["result_status"] == "has_alerts"
-    dd = [a for a in out["result"]["alerts"] if a["rule_code"] == "DD001"]
+    dd = [a for a in out["result"]["alerts"] if a["rule_code"].startswith("DD") or a.get("rule_type") == "drug_drug"]
     assert dd, out["result"]["alerts"]
     assert "chống đông" in dd[0]["message"] or "Warfarin" in dd[0]["message"] or "WARFARIN" in dd[0].get("title", "")
 

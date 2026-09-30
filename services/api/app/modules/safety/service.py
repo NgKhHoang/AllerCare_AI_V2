@@ -84,7 +84,7 @@ def to_engine_drugs(db: Session, meds: list[MedicationRecord]) -> list[EngineDru
     drugs: list[EngineDrug] = []
     for m in meds:
         resolved: Drug | None = resolve_drug(db, m.raw_name) if m.drug_id is None else db.get(Drug, m.drug_id)
-        if resolved is None:
+        if resolved is None or not resolved.in_scope:
             drugs.append(EngineDrug(raw_name=m.raw_name, drug_id=None, name=None))
             continue
         links = resolved.ingredients

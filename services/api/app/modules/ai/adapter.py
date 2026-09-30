@@ -297,12 +297,12 @@ def generate_answer(
                         {
                             "title": "Google Gemini 3.5 Flash-Lite (Deep EHR & Medical Knowledge Grounding)",
                             "version": model_name,
-                            "file": "Database PostgreSQL & 633 Tương tác thuốc BYT",
+                            "file": "ai_knowledge & Database PostgreSQL (633 Tương tác thuốc BYT & dosing_examples.json)",
                         },
                         {
                             "title": "Hồ sơ Bệnh án Điện tử Người bệnh (Đơn thuốc, Xét nghiệm, Dị ứng)",
                             "version": "Dữ liệu cá thể hóa",
-                            "file": "Database AllerCare",
+                            "file": "ai_knowledge/patient_factors.md & Database AllerCare",
                         }
                     ]
                     return gemini_response, sources

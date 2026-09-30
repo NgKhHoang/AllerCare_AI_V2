@@ -2,6 +2,23 @@
   "_readme": "Quy tắc an toàn MedSafe. 4 nhóm gốc: drug_drug, duplicate_ingredient, drug_allergy, drug_condition. Bổ sung theo tài liệu CHI TIẾT mục 6: duplicate_drug (trùng biệt dược), unverified_medication (thuốc chưa được bác sĩ kiểm tra). Chỉ rule approved mới sinh cảnh báo thực. Severity ánh xạ mức cảnh báo: high=đỏ (báo ngay, không chờ duyệt), medium=vàng (có thể chờ bác sĩ đánh giá), low=xanh.",
   "rules": [
     {
+      "code": "DD000",
+      "rule_version": "1.0",
+      "rule_type": "drug_drug",
+      "title": "Warfarin + Aspirin: Tăng nguy cơ xuất huyết tiêu hóa nghiêm trọng",
+      "message": "Cơ chế: Hiệp đồng tác dụng chống đông và chống kết tập tiểu cầu. Hậu quả: Tăng nguy cơ xuất huyết và biến cố chảy máu nghiêm trọng. Xử trí: Chống chỉ định phối hợp hoặc cần theo dõi INR chặt chẽ và giám sát bởi bác sĩ điều trị.",
+      "severity": "high",
+      "status": "approved",
+      "condition": {
+        "pair": [
+          "Warfarin",
+          "Aspirin"
+        ]
+      },
+      "required_data": [],
+      "source_title": "Danh mục tương tác thuốc chống chỉ định và thận trọng — Bộ Y tế"
+    },
+    {
       "code": "DD001",
       "rule_version": "1.0",
       "rule_type": "drug_drug",
