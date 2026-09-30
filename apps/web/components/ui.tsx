@@ -5,9 +5,25 @@ import { api, clearSession, getUser } from "../lib/api";
 import { pwaLogoutCleanup, usePwaInstall } from "../lib/pwa";
 import { useEffect, useState } from "react";
 
+function handleLogout() {
+  clearSession();
+  pwaLogoutCleanup();
+  window.location.href = "/login";
+}
+
+function getAlertBadgeClass(severity: string): string {
+  if (severity === "high") {
+    return "badge badge-danger";
+  }
+  if (severity === "medium") {
+    return "badge badge-warning";
+  }
+  return "badge badge-neutral";
+}
+
 /* ---------- Badge trạng thái — đúng 5 trạng thái MedSafe ---------- */
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status }: Readonly<{ status: string }>) {
   const map: Record<string, { cls: string; label: string }> = {
     has_alerts: { cls: "badge badge-danger", label: "⚠️ Có cảnh báo" },
     no_alerts_in_scope: {
@@ -22,7 +38,7 @@ export function StatusBadge({ status }: { status: string }) {
   return <span className={item.cls}>{item.label}</span>;
 }
 
-export function VerifiedBadge({ verification }: { verification: string }) {
+export function VerifiedBadge({ verification }: Readonly<{ verification: string }>) {
   if (verification === "verified") {
     return <span className="badge badge-ok">✓ Đã xác minh</span>;
   }
@@ -33,7 +49,7 @@ export function VerifiedBadge({ verification }: { verification: string }) {
   );
 }
 
-export function SeverityBadge({ severity }: { severity: string }) {
+export function SeverityBadge({ severity }: Readonly<{ severity: string }>) {
   const map: Record<string, string> = {
     high: "badge badge-danger",
     medium: "badge badge-warning",
@@ -58,18 +74,23 @@ export interface AlertItem {
   detail?: Record<string, unknown>;
 }
 
-export function AlertCard({ alert }: { alert: AlertItem }) {
-  const cls =
-    alert.severity === "high"
-      ? "badge badge-danger"
-      : alert.severity === "medium"
-      ? "badge badge-warning"
-      : "badge badge-neutral";
+export function AlertCard({ alert }: Readonly<{ alert: AlertItem }>) {
+  const cls = getAlertBadgeClass(alert.severity);
+  const isHigh = alert.severity === "high";
+
   return (
-    <div style={{ padding: "14px 16px", borderRadius: 12, background: alert.severity === "high" ? "var(--status-danger-bg)" : "var(--status-warning-bg)", border: `1px solid ${alert.severity === "high" ? "var(--status-danger-border)" : "var(--status-warning-border)"}`, marginBottom: 10 }}>
+    <div
+      style={{
+        padding: "14px 16px",
+        borderRadius: 12,
+        background: isHigh ? "var(--status-danger-bg)" : "var(--status-warning-bg)",
+        border: `1px solid ${isHigh ? "var(--status-danger-border)" : "var(--status-warning-border)"}`,
+        marginBottom: 10,
+      }}
+    >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
-        <div style={{ fontWeight: 700, fontSize: 14.5, color: alert.severity === "high" ? "var(--status-danger)" : "var(--status-warning)" }}>
-          {alert.severity === "high" ? "🚨 CẢNH BÁO NGUY HIỂM" : "⚠️ CẢNH BÁO THẬN TRỌNG"}
+        <div style={{ fontWeight: 700, fontSize: 14.5, color: isHigh ? "var(--status-danger)" : "var(--status-warning)" }}>
+          {isHigh ? "🚨 CẢNH BÁO NGUY HIỂM" : "⚠️ CẢNH BÁO THẬN TRỌNG"}
         </div>
         <span className={cls}>{alert.rule_code}</span>
       </div>
@@ -83,7 +104,7 @@ export function AlertCard({ alert }: { alert: AlertItem }) {
   );
 }
 
-export function ResultBox({ result }: { result: Record<string, unknown> }) {
+export function ResultBox({ result }: Readonly<{ result: Record<string, unknown> }>) {
   const status = result.status as string;
   const note = (result.note as string) ?? "";
   const alerts = (result.alerts as AlertItem[]) ?? [];
@@ -95,8 +116,8 @@ export function ResultBox({ result }: { result: Record<string, unknown> }) {
         <StatusBadge status={status} />
       </div>
       {note && <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 10 }}>{note}</p>}
-      {alerts.map((a, i) => (
-        <AlertCard key={i} alert={a} />
+      {alerts.map((a) => (
+        <AlertCard key={`${a.rule_code}-${a.rule_version}-${a.message.slice(0, 30)}`} alert={a} />
       ))}
     </div>
   );
@@ -142,7 +163,7 @@ export const ADMIN_NAV: NavItem[] = [
 
 /* ---------- Badge phân luồng TriageGuard ---------- */
 
-export function TriageBadge({ level }: { level: string }) {
+export function TriageBadge({ level }: Readonly<{ level: string }>) {
   const map: Record<string, { cls: string; label: string }> = {
     red: { cls: "badge badge-danger", label: "🔴 ĐỎ — Cấp cứu 115" },
     yellow: { cls: "badge badge-warning", label: "🟡 VÀNG — Cần bác sĩ đánh giá" },
@@ -158,13 +179,13 @@ export function AppShell({
   title,
   subtitle,
   icon,
-}: {
+}: Readonly<{
   children: React.ReactNode;
   role: "patient" | "doctor" | "nurse" | "leader" | "admin";
   title?: string;
   subtitle?: string;
   icon?: string;
-}) {
+}>) {
   const [user, setUser] = useState<{ full_name?: string; role: string } | null>(null);
   const [path, setPath] = useState("");
   const [unread, setUnread] = useState(0);
@@ -186,12 +207,6 @@ export function AppShell({
       .then((ns) => setUnread(ns.filter((n) => !n.is_read).length))
       .catch(() => {});
   }, []);
-
-  function logout() {
-    clearSession();
-    pwaLogoutCleanup();
-    window.location.href = "/login";
-  }
 
   const initials = (user?.full_name ?? "?")
     .split(" ")
@@ -287,7 +302,7 @@ export function AppShell({
                 <div style={{ fontSize: 13, fontWeight: 700 }}>{user?.full_name ?? "…"}</div>
                 <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>{roleLabel}</div>
               </div>
-              <button className="btn btn-secondary btn-sm" onClick={logout} style={{ fontSize: 12, padding: "5px 10px" }}>
+              <button className="btn btn-secondary btn-sm" onClick={handleLogout} style={{ fontSize: 12, padding: "5px 10px" }}>
                 Thoát
               </button>
             </div>
@@ -338,7 +353,7 @@ export function EmergencyBanner() {
   );
 }
 
-export function EmptyState({ icon, text }: { icon: string; text: string }) {
+export function EmptyState({ icon, text }: Readonly<{ icon: string; text: string }>) {
   return (
     <div style={{ textAlign: "center", padding: "32px 16px", color: "var(--text-secondary)" }}>
       <div style={{ fontSize: 36, marginBottom: 8 }}>{icon}</div>
@@ -347,7 +362,7 @@ export function EmptyState({ icon, text }: { icon: string; text: string }) {
   );
 }
 
-export function SuccessBox({ text }: { text: string }) {
+export function SuccessBox({ text }: Readonly<{ text: string }>) {
   return (
     <div style={{ padding: "12px 16px", borderRadius: 12, background: "#dcfce7", color: "#166534", border: "1px solid #bbf7d0", marginBottom: 16, fontSize: 14 }}>
       ✓ {text}
@@ -355,7 +370,7 @@ export function SuccessBox({ text }: { text: string }) {
   );
 }
 
-export function ErrorBox({ text }: { text: string }) {
+export function ErrorBox({ text }: Readonly<{ text: string }>) {
   return (
     <div style={{ padding: "12px 16px", borderRadius: 12, background: "var(--status-danger-bg)", color: "var(--status-danger)", border: "1px solid var(--status-danger-border)", marginBottom: 16, fontSize: 14 }}>
       ✕ {text}
