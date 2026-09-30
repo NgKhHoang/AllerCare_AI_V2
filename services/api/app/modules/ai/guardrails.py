@@ -73,24 +73,25 @@ SMALL_TALK_PATTERNS = [
 ]
 
 
+CLASSIFICATION_RULES = [
+    ("emergency", EMERGENCY_PATTERNS),
+    ("refusal", REFUSAL_PATTERNS),
+    ("handoff", HANDOFF_PATTERNS),
+    ("greeting", GREETING_PATTERNS),
+    ("smalltalk", SMALL_TALK_PATTERNS),
+]
+
+
+def _matches_any(patterns: list[str], text: str) -> bool:
+    return any(re.search(p, text) for p in patterns)
+
+
 def classify(message: str) -> str:
     """Phân loại tin nhắn: emergency | refusal | handoff | greeting | smalltalk | in_scope."""
     text = message.lower().strip()
     if not text:
         return "out_of_scope"
-    for p in EMERGENCY_PATTERNS:
-        if re.search(p, text):
-            return "emergency"
-    for p in REFUSAL_PATTERNS:
-        if re.search(p, text):
-            return "refusal"
-    for p in HANDOFF_PATTERNS:
-        if re.search(p, text):
-            return "handoff"
-    for p in GREETING_PATTERNS:
-        if re.search(p, text):
-            return "greeting"
-    for p in SMALL_TALK_PATTERNS:
-        if re.search(p, text):
-            return "smalltalk"
+    for label, patterns in CLASSIFICATION_RULES:
+        if _matches_any(patterns, text):
+            return label
     return "in_scope"

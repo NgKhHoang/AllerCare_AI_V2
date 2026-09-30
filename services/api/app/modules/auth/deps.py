@@ -53,6 +53,9 @@ def require_roles(*roles: str):
     return checker
 
 
+MSG_PROFILE_NOT_FOUND = "Không tìm thấy hồ sơ"
+
+
 def get_patient_profile_for_access(profile_id: str, user: CurrentUser, db: Session) -> PatientProfile:
     """Kiểm tra quyền truy cập hồ sơ: chính chủ, bác sĩ được phân công, điều dưỡng, dược sĩ.
 
@@ -61,7 +64,7 @@ def get_patient_profile_for_access(profile_id: str, user: CurrentUser, db: Sessi
     """
     profile = db.get(PatientProfile, profile_id)
     if profile is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy hồ sơ")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_PROFILE_NOT_FOUND)
     if user.role == "patient" and profile.user_id != user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Không có quyền truy cập hồ sơ này")
     if user.role == "doctor" and profile.assigned_doctor_id != user.id:
@@ -75,7 +78,7 @@ def get_owned_patient_profile(profile_id: str, user: CurrentUser, db: Session) -
     """Chính chủ HOẶC người nhà được ủy quyền (caregiver_links active) — khai báo thay người bệnh."""
     profile = db.get(PatientProfile, profile_id)
     if profile is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy hồ sơ")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_PROFILE_NOT_FOUND)
     if profile.user_id == user.id:
         return profile
     if user.role == "caregiver":
@@ -92,7 +95,7 @@ def get_assigned_patient_profile(profile_id: str, user: CurrentUser, db: Session
     """Bác sĩ được phân công (hoặc dược sĩ/điều dưỡng rà soát) truy cập."""
     profile = db.get(PatientProfile, profile_id)
     if profile is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy hồ sơ")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, MSG_PROFILE_NOT_FOUND)
     if user.role == "doctor" and profile.assigned_doctor_id != user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Chỉ xem ca được phân công")
     if user.role not in ("doctor", "pharmacist", "nurse"):
