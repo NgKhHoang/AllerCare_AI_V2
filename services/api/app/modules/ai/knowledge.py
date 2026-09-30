@@ -79,6 +79,10 @@ class PatientContext:
     diagnosis: str | None = None
     admission_note: str | None = None
     assigned_doctor_name: str | None = None
+    treatment_status: str | None = None
+    treatment_start_date: str | None = None
+    followup_date: str | None = None
+    caregiver_info: str | None = None
     conditions: list[str] = field(default_factory=list)
     allergies: list[str] = field(default_factory=list)
     allergy_details: list[dict] = field(default_factory=list)
@@ -90,6 +94,7 @@ class PatientContext:
     recent_symptoms: list[dict] = field(default_factory=list)
     triage_history: list[dict] = field(default_factory=list)
     appointments: list[dict] = field(default_factory=list)
+    safety_alerts: list[dict] = field(default_factory=list)
 
     def describe(self) -> str:
         parts = []
@@ -112,10 +117,16 @@ class PatientContext:
         ]
         if self.assigned_doctor_name:
             lines.append(f"🩺 Bác sĩ điều trị phụ trách: {self.assigned_doctor_name}")
+        if self.caregiver_info:
+            lines.append(f"👨‍👩‍👧 Người chăm sóc/hỗ trợ: {self.caregiver_info}")
         if self.diagnosis:
             lines.append(f"🏥 Chẩn đoán lâm sàng hiện tại: {self.diagnosis}")
+        if self.treatment_status:
+            lines.append(f"📌 Trạng thái điều trị: {self.treatment_status.upper()}" + (f" (Bắt đầu từ: {self.treatment_start_date})" if self.treatment_start_date else ""))
+        if self.followup_date:
+            lines.append(f"🗓️ Ngày hẹn tái khám dự kiến: {self.followup_date}")
         if self.admission_note:
-            lines.append(f"📝 Tóm tắt bệnh án nhập viện: {self.admission_note}")
+            lines.append(f"📝 Tóm tắt bệnh án / Ghi chú nhập viện: {self.admission_note}")
         if self.conditions:
             lines.append(f"📋 Bệnh lý nền mạn tính: {', '.join(self.conditions)}")
 
@@ -135,7 +146,7 @@ class PatientContext:
         if self.doctor_prescriptions:
             doc_med_lines = []
             for m in self.doctor_prescriptions:
-                details = f"- {m.get('raw_name')}"
+                details = f"- **{m.get('raw_name')}**"
                 sub = []
                 if m.get('dose'): sub.append(f"Liều: {m.get('dose')}")
                 if m.get('frequency'): sub.append(f"Tần suất: {m.get('frequency')}")
@@ -149,7 +160,7 @@ class PatientContext:
         # Thuốc tự khai báo
         if self.self_declared_meds:
             self_med_lines = [
-                f"- {m.get('raw_name')} (Nguồn: {m.get('source_label', 'Tự mua')}, Liều: {m.get('dose', 'chưa rõ')}, Trạng thái: {m.get('status', 'đang dùng')})"
+                f"- **{m.get('raw_name')}** (Nguồn: {m.get('source_label', 'Tự mua')}, Liều: {m.get('dose', 'chưa rõ')}, Trạng thái: {m.get('status', 'đang dùng')})"
                 for m in self.self_declared_meds
             ]
             lines.append("📋 THUỐC BỆNH NHÂN TỰ KHAI BÁO DÙNG THÊM:\n" + "\n".join(self_med_lines))
@@ -174,6 +185,14 @@ class PatientContext:
                 for s in self.recent_symptoms[:5]
             ]
             lines.append("⚠️ TRIỆU CHỨNG LÂM SÀNG BÁO CÁO GẦN ĐÂY:\n" + "\n".join(symp_lines))
+
+        # Cảnh báo an toàn thuốc hệ thống đã ghi nhận
+        if self.safety_alerts:
+            alert_lines = [
+                f"- [{a.get('severity', '').upper()}] {a.get('message', '')} (Nguồn: {a.get('source', '')})"
+                for a in self.safety_alerts[:4]
+            ]
+            lines.append("🚨 CẢNH BÁO AN TOÀN ĐỐI SOÁT THUỐC HỆ THỐNG GHI NHẬN:\n" + "\n".join(alert_lines))
 
         # Lịch sử phân luồng cấp cứu Triage gần nhất
         if self.triage_history:

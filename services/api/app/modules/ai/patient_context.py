@@ -17,11 +17,13 @@ from app.modules.ai.knowledge import PatientContext
 from app.modules.consultations.models import Appointment
 from app.modules.patients.models import (
     AllergyRecord,
+    CaregiverLink,
     ClinicalObservation,
     MedicationRecord,
     PatientProfile,
     User,
 )
+from app.modules.safety.check_models import Alert, SafetyCheck
 from app.modules.triage.models import TriageAssessment
 
 
@@ -37,6 +39,9 @@ def load_patient_context(db: Session, user_id: str) -> PatientContext | None:
             dob=profile.dob,
             diagnosis=profile.diagnosis,
             admission_note=profile.admission_note,
+            treatment_status=profile.treatment_status,
+            treatment_start_date=profile.treatment_start_date,
+            followup_date=profile.followup_date,
         )
 
         # Bác sĩ phụ trách
@@ -44,9 +49,24 @@ def load_patient_context(db: Session, user_id: str) -> PatientContext | None:
             try:
                 doc = db.get(User, profile.assigned_doctor_id)
                 if doc:
-                    ctx.assigned_doctor_name = f"BS. {doc.full_name or doc.username}"
+                    phone_str = f" - SĐT: {doc.phone}" if doc.phone else ""
+                    ctx.assigned_doctor_name = f"BS. {doc.full_name or doc.username}{phone_str}"
             except Exception:
                 pass
+
+        # Người chăm sóc / Caregiver
+        try:
+            caregiver_link = (
+                db.query(CaregiverLink, User)
+                .join(User, User.id == CaregiverLink.caregiver_user_id)
+                .filter(CaregiverLink.patient_user_id == user_id, CaregiverLink.active.is_(True))
+                .first()
+            )
+            if caregiver_link:
+                link, cg_user = caregiver_link
+                ctx.caregiver_info = f"{cg_user.full_name or cg_user.username}" + (f" (SĐT: {cg_user.phone})" if cg_user.phone else "")
+        except Exception:
+            pass
 
         # Tuổi
         ctx.age = _age(profile.dob)
@@ -145,6 +165,29 @@ def load_patient_context(db: Session, user_id: str) -> PatientContext | None:
                     })
             ctx.labs = labs_dict
             ctx.recent_symptoms = symptoms_list
+        except Exception:
+            pass
+
+        # Lịch sử cảnh báo an toàn đối soát thuốc hệ thống ghi nhận
+        try:
+            safety_checks = (
+                db.query(SafetyCheck)
+                .filter(SafetyCheck.patient_profile_id == profile.id)
+                .order_by(SafetyCheck.created_at.desc())
+                .limit(3)
+                .all()
+            )
+            alerts_list = []
+            for sc in safety_checks:
+                alerts = db.query(Alert).filter(Alert.safety_check_id == sc.id).all()
+                for a in alerts:
+                    alerts_list.append({
+                        "severity": a.severity,
+                        "rule_code": a.rule_code,
+                        "message": a.message,
+                        "source": f"{a.source_title} ({a.source_version})",
+                    })
+            ctx.safety_alerts = alerts_list
         except Exception:
             pass
 

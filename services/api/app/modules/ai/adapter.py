@@ -22,7 +22,7 @@ from app.modules.ai.guardrails import (
     OUT_OF_SCOPE_REPLY,
     REFUSAL_REPLY,
 )
-from app.modules.ai.knowledge import get_brain
+from app.modules.ai.knowledge import AIBrain, PatientContext, get_brain
 from app.modules.ai.patient_context import load_patient_context
 from app.modules.safety.knowledge_models import KnowledgeSource
 
@@ -68,35 +68,110 @@ def _extract_drug_query(message: str) -> str | None:
     return max(candidates, key=lambda c: c[0])[1]
 
 
+def _build_clinical_cross_checks(
+    brain: AIBrain,
+    user_message: str,
+    patient_ctx: PatientContext | None,
+) -> str:
+    """Tự động đối soát sâu câu hỏi của bệnh nhân với toàn bộ hồ sơ trong DB."""
+    if not patient_ctx:
+        return ""
+
+    findings = []
+    msg_low = user_message.lower()
+
+    # 1. Quét tìm tương tác thuốc giữa câu hỏi và TẤT CẢ các thuốc bệnh nhân đang dùng trong DB
+    current_drugs = []
+    for m in patient_ctx.doctor_prescriptions + patient_ctx.self_declared_meds:
+        name = m.get("raw_name", "")
+        if name:
+            current_drugs.append(name)
+
+    found_interactions = []
+    for cur_d in current_drugs:
+        combo = f"{cur_d} {user_message}"
+        inter = brain.find_interaction_in_message(combo)
+        if inter and inter not in found_interactions:
+            found_interactions.append(inter)
+
+    # Cũng tìm tương tác trực tiếp trong câu hỏi nếu người dùng hỏi 2 thuốc
+    direct_inter = brain.find_interaction_in_message(user_message)
+    if direct_inter and direct_inter not in found_interactions:
+        found_interactions.append(direct_inter)
+
+    if found_interactions:
+        inter_lines = []
+        for it in found_interactions:
+            inter_lines.append(
+                f"- [MỤC {it.get('stt')}] Phối hợp giữa **{it.get('act1')}** và **{it.get('act2')}**:\n"
+                f"  + Cơ chế: {it.get('mechanism')}\n"
+                f"  + Hậu quả: {it.get('consequence')}\n"
+                f"  + Hướng xử trí y khoa: {it.get('action')}"
+            )
+        findings.append("⚠️ CẢNH BÁO TƯƠNG TÁC THUỐC ĐỐI SOÁT VỚI ĐƠN THUỐC HIỆN TẠI:\n" + "\n".join(inter_lines))
+
+    # 2. Kiểm tra dị ứng đối soát với tiền sử bệnh nhân
+    matched_allergies = []
+    for a in patient_ctx.allergies:
+        if a and a.lower() in msg_low:
+            matched_allergies.append(a)
+    if matched_allergies:
+        findings.append(f"🚫 CẢNH BÁO TIỀN SỬ DỊ ỨNG: Bệnh nhân có tiền sử dị ứng đã ghi nhận trong hồ sơ với: {', '.join(matched_allergies)}. CẦN CẢNH BÁO KHÔNG ĐƯỢC DÙNG.")
+
+    # 3. Đánh giá chức năng Thận/Gan từ các xét nghiệm trong DB
+    renal_labs = []
+    for k, v in patient_ctx.labs.items():
+        k_l = k.lower()
+        if any(x in k_l for x in ("crcl", "creatinine", "egfr", "ast", "alt", "men gan", "ure")):
+            renal_labs.append(f"{k}: {v}")
+    if renal_labs:
+        findings.append(f"🧪 CHỈ SỐ XÉT NGHIỆM CHỨC NĂNG THẬN/GAN TRONG HỒ SƠ: {', '.join(renal_labs)} (Hãy lưu ý đánh giá ảnh hưởng lên liều lượng hoặc độc tính thuốc theo patient_factors.md).")
+
+    return "\n\n".join(findings)
+
+
 def _call_gemini_api(
     user_message: str,
-    patient_ctx_desc: str,
+    patient_ctx: PatientContext | None,
     api_key: str,
     model_name: str = "gemini-1.5-flash",
     history: list[dict] | None = None,
 ) -> str | None:
-    """Gọi trực tiếp Google Gemini API qua giao thức REST với cơ chế tự động fallback model và hỗ trợ ngữ cảnh nhiều lượt (multi-turn)."""
+    """Gọi trực tiếp Google Gemini API qua giao thức REST với tích hợp sâu toàn bộ dữ liệu EHR & Tri thức BYT."""
     brain = get_brain()
+    patient_ctx_desc = patient_ctx.describe_deep() if patient_ctx else "Chưa có thông tin hồ sơ cụ thể."
+    cross_checks = _build_clinical_cross_checks(brain, user_message, patient_ctx)
 
     system_instruction_text = (
-        "Bạn là Trợ lý AI AllerCare — Nền tảng theo dõi và hỗ trợ sử dụng thuốc an toàn chuyên khoa Da liễu & Dị ứng lâm sàng.\n\n"
-        "=== BỘ QUY TẮC BẮT BUỘC ===\n"
-        "1. Bạn KHÔNG được tự ý kê đơn, không khuyên bệnh nhân tự ý tăng/giảm liều hoặc tự ý đổi thuốc.\n"
-        "2. Trong tình huống khẩn cấp (khó thở, sưng môi lưỡi, đau thắt ngực, nghi ngờ sốc phản vệ), yêu cầu bệnh nhân GỌI 115 hoặc đến cấp cứu NGAY.\n"
-        "3. Trả lời bằng tiếng Việt, giọng điệu ấm áp, ân cần, câu từ ngắn gọn, dễ hiểu cho người bệnh và người cao tuổi.\n"
-        "4. Mọi gợi ý, cảnh báo và giải thích phải dựa trên cơ sở khoa học y tế được cung cấp bên dưới và ghi rõ nguồn tham khảo.\n"
-        "5. Luôn nhớ ngữ cảnh các câu hỏi và câu trả lời trước đó trong cuộc trò chuyện để trả lời liền mạch, chính xác.\n"
-        "6. Luôn nhắc nhở: Quyết định cuối cùng thuộc về Bác sĩ điều trị.\n\n"
-        "=== HỒ SƠ BỆNH NHÂN ĐANG CHAT ===\n"
-        f"{patient_ctx_desc if patient_ctx_desc else 'Chưa có thông tin hồ sơ cụ thể.'}\n\n"
+        "Bạn là Trợ lý AI Y tế AllerCare — Nền tảng theo dõi và hỗ trợ sử dụng thuốc an toàn chuyên sâu Da liễu & Dị ứng lâm sàng.\n\n"
+        "=== BỘ NÃO AI ĐƯỢC TÍCH HỢP TOÀN BỘ CƠ SỞ DỮ LIỆU BỆNH VIỆN & BỆNH ÁN ĐIỆN TỬ ===\n"
+        "Bạn có quyền truy cập sâu vào dữ liệu hồ sơ lâm sàng của bệnh nhân hiện tại, danh mục 633 tương tác thuốc Bộ Y tế Việt Nam, "
+        "các nguyên tắc phân chia liều lượng của Bác sĩ và các yếu tố cá thể hóa bệnh nhân.\n\n"
+        "=== HỒ SƠ BỆNH ÁN ĐIỆN TỬ (EHR) CỦA BỆNH NHÂN HIỆN TẠI ===\n"
+        f"{patient_ctx_desc}\n\n"
+    )
+
+    if cross_checks:
+        system_instruction_text += (
+            "=== KẾT QUẢ ĐỐI SOÁT TỰ ĐỘNG TỪ DATABASE VỚI CÂU HỎI HIỆN TẠI ===\n"
+            f"{cross_checks}\n\n"
+        )
+
+    system_instruction_text += (
+        "=== CƠ SỞ DỮ LIỆU TƯƠNG TÁC THUỐC BỘ Y TẾ (633 cặp tương tác) ===\n"
+        "Hệ thống đã nạp toàn bộ 633 cặp tương tác thuốc chống chỉ định và thận trọng của Bộ Y tế Việt Nam.\n\n"
         "=== NGUYÊN TẮC CHIA LIỀU CỦA BÁC SĨ (dosing_principles.md) ===\n"
         f"{brain.principles_md}\n\n"
         "=== YẾU TỐ BỆNH NHÂN ẢNH HƯỞNG LIỀU (patient_factors.md) ===\n"
         f"{brain.patient_factors_md}\n\n"
         "=== PHONG CÁCH HỘI THOẠI (conversation_style.md) ===\n"
         f"{brain.style_md}\n\n"
-        "=== CƠ SỞ DỮ LIỆU TƯƠNG TÁC THUỐC BỘ Y TẾ (633 cặp tương tác) ===\n"
-        "Hệ thống đã nạp 633 cặp tương tác thuốc chống chỉ định và thận trọng của Bộ Y tế. Khi người dùng hỏi về phối hợp thuốc, hãy phân tích dựa trên cơ chế, hậu quả và hướng xử trí chuẩn y khoa.\n"
+        "=== NGUYÊN TẮC PHẢN HỒI BẮT BUỘC ===\n"
+        "1. TẬN DỤNG TỐI ĐA HỒ SƠ: Luôn liên hệ câu trả lời với chính các thuốc trong đơn bác sĩ đã kê, chỉ số xét nghiệm (chức năng thận CrCl, men gan...), tiền sử dị ứng, lịch hẹn của bệnh nhân để đưa ra câu trả lời cá thể hóa sâu sắc nhất.\n"
+        "2. ĐỐI SOÁT TỰ ĐỘNG: Khi người bệnh hỏi về việc dùng thêm một thuốc mới hoặc cách uống thuốc, hãy tự động đối soát xem thuốc đó có tương tác với các thuốc đang có trong đơn của bác sĩ hay không.\n"
+        "3. KHÔNG TỰ KÊ ĐƠN: Giải thích rõ ràng cơ chế, liều tham chiếu chuẩn, cảnh báo nguy cơ và luôn nhắc nhở người bệnh tuân thủ hướng dẫn của Bác sĩ điều trị phụ trách.\n"
+        "4. TÌNH HUỐNG KHẨN CẤP: Nếu có biểu hiện sốc phản vệ, khó thở, sưng môi lưỡi, đau thắt ngực -> Yêu cầu GỌI 115 hoặc đến cấp cứu NGAY.\n"
+        "5. NGÔN NGỮ: Tiếng Việt, ấm áp, ân cần, khoa học, dễ hiểu cho người bệnh và người cao tuổi."
     )
 
     clean_model = model_name.replace("models/", "") if model_name else "gemini-1.5-flash"
@@ -107,8 +182,6 @@ def _call_gemini_api(
             deduped_models.append(m)
     if not deduped_models:
         deduped_models = ["gemini-1.5-flash", "gemini-2.0-flash"]
-
-
 
     contents = []
     if history:
@@ -129,7 +202,7 @@ def _call_gemini_api(
         },
         "contents": contents,
         "generationConfig": {
-            "temperature": 0.4,
+            "temperature": 0.35,
             "topP": 0.95,
             "maxOutputTokens": 2048,
         }
@@ -185,16 +258,14 @@ def generate_answer(
         except Exception as e:
             logger.warning(f"Không thể tải hồ sơ người bệnh: {e}")
 
-        patient_desc = patient_ctx.describe_deep() if patient_ctx else ""
-
-        # 1. Thử gọi Gemini API nếu có API KEY
+        # 1. Thử gọi Gemini API nếu có API KEY với toàn bộ dữ liệu EHR sâu
         api_key = settings.AI_API_KEY.strip()
         if api_key and settings.AI_PROVIDER in ("gemini", "google", "auto", "demo"):
             model_name = settings.AI_MODEL if settings.AI_MODEL.startswith("gemini") else "gemini-1.5-flash"
             try:
                 gemini_response = _call_gemini_api(
                     user_message=user_message,
-                    patient_ctx_desc=patient_desc,
+                    patient_ctx=patient_ctx,
                     api_key=api_key,
                     model_name=model_name,
                     history=history,
@@ -204,12 +275,12 @@ def generate_answer(
                         {
                             "title": "Google Gemini 1.5 Flash (Deep EHR & Medical Knowledge Grounding)",
                             "version": model_name,
-                            "file": "Database & data/ai_knowledge/",
+                            "file": "Database PostgreSQL & 633 Tương tác thuốc BYT",
                         },
                         {
-                            "title": "Hồ sơ bệnh án điện tử người bệnh & Danh mục BYT",
-                            "version": "Hồ sơ cá thể hóa",
-                            "file": "Database PostgreSQL",
+                            "title": "Hồ sơ Bệnh án Điện tử Người bệnh (Đơn thuốc, Xét nghiệm, Dị ứng)",
+                            "version": "Dữ liệu cá thể hóa",
+                            "file": "Database AllerCare",
                         }
                     ]
                     return gemini_response, sources

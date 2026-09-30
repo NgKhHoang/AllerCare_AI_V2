@@ -20,15 +20,10 @@ EMERGENCY_PATTERNS = [
 ]
 
 REFUSAL_PATTERNS = [
-    r"(tăng|giảm|đổi|thay|bỏ|ngừng|hủy)\s+(liều|thuốc)",
-    r"(uống|dùng)\s+(thêm|gấp)\s*\d*",
-    r"nên\s+(kê|cho)\s+(thuốc|đơn)",
-    r"(cho|xin)\s+tôi\s+(xin\s+)?(đơn|thuốc)",
-    r"xin\s+(đơn|thuốc)",
-    r"thay\s+thế\s+thuốc",
-    r"tôi\s+nên\s+uống\s+gì\s+để\s+khỏi",
-    r"mua\s+thuốc\s+gì",
-    r"kê\s+hồ\s+cho\s+tôi",
+    r"^(kê\s+đơn|bốc\s+thuốc)\s+cho\s+tôi",
+    r"^(cho|xin)\s+tôi\s+(xin\s+)?đơn\s+thuốc",
+    r"^kê\s+hộ\s+tôi\s+đơn",
+    r"^tôi\s+muốn\s+tự\s+(tăng|gấp\s+đôi)\s+liều",
 ]
 
 HANDOFF_PATTERNS = [
