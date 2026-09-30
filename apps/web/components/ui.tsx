@@ -220,7 +220,7 @@ export function AppShell({
             <div className="brand-shield">🛡️</div>
             <div>
               <div className="brand-title">
-                AllerCare <span className="brand-ai-chip">AI v2.5</span>
+                AllerCare <span className="brand-ai-chip">AI v3.5</span>
               </div>
             </div>
           </Link>
