@@ -136,17 +136,21 @@ def _call_gemini_api(
     api_key: str,
     model_name: str = "gemini-1.5-flash",
     history: list[dict] | None = None,
+    db: Session | None = None,
 ) -> str | None:
     """Gọi trực tiếp Google Gemini API qua giao thức REST với tích hợp sâu toàn bộ dữ liệu EHR & Tri thức BYT."""
     brain = get_brain()
     patient_ctx_desc = patient_ctx.describe_deep() if patient_ctx else "Chưa có thông tin hồ sơ cụ thể."
     cross_checks = _build_clinical_cross_checks(brain, user_message, patient_ctx)
 
+    # Đọc thêm tài liệu/hướng dẫn điều trị mới thêm trong database
+    db_sources = retrieve_approved_content(db, user_message, limit=4) if db else []
+
     system_instruction_text = (
         "Bạn là Trợ lý AI Y tế AllerCare — Nền tảng theo dõi và hỗ trợ sử dụng thuốc an toàn chuyên sâu Da liễu & Dị ứng lâm sàng.\n\n"
         "=== BỘ NÃO AI ĐƯỢC TÍCH HỢP TOÀN BỘ CƠ SỞ DỮ LIỆU BỆNH VIỆN & BỆNH ÁN ĐIỆN TỬ ===\n"
         "Bạn có quyền truy cập sâu vào dữ liệu hồ sơ lâm sàng của bệnh nhân hiện tại, danh mục 633 tương tác thuốc Bộ Y tế Việt Nam, "
-        "các nguyên tắc phân chia liều lượng của Bác sĩ và các yếu tố cá thể hóa bệnh nhân.\n\n"
+        "các nguyên tắc phân chia liều lượng của Bác sĩ, các yếu tố cá thể hóa bệnh nhân và toàn bộ tài liệu y khoa được lưu trong cơ sở dữ liệu.\n\n"
         "=== HỒ SƠ BỆNH ÁN ĐIỆN TỬ (EHR) CỦA BỆNH NHÂN HIỆN TẠI ===\n"
         f"{patient_ctx_desc}\n\n"
     )
@@ -155,6 +159,14 @@ def _call_gemini_api(
         system_instruction_text += (
             "=== KẾT QUẢ ĐỐI SOÁT TỰ ĐỘNG TỪ DATABASE VỚI CÂU HỎI HIỆN TẠI ===\n"
             f"{cross_checks}\n\n"
+        )
+
+    if db_sources:
+        doc_texts = [f"📄 [{s.title} - Phiên bản {s.version}]:\n{s.content}" for s in db_sources]
+        system_instruction_text += (
+            "=== TÀI LIỆU Y KHOA & HƯỚNG DẪN ĐIỀU TRỊ MỚI ĐƯỢC DUYỆT TRONG DATABASE ===\n"
+            + "\n\n".join(doc_texts)
+            + "\n\n"
         )
 
     system_instruction_text += (
@@ -169,9 +181,10 @@ def _call_gemini_api(
         "=== NGUYÊN TẮC PHẢN HỒI BẮT BUỘC ===\n"
         "1. TẬN DỤNG TỐI ĐA HỒ SƠ: Luôn liên hệ câu trả lời với chính các thuốc trong đơn bác sĩ đã kê, chỉ số xét nghiệm (chức năng thận CrCl, men gan...), tiền sử dị ứng, lịch hẹn của bệnh nhân để đưa ra câu trả lời cá thể hóa sâu sắc nhất.\n"
         "2. ĐỐI SOÁT TỰ ĐỘNG: Khi người bệnh hỏi về việc dùng thêm một thuốc mới hoặc cách uống thuốc, hãy tự động đối soát xem thuốc đó có tương tác với các thuốc đang có trong đơn của bác sĩ hay không.\n"
-        "3. KHÔNG TỰ KÊ ĐƠN: Giải thích rõ ràng cơ chế, liều tham chiếu chuẩn, cảnh báo nguy cơ và luôn nhắc nhở người bệnh tuân thủ hướng dẫn của Bác sĩ điều trị phụ trách.\n"
-        "4. TÌNH HUỐNG KHẨN CẤP: Nếu có biểu hiện sốc phản vệ, khó thở, sưng môi lưỡi, đau thắt ngực -> Yêu cầu GỌI 115 hoặc đến cấp cứu NGAY.\n"
-        "5. NGÔN NGỮ: Tiếng Việt, ấm áp, ân cần, khoa học, dễ hiểu cho người bệnh và người cao tuổi."
+        "3. TÀI LIỆU MỚI: Nếu có tài liệu/hướng dẫn chuyên môn mới được cung cấp trong database, hãy ưu tiên trích dẫn và giải thích cho người bệnh theo đúng hướng dẫn đó.\n"
+        "4. KHÔNG TỰ KÊ ĐƠN: Giải thích rõ ràng cơ chế, liều tham chiếu chuẩn, cảnh báo nguy cơ và luôn nhắc nhở người bệnh tuân thủ hướng dẫn của Bác sĩ điều trị phụ trách.\n"
+        "5. TÌNH HUỐNG KHẨN CẤP: Nếu có biểu hiện sốc phản vệ, khó thở, sưng môi lưỡi, đau thắt ngực -> Yêu cầu GỌI 115 hoặc đến cấp cứu NGAY.\n"
+        "6. NGÔN NGỮ: Tiếng Việt, ấm áp, ân cần, khoa học, dễ hiểu cho người bệnh và người cao tuổi."
     )
 
     clean_model = model_name.replace("models/", "") if model_name else "gemini-1.5-flash"
@@ -269,6 +282,7 @@ def generate_answer(
                     api_key=api_key,
                     model_name=model_name,
                     history=history,
+                    db=db,
                 )
                 if gemini_response:
                     sources = [
