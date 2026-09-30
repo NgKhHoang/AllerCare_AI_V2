@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     AUTH_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
     AI_PROVIDER: str = "gemini"
-    AI_MODEL: str = "gemini-1.5-flash"
+    AI_MODEL: str = "gemini-3.5-flash-lite"
     AI_API_KEY: str = ""
     VIDEO_BASE_URL: str = ""
     LIVEKIT_URL: str = ""

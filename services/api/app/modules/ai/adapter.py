@@ -187,14 +187,22 @@ def _call_gemini_api(
         "6. NGÔN NGỮ: Tiếng Việt, ấm áp, ân cần, khoa học, dễ hiểu cho người bệnh và người cao tuổi."
     )
 
-    clean_model = model_name.replace("models/", "") if model_name else "gemini-1.5-flash"
-    models_to_try = [clean_model, "gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-2.0-flash", "gemini-1.5-pro"]
+    clean_model = model_name.replace("models/", "") if model_name else "gemini-3.5-flash-lite"
+    models_to_try = [
+        clean_model,
+        "gemini-3.5-flash-lite",
+        "gemini-3.5-flash",
+        "gemini-3.8-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.5-flash",
+        "gemini-1.5-flash",
+    ]
     deduped_models = []
     for m in models_to_try:
         if m and m not in deduped_models:
             deduped_models.append(m)
     if not deduped_models:
-        deduped_models = ["gemini-1.5-flash", "gemini-2.0-flash"]
+        deduped_models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-1.5-flash"]
 
     contents = []
     if history:
@@ -274,7 +282,7 @@ def generate_answer(
         # 1. Thử gọi Gemini API nếu có API KEY với toàn bộ dữ liệu EHR sâu
         api_key = settings.AI_API_KEY.strip()
         if api_key and settings.AI_PROVIDER in ("gemini", "google", "auto", "demo"):
-            model_name = settings.AI_MODEL if settings.AI_MODEL.startswith("gemini") else "gemini-1.5-flash"
+            model_name = settings.AI_MODEL if settings.AI_MODEL.startswith("gemini") else "gemini-3.5-flash-lite"
             try:
                 gemini_response = _call_gemini_api(
                     user_message=user_message,
@@ -287,7 +295,7 @@ def generate_answer(
                 if gemini_response:
                     sources = [
                         {
-                            "title": "Google Gemini 1.5 Flash (Deep EHR & Medical Knowledge Grounding)",
+                            "title": "Google Gemini 3.5 Flash-Lite (Deep EHR & Medical Knowledge Grounding)",
                             "version": model_name,
                             "file": "Database PostgreSQL & 633 Tương tác thuốc BYT",
                         },
