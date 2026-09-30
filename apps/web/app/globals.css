@@ -547,6 +547,27 @@ body {
   box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
 }
 
+.textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px 14px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--border-default);
+  background: #ffffff;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+.textarea:focus {
+  outline: none;
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
 /* List rows */
 .list-row {
   display: flex;

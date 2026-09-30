@@ -74,3 +74,38 @@ export async function api<T = unknown>(
   }
   return res.json() as Promise<T>;
 }
+
+export async function uploadFile(file: File): Promise<{ url: string; filename: string; original_name?: string }> {
+  const token = getToken();
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch("/api/v1/upload", {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  if (res.status === 401) {
+    clearSession();
+    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+      window.location.href = "/login";
+    }
+    throw new Error("Phiên đăng nhập đã hết hạn");
+  }
+
+  if (!res.ok) {
+    let detail = `Lỗi tải ảnh lên (${res.status})`;
+    try {
+      const data = await res.json();
+      detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail ?? data);
+    } catch {
+      // giữ detail mặc định
+    }
+    throw new Error(detail);
+  }
+
+  return res.json() as Promise<{ url: string; filename: string; original_name?: string }>;
+}

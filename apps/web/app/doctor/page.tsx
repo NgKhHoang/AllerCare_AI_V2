@@ -42,6 +42,7 @@ interface Observation {
   value: string | null;
   unit: string | null;
   occurred_at: string;
+  image_url?: string | null;
   status: string;
   verification: string;
 }
@@ -136,6 +137,7 @@ export default function DoctorPortal() {
 
   // AI AssistiveTouch Modal
   const [showAiModal, setShowAiModal] = useState(false);
+  const [previewModalUrl, setPreviewModalUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const user = getUser();
@@ -1048,9 +1050,47 @@ export default function DoctorPortal() {
             </div>
             {obs.length === 0 && <EmptyState icon="🩺" text="Chưa có cập nhật nào." />}
             {obs.map((o) => (
-              <div className="list-row" key={o.id}>
+              <div className="list-row" key={o.id} style={{ alignItems: "center" }}>
+                {o.image_url ? (
+                  <div
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      border: "1px solid #cbd5e1",
+                      flexShrink: 0,
+                      cursor: "pointer",
+                      backgroundColor: "#f1f5f9",
+                    }}
+                    onClick={() => setPreviewModalUrl(o.image_url ?? null)}
+                    title="Bác sĩ bấm để xem ảnh tổn thương da phóng to"
+                  >
+                    <img
+                      src={o.image_url}
+                      alt="Ảnh tổn thương"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                ) : null}
+
                 <div className="list-main">
-                  <div className="list-title">{o.label}</div>
+                  <div className="list-title" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>{o.label}</span>
+                    {o.image_url && (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewModalUrl(o.image_url ?? null)}
+                        className="badge badge-info"
+                        style={{ border: "none", cursor: "pointer", fontSize: 11, padding: "2px 6px" }}
+                      >
+                        📷 Xem ảnh tổn thương
+                      </button>
+                    )}
+                  </div>
                   <div className="list-sub">
                     {o.occurred_at}
                     {o.value ? ` · ${o.value} ${o.unit ?? ""}` : ""}
@@ -1428,6 +1468,74 @@ export default function DoctorPortal() {
                   <button className="btn btn-secondary btn-sm" onClick={() => setShowAiModal(false)}>
                     Đóng
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* POPUP MODAL PHÓNG TO ẢNH TỔN THƯƠNG CHO BÁC SĨ */}
+          {previewModalUrl && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 9999,
+                backgroundColor: "rgba(15, 23, 42, 0.82)",
+                backdropFilter: "blur(6px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 20,
+              }}
+              onClick={() => setPreviewModalUrl(null)}
+            >
+              <div
+                style={{
+                  position: "relative",
+                  maxWidth: "90vw",
+                  maxHeight: "90vh",
+                  backgroundColor: "#fff",
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.3)",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "12px 18px",
+                    borderBottom: "1px solid #e2e8f0",
+                    backgroundColor: "#f8fafc",
+                  }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>
+                    📷 Ảnh chụp tổn thương da của người bệnh
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: "3px 10px", fontSize: 13 }}
+                    onClick={() => setPreviewModalUrl(null)}
+                  >
+                    ✕ Đóng
+                  </button>
+                </div>
+                <div style={{ padding: 12, overflow: "auto", display: "flex", justifyContent: "center", alignItems: "center" }}>
+                  <img
+                    src={previewModalUrl}
+                    alt="Ảnh tổn thương phóng to"
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "75vh",
+                      objectFit: "contain",
+                      borderRadius: 8,
+                    }}
+                  />
                 </div>
               </div>
             </div>

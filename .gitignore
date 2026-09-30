@@ -58,3 +58,9 @@ obj/
 .vs/
 appsettings.Development.json
 appsettings*.local.json
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+services/api/uploads/*
+!services/api/uploads/.gitkeep

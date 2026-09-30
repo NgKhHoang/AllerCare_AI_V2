@@ -6,8 +6,8 @@
  * - Mọi khai báo gắn nhãn "chưa xác minh" — chờ bác sĩ xác nhận mới vào hồ sơ chính thức.
  * - Gửi triệu chứng kèm ảnh tổn thương da.
  */
-import { useEffect, useState } from "react";
-import { api, getToken } from "../../../lib/api";
+import { useEffect, useRef, useState } from "react";
+import { api, getToken, uploadFile } from "../../../lib/api";
 import { AppShell, EmptyState, ErrorBox, SuccessBox, VerifiedBadge } from "../../../components/ui";
 import { TreatmentTimeline } from "../../../components/TreatmentTimeline";
 
@@ -76,10 +76,24 @@ export default function PatientUpdates() {
   const [medDose, setMedDose] = useState("");
   const [medTiming, setMedTiming] = useState("");
   const [medStatus, setMedStatus] = useState("active");
+  const [medImage, setMedImage] = useState("");
+  const [medImagePreview, setMedImagePreview] = useState<string | null>(null);
+  const [uploadingMedImage, setUploadingMedImage] = useState(false);
+
   // form triệu chứng
   const [symptomLabel, setSymptomLabel] = useState("");
-  const [symptomTime, setSymptomTime] = useState("");
+  const [symptomTime, setSymptomTime] = useState(() => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  });
   const [symptomImage, setSymptomImage] = useState("");
+  const [symptomImagePreview, setSymptomImagePreview] = useState<string | null>(null);
+  const [uploadingSymptomImage, setUploadingSymptomImage] = useState(false);
+  const [previewModalUrl, setPreviewModalUrl] = useState<string | null>(null);
+
+  const symptomFileInputRef = useRef<HTMLInputElement>(null);
+  const medFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!getToken()) {
@@ -100,11 +114,83 @@ export default function PatientUpdates() {
     }
   }
 
+  async function handleSymptomFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Vui lòng chọn tệp hình ảnh hợp lệ (JPG, PNG, WEBP, GIF, HEIC).");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setSymptomImagePreview(objectUrl);
+    setUploadingSymptomImage(true);
+    setError("");
+
+    try {
+      const res = await uploadFile(file);
+      setSymptomImage(res.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể tải ảnh lên máy chủ");
+      setSymptomImagePreview(null);
+      setSymptomImage("");
+    } finally {
+      setUploadingSymptomImage(false);
+    }
+  }
+
+  function removeSymptomImage() {
+    setSymptomImage("");
+    setSymptomImagePreview(null);
+    if (symptomFileInputRef.current) {
+      symptomFileInputRef.current.value = "";
+    }
+  }
+
+  async function handleMedFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Vui lòng chọn tệp hình ảnh hợp lệ (JPG, PNG, WEBP, GIF, HEIC).");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setMedImagePreview(objectUrl);
+    setUploadingMedImage(true);
+    setError("");
+
+    try {
+      const res = await uploadFile(file);
+      setMedImage(res.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể tải ảnh toa thuốc lên máy chủ");
+      setMedImagePreview(null);
+      setMedImage("");
+    } finally {
+      setUploadingMedImage(false);
+    }
+  }
+
+  function removeMedImage() {
+    setMedImage("");
+    setMedImagePreview(null);
+    if (medFileInputRef.current) {
+      medFileInputRef.current.value = "";
+    }
+  }
+
   async function addMedication(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setSuccess("");
     if (!profile) return;
+    if (uploadingMedImage) {
+      setError("Đang tải ảnh toa/bao bì thuốc lên, vui lòng đợi trong giây lát...");
+      return;
+    }
     try {
       await api(`/v1/patients/${profile.id}/medications`, {
         method: "POST",
@@ -116,11 +202,17 @@ export default function PatientUpdates() {
           timing: medTiming || null,
           source_label: medSource,
           prescriber: medSource,
+          image_url: medImage || null,
         },
       });
       setMedName("");
       setMedDose("");
       setMedTiming("");
+      setMedImage("");
+      setMedImagePreview(null);
+      if (medFileInputRef.current) {
+        medFileInputRef.current.value = "";
+      }
       setSuccess("Đã ghi nhận thuốc. Bác sĩ sẽ kiểm tra và đối soát trong hồ sơ của bạn.");
       await reload();
     } catch (err) {
@@ -148,6 +240,10 @@ export default function PatientUpdates() {
     setError("");
     setSuccess("");
     if (!profile) return;
+    if (uploadingSymptomImage) {
+      setError("Đang tải ảnh tổn thương lên, vui lòng đợi trong giây lát...");
+      return;
+    }
     try {
       await api(`/v1/patients/${profile.id}/observations`, {
         method: "POST",
@@ -159,9 +255,12 @@ export default function PatientUpdates() {
         },
       });
       setSymptomLabel("");
-      setSymptomTime("");
       setSymptomImage("");
-      setSuccess("Đã gửi triệu chứng. Bác sĩ phụ trách sẽ xem.");
+      setSymptomImagePreview(null);
+      if (symptomFileInputRef.current) {
+        symptomFileInputRef.current.value = "";
+      }
+      setSuccess("Đã gửi triệu chứng và hình ảnh tổn thương thành công. Bác sĩ phụ trách sẽ xem.");
       await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không gửi được triệu chứng");
@@ -315,7 +414,69 @@ export default function PatientUpdates() {
               <option value="stopped">Đã ngừng</option>
             </select>
           </div>
-          <button className="btn btn-primary">➕ Gửi khai báo thuốc</button>
+
+          {/* UPLOAD ẢNH TOA / BAO BÌ THUỐC */}
+          <div className="field">
+            <label className="label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>📷 Ảnh toa thuốc / Bao bì thuốc (tuỳ chọn)</span>
+              {medImagePreview && (
+                <span style={{ fontSize: 12, color: uploadingMedImage ? "#0284c7" : "#16a34a", fontWeight: 600 }}>
+                  {uploadingMedImage ? "⏳ Đang tải ảnh..." : "✓ Đã tải ảnh xong"}
+                </span>
+              )}
+            </label>
+            <input
+              ref={medFileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleMedFileChange}
+            />
+            {!medImagePreview ? (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ width: "100%", padding: "10px", borderStyle: "dashed", borderColor: "#cbd5e1" }}
+                onClick={() => medFileInputRef.current?.click()}
+              >
+                📸 Chọn ảnh chụp toa thuốc hoặc vỏ hộp thuốc từ máy
+              </button>
+            ) : (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  backgroundColor: "#f8fafc",
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                <img
+                  src={medImagePreview}
+                  alt="Ảnh thuốc"
+                  style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 6, cursor: "pointer" }}
+                  onClick={() => setPreviewModalUrl(medImagePreview)}
+                />
+                <span style={{ fontSize: 12, flex: 1, color: "#334155" }}>
+                  {uploadingMedImage ? "Đang tải lên..." : "Đã đính kèm ảnh toa/bao bì"}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: 12, color: "#dc2626" }}
+                  onClick={removeMedImage}
+                >
+                  ✕ Xoá
+                </button>
+              </div>
+            )}
+          </div>
+
+          <button className="btn btn-primary" disabled={uploadingMedImage}>
+            {uploadingMedImage ? "⏳ Đang tải ảnh..." : "➕ Gửi khai báo thuốc"}
+          </button>
         </form>
 
         <div className="mt16">
@@ -326,9 +487,46 @@ export default function PatientUpdates() {
           {selfDeclaredMeds.map((m) => {
             const st = MED_STATUS[m.status] ?? MED_STATUS.active;
             return (
-              <div className="list-row" key={m.id}>
+              <div className="list-row" key={m.id} style={{ alignItems: "center" }}>
+                {m.image_url ? (
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      border: "1px solid #cbd5e1",
+                      flexShrink: 0,
+                      cursor: "pointer",
+                      backgroundColor: "#f1f5f9",
+                    }}
+                    onClick={() => setPreviewModalUrl(m.image_url)}
+                    title="Bấm để xem ảnh phóng to"
+                  >
+                    <img
+                      src={m.image_url}
+                      alt="Ảnh thuốc"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                ) : null}
                 <div className="list-main">
-                  <div className="list-title">{m.raw_name}</div>
+                  <div className="list-title" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>{m.raw_name}</span>
+                    {m.image_url && (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewModalUrl(m.image_url)}
+                        className="badge badge-info"
+                        style={{ border: "none", cursor: "pointer", fontSize: 11, padding: "2px 6px" }}
+                      >
+                        📷 Có ảnh
+                      </button>
+                    )}
+                  </div>
                   <div className="list-sub">
                     {m.source_label ?? "Tự khai báo"}
                     {m.timing ? ` · ${m.timing}` : ""}
@@ -351,16 +549,20 @@ export default function PatientUpdates() {
         </div>
       </div>
 
+      {/* SECTION 3: BÁO TRIỆU CHỨNG KÈM ẢNH TỔN THƯƠNG */}
       <div className="card">
         <div className="card-title">
           <span className="t-ico">🩺</span> Báo triệu chứng kèm ảnh tổn thương
         </div>
+        <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 14 }}>
+          Gửi mô tả triệu chứng bất thường và tải lên hình ảnh chụp tổn thương da để Bác sĩ theo dõi và đánh giá kịp thời.
+        </p>
         <form onSubmit={addObservation}>
           <div className="field">
             <label className="label">Triệu chứng</label>
             <input
               className="input"
-              placeholder="VD: Vết rash ở cẳng chân lan rộng"
+              placeholder="VD: Vết rash ở cẳng chân lan rộng, ngứa rát..."
               value={symptomLabel}
               onChange={(e) => setSymptomLabel(e.target.value)}
               required
@@ -376,26 +578,193 @@ export default function PatientUpdates() {
               required
             />
           </div>
+
+          {/* UPLOAD ẢNH TỔN THƯƠNG DA TRỰC TIẾP */}
           <div className="field">
-            <label className="label">Ảnh tổn thương da (demo — nhập tên file)</label>
+            <label className="label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>📷 Ảnh tổn thương da</span>
+              {symptomImagePreview && (
+                <span style={{ fontSize: 12, color: uploadingSymptomImage ? "#0284c7" : "#16a34a", fontWeight: 600 }}>
+                  {uploadingSymptomImage ? "⏳ Đang tải ảnh lên..." : "✓ Đã tải ảnh lên thành công"}
+                </span>
+              )}
+            </label>
+
             <input
-              className="input"
-              placeholder="VD: anh-tot-thuong-01.jpg"
-              value={symptomImage}
-              onChange={(e) => setSymptomImage(e.target.value)}
+              ref={symptomFileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleSymptomFileChange}
             />
+
+            {!symptomImagePreview ? (
+              <div
+                onClick={() => symptomFileInputRef.current?.click()}
+                style={{
+                  border: "2px dashed #cbd5e1",
+                  borderRadius: 14,
+                  padding: "24px 16px",
+                  textAlign: "center",
+                  backgroundColor: "#f8fafc",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "#0284c7";
+                  e.currentTarget.style.backgroundColor = "#f0f9ff";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#cbd5e1";
+                  e.currentTarget.style.backgroundColor = "#f8fafc";
+                }}
+              >
+                <div style={{ fontSize: 32 }}>📸</div>
+                <div style={{ fontWeight: 600, color: "#0284c7", fontSize: 14 }}>
+                  Bấm để chọn ảnh tổn thương từ máy hoặc chụp ảnh
+                </div>
+                <div style={{ fontSize: 12, color: "#64748b" }}>
+                  Hỗ trợ định dạng: JPG, PNG, WEBP, GIF, HEIC (Tối đa 15MB)
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  position: "relative",
+                  borderRadius: 14,
+                  border: "1px solid #bae6fd",
+                  backgroundColor: "#f0f9ff",
+                  padding: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                }}
+              >
+                <div
+                  style={{
+                    position: "relative",
+                    width: 72,
+                    height: 72,
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    border: "1px solid #cbd5e1",
+                    flexShrink: 0,
+                    backgroundColor: "#fff",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => setPreviewModalUrl(symptomImagePreview)}
+                  title="Bấm để xem ảnh phóng to"
+                >
+                  <img
+                    src={symptomImagePreview}
+                    alt="Ảnh tổn thương xem trước"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                  {uploadingSymptomImage && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        backgroundColor: "rgba(0,0,0,0.4)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#fff",
+                        fontSize: 18,
+                      }}
+                    >
+                      ⏳
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13.5, color: "#0f172a", wordBreak: "break-all" }}>
+                    {uploadingSymptomImage ? "Đang tải ảnh lên máy chủ..." : "Ảnh tổn thương đã sẵn sàng"}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                    {symptomImage ? "Đã lưu trữ an toàn trên hệ thống" : "Đang xử lý..."}
+                  </div>
+                  <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      style={{ fontSize: 12, padding: "3px 10px" }}
+                      onClick={() => setPreviewModalUrl(symptomImagePreview)}
+                    >
+                      🔍 Xem phóng to
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      style={{ fontSize: 12, padding: "3px 10px", color: "#dc2626" }}
+                      onClick={removeSymptomImage}
+                    >
+                      ✕ Chọn ảnh khác
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <button className="btn btn-primary">Gửi báo cáo</button>
+
+          <button className="btn btn-primary" disabled={uploadingSymptomImage} style={{ marginTop: 8 }}>
+            {uploadingSymptomImage ? "⏳ Đang tải ảnh..." : "📤 Gửi báo cáo"}
+          </button>
         </form>
+
         <div className="mt16">
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, color: "var(--text-secondary)" }}>
+            Nhật ký diễn biến & triệu chứng ({obs.length}):
+          </div>
           {obs.length === 0 && <EmptyState icon="🩺" text="Chưa có cập nhật nào." />}
           {obs.map((o) => {
             const st = STATUS_LABEL[o.status] ?? STATUS_LABEL.sent;
             return (
-              <div className="list-row" key={o.id}>
+              <div className="list-row" key={o.id} style={{ alignItems: "center" }}>
+                {o.image_url ? (
+                  <div
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      border: "1px solid #cbd5e1",
+                      flexShrink: 0,
+                      cursor: "pointer",
+                      backgroundColor: "#f1f5f9",
+                    }}
+                    onClick={() => setPreviewModalUrl(o.image_url)}
+                    title="Bấm để xem ảnh phóng to"
+                  >
+                    <img
+                      src={o.image_url}
+                      alt="Ảnh tổn thương"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                ) : null}
+
                 <div className="list-main">
-                  <div className="list-title">
-                    {o.label} {o.image_url && <span title="Có ảnh tổn thương">📷</span>}
+                  <div className="list-title" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>{o.label}</span>
+                    {o.image_url && (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewModalUrl(o.image_url)}
+                        className="badge badge-info"
+                        style={{ border: "none", cursor: "pointer", fontSize: 11, padding: "2px 6px" }}
+                      >
+                        📷 Có ảnh tổn thương
+                      </button>
+                    )}
                   </div>
                   <div className="list-sub">
                     {o.occurred_at} ·{" "}
@@ -408,6 +777,74 @@ export default function PatientUpdates() {
           })}
         </div>
       </div>
+
+      {/* POPUP MODAL PHÓNG TO ẢNH */}
+      {previewModalUrl && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: "rgba(15, 23, 42, 0.8)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+          onClick={() => setPreviewModalUrl(null)}
+        >
+          <div
+            style={{
+              position: "relative",
+              maxWidth: "90vw",
+              maxHeight: "90vh",
+              backgroundColor: "#fff",
+              borderRadius: 16,
+              overflow: "hidden",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              display: "flex",
+              flexDirection: "column",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "12px 18px",
+                borderBottom: "1px solid #e2e8f0",
+                backgroundColor: "#f8fafc",
+              }}
+            >
+              <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>
+                📷 Ảnh chụp tổn thương da / Toa thuốc
+              </span>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ padding: "3px 10px", fontSize: 13 }}
+                onClick={() => setPreviewModalUrl(null)}
+              >
+                ✕ Đóng
+              </button>
+            </div>
+            <div style={{ padding: 12, overflow: "auto", display: "flex", justifyContent: "center", alignItems: "center" }}>
+              <img
+                src={previewModalUrl}
+                alt="Ảnh phóng to"
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "75vh",
+                  objectFit: "contain",
+                  borderRadius: 8,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

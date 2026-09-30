@@ -86,17 +86,20 @@ export default function PatientHome() {
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--brand-600)" }}>Xem đơn thuốc →</span>
         </Link>
 
-        <Link className="smart-tile" href="/patient/triage">
+        <Link className="smart-tile" href="/patient/triage" style={{ border: "1.5px solid #fed7aa", background: "linear-gradient(135deg, #fffbeb 0%, #ffffff 100%)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div className="tile-icon" style={{ background: "#fff7ed", color: "#ea580c" }}>
+            <div className="tile-icon" style={{ background: "#ffedd5", color: "#ea580c" }}>
               🚦
             </div>
             <div>
-              <div className="tile-title">Phân luồng TriageGuard</div>
-              <div className="tile-desc">Khai báo triệu chứng bất thường để phân luồng cấp cứu 3 mức</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <span className="tile-title">Phân luồng TriageGuard</span>
+                <span className="badge badge-warning" style={{ fontSize: 11, padding: "2px 7px" }}>Quy tắc hàng ngày</span>
+              </div>
+              <div className="tile-desc">Người bệnh/Người nhà nhập mô tả triệu chứng mỗi ngày để AI phân luồng</div>
             </div>
           </div>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#ea580c" }}>Kiểm tra triệu chứng →</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#ea580c" }}>Khai báo triệu chứng hôm nay →</span>
         </Link>
       </div>
 
