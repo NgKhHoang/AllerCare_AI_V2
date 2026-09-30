@@ -74,7 +74,19 @@ def load_patient_context(db: Session, user_id: str) -> PatientContext | None:
         # Bệnh mãn tính
         if profile.chronic_conditions:
             try:
-                ctx.conditions = json.loads(profile.chronic_conditions)
+                raw_conds = json.loads(profile.chronic_conditions)
+                parsed_conds: list[str] = []
+                if isinstance(raw_conds, list):
+                    for c in raw_conds:
+                        if isinstance(c, str):
+                            parsed_conds.append(c)
+                        elif isinstance(c, dict):
+                            name = c.get("name") or c.get("title") or c.get("label") or str(c)
+                            status = f" ({c.get('status')})" if c.get('status') else ""
+                            parsed_conds.append(f"{name}{status}")
+                elif isinstance(raw_conds, str):
+                    parsed_conds.append(raw_conds)
+                ctx.conditions = parsed_conds
             except Exception:
                 ctx.conditions = []
 

@@ -105,9 +105,11 @@ class PatientContext:
         if self.gender:
             parts.append(self.gender.lower())
         if self.conditions:
-            parts.append("Bệnh lý nền: " + ", ".join(self.conditions))
+            cond_str = ", ".join(c if isinstance(c, str) else (c.get("name") if isinstance(c, dict) else str(c)) for c in self.conditions)
+            parts.append("Bệnh lý nền: " + cond_str)
         if self.allergies:
-            parts.append("Dị ứng: " + ", ".join(self.allergies))
+            al_str = ", ".join(a if isinstance(a, str) else str(a) for a in self.allergies)
+            parts.append("Dị ứng: " + al_str)
         return "; ".join(parts) if parts else ""
 
     def describe_deep(self) -> str:
@@ -128,7 +130,8 @@ class PatientContext:
         if self.admission_note:
             lines.append(f"📝 Tóm tắt bệnh án / Ghi chú nhập viện: {self.admission_note}")
         if self.conditions:
-            lines.append(f"📋 Bệnh lý nền mạn tính: {', '.join(self.conditions)}")
+            cond_list_str = ", ".join(c if isinstance(c, str) else (c.get("name") if isinstance(c, dict) else str(c)) for c in self.conditions)
+            lines.append(f"📋 Bệnh lý nền mạn tính: {cond_list_str}")
 
         # Tiền sử dị ứng
         if self.allergy_details:
