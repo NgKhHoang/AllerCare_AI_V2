@@ -1,4 +1,4 @@
-"""Dịch vụ OCR đọc đơn thuốc và vỏ hộp thuốc bằng Gemini 1.5 Vision."""
+"""Dịch vụ OCR đọc đơn thuốc và vỏ hộp thuốc bằng Gemini 3.5 Vision."""
 import base64
 import json
 import logging
@@ -42,7 +42,7 @@ def extract_medications_from_image(image_base64: str, mime_type: str = "image/jp
     )
 
     if api_key:
-        models_to_try = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+        models_to_try = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
         payload = {
             "contents": [
                 {

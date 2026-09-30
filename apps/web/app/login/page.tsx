@@ -86,7 +86,7 @@ export default function LoginPage() {
           </p>
           <div style={{ marginTop: 8 }}>
             <span className="badge badge-info" style={{ fontSize: 11 }}>
-              ✨ Tích hợp Gemini 1.5 & 633 Tương tác thuốc Bộ Y tế
+              ✨ Tích hợp Gemini 3.5 & 633 Tương tác thuốc Bộ Y tế
             </span>
           </div>
         </div>
