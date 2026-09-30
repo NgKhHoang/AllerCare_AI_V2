@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 from functools import lru_cache
@@ -6,11 +7,60 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def _extract_key_from_env_vars() -> str | None:
+    for env_key in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "AI_API_KEY"):
+        val = os.environ.get(env_key, "").strip()
+        if val:
+            return val
+    return None
+
+
+def _extract_key_from_json_file(path: Path) -> str | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        for k in ("AI_API_KEY", "GEMINI_API_KEY"):
+            val = data.get(k, "").strip()
+            if val:
+                return val
+    except Exception:
+        pass
+    return None
+
+
+def _extract_key_from_dotenv_file(path: Path) -> str | None:
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith(("AI_API_KEY=", "GEMINI_API_KEY=")):
+                val = line.split("=", 1)[1].strip().strip('"').strip("'")
+                if val:
+                    return val
+    except Exception:
+        pass
+    return None
+
+
+def _find_key_in_candidate_files() -> str | None:
+    candidates = [
+        Path(".env"),
+        Path("/srv/.env"),
+        Path(__file__).resolve().parents[2] / ".env",
+        Path(__file__).resolve().parents[3] / "src" / "AppHost" / "appsettings.json",
+    ]
+    for cand in candidates:
+        if not cand.is_file():
+            continue
+        key = _extract_key_from_json_file(cand) if cand.suffix == ".json" else _extract_key_from_dotenv_file(cand)
+        if key:
+            return key
+    return None
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     DEMO_MODE: bool = True
-    DATABASE_URL: str = "postgresql+psycopg://allercare:allercare_demo@localhost:5432/allercare"
+    DATABASE_URL: str = "postgresql+psycopg://postgres:CHANGE_ME@localhost:5432/allercare"
     AUTH_SECRET: str = "change-me-to-a-long-random-string-in-production"
     AUTH_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
@@ -27,49 +77,11 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def check_ai_api_key_fallback(self) -> "Settings":
         if not self.AI_API_KEY:
-            for env_key in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "AI_API_KEY"):
-                val = os.environ.get(env_key, "").strip()
-                if val:
-                    self.AI_API_KEY = val
-                    break
-
-        if not self.AI_API_KEY:
-            # Dò tìm file .env hoặc appsettings.json
-            candidates = [
-                Path(".env"),
-                Path("/srv/.env"),
-                Path(__file__).resolve().parents[2] / ".env",
-                Path(__file__).resolve().parents[3] / "src" / "AppHost" / "appsettings.json",
-            ]
-            for cand in candidates:
-                if cand.is_file():
-                    try:
-                        text = cand.read_text(encoding="utf-8")
-                        if cand.suffix == ".json":
-                            import json
-                            data = json.loads(text)
-                            if data.get("AI_API_KEY"):
-                                self.AI_API_KEY = data["AI_API_KEY"].strip()
-                                break
-                            if data.get("GEMINI_API_KEY"):
-                                self.AI_API_KEY = data["GEMINI_API_KEY"].strip()
-                                break
-                        else:
-                            for line in text.splitlines():
-                                line = line.strip()
-                                if line.startswith(("AI_API_KEY=", "GEMINI_API_KEY=")):
-                                    val = line.split("=", 1)[1].strip().strip('"').strip("'")
-                                    if val:
-                                        self.AI_API_KEY = val
-                                        break
-                    except Exception:
-                        pass
-                if self.AI_API_KEY:
-                    break
+            self.AI_API_KEY = _extract_key_from_env_vars() or _find_key_in_candidate_files() or ""
         return self
 
     @property
-    def allowed_origins(self) -> list[str]:
+    def cors_origins(self) -> list[str]:
         origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
         defaults = [
             "https://allercare-ai-v2-web.onrender.com",
