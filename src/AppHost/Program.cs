@@ -34,8 +34,7 @@ var api = builder.AddDockerfile("allercare-api", "../../services/api")
     .WithEnvironment("AI_MODEL", builder.Configuration["AI_MODEL"] ?? "gemini-1.5-flash")
     .WithEnvironment("AI_API_KEY", builder.Configuration["AI_API_KEY"] ?? "")
     .WithEnvironment("ALLOWED_ORIGINS", "http://localhost:3000")
-    .WithEnvironment("DATA_DIR", "/srv/data")
-    .WithLifetime(ContainerLifetime.Persistent);
+    .WithEnvironment("DATA_DIR", "/srv/data");
 
 // 4. Next.js 14 Web Frontend (Clinical Glassmorphism UI + Voice & OCR Vision)
 var web = builder.AddNpmApp("allercare-web", "../../apps/web", "dev")
