@@ -7,7 +7,6 @@ import {
   AppShell,
   EmptyState,
   ErrorBox,
-  ResultBox,
   SuccessBox,
   VerifiedBadge,
 } from "../../components/ui";
@@ -357,6 +356,19 @@ function DoctorPatientSideNotePanel({
   );
 }
 
+function getCurrentQueryToken(fullText: string): string {
+  const trimmed = fullText;
+  const lastSep = Math.max(
+    trimmed.lastIndexOf(","),
+    trimmed.lastIndexOf("+"),
+    trimmed.lastIndexOf(";")
+  );
+  if (lastSep >= 0) {
+    return trimmed.substring(lastSep + 1).trim();
+  }
+  return trimmed.trim();
+}
+
 export default function DoctorPortal() {
   const router = useRouter();
   const [patients, setPatients] = useState<AssignedPatient[]>([]);
@@ -371,12 +383,12 @@ export default function DoctorPortal() {
   const [reaction, setReaction] = useState("");
   const [prevDrugs, setPrevDrugs] = useState("");
   const [suspect, setSuspect] = useState<SuspectRankingResult | null>(null);
-  const [guides, setGuides] = useState<Guide[]>([]);
+  const [, setGuides] = useState<Guide[]>([]);
   const [aiSummary, setAiSummary] = useState<AiSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
 
   // Thông tin lâm sàng & Chỉ số sinh hiệu của Bệnh nhân
   const [clinicalInfo, setClinicalInfo] = useState<ClinicalInfo | null>(null);
@@ -429,7 +441,7 @@ export default function DoctorPortal() {
   const [medsafeSuggestions, setMedsafeSuggestions] = useState<DrugSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(0);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [, setLoadingSuggestions] = useState(false);
   const [quickCheckResult, setQuickCheckResult] = useState<{
     status: string;
     status_label: string;
@@ -463,9 +475,9 @@ export default function DoctorPortal() {
     if (!q) return appointments;
     return appointments.filter(
       (a) =>
-        (a.scheduled_at && a.scheduled_at.toLowerCase().includes(q)) ||
-        (a.reason && a.reason.toLowerCase().includes(q)) ||
-        (a.status && a.status.toLowerCase().includes(q))
+        a.scheduled_at?.toLowerCase().includes(q) ||
+        a.reason?.toLowerCase().includes(q) ||
+        a.status?.toLowerCase().includes(q)
     );
   }, [appointments, appointmentSearch]);
 
@@ -474,9 +486,9 @@ export default function DoctorPortal() {
     if (!q) return patients;
     return patients.filter(
       (p) =>
-        (p.full_name && p.full_name.toLowerCase().includes(q)) ||
-        (p.dob && p.dob.toLowerCase().includes(q)) ||
-        (p.gender && p.gender.toLowerCase().includes(q))
+        p.full_name?.toLowerCase().includes(q) ||
+        p.dob?.toLowerCase().includes(q) ||
+        p.gender?.toLowerCase().includes(q)
     );
   }, [patients, patientSearch]);
 
@@ -615,7 +627,8 @@ export default function DoctorPortal() {
     const token = val.trim();
     if (token.length >= 1) {
       try {
-        const url = `/v1/safety-checks/suggest-drugs?q=${encodeURIComponent(token)}${selected ? `&profile_id=${selected.profile_id}` : ""}`;
+        const profileParam = selected ? `&profile_id=${selected.profile_id}` : "";
+        const url = `/v1/safety-checks/suggest-drugs?q=${encodeURIComponent(token)}${profileParam}`;
         const res = await api<DrugSuggestion[]>(url);
         setPrescribeSuggestions(res.slice(0, 8));
         setShowPrescribeSuggestions(true);
@@ -873,23 +886,11 @@ export default function DoctorPortal() {
   // Gợi ý thuốc thông minh theo Dược thư & AI Gemini (Hỗ trợ phím Tab hoàn tất tự động)
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  function getCurrentQueryToken(fullText: string): string {
-    const trimmed = fullText;
-    const lastSep = Math.max(
-      trimmed.lastIndexOf(","),
-      trimmed.lastIndexOf("+"),
-      trimmed.lastIndexOf(";")
-    );
-    if (lastSep >= 0) {
-      return trimmed.substring(lastSep + 1).trim();
-    }
-    return trimmed.trim();
-  }
-
   async function fetchDrugSuggestions(token: string) {
     try {
       setLoadingSuggestions(true);
-      const url = `/v1/safety-checks/suggest-drugs?q=${encodeURIComponent(token)}${selected ? `&profile_id=${selected.profile_id}` : ""}`;
+      const profileParam = selected ? `&profile_id=${selected.profile_id}` : "";
+      const url = `/v1/safety-checks/suggest-drugs?q=${encodeURIComponent(token)}${profileParam}`;
       const list = await api<DrugSuggestion[]>(url);
       setMedsafeSuggestions(list);
       setShowSuggestions(list.length > 0);
@@ -906,7 +907,7 @@ export default function DoctorPortal() {
     const token = getCurrentQueryToken(val);
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(() => {
-      fetchDrugSuggestions(token);
+      void fetchDrugSuggestions(token);
     }, 100);
   }
 
@@ -1061,7 +1062,7 @@ export default function DoctorPortal() {
   function openAiAssistant() {
     setShowAiModal(true);
     if (!aiSummary && !summaryLoading) {
-      loadAiSummary();
+      void loadAiSummary();
     }
   }
 
@@ -1189,7 +1190,7 @@ export default function DoctorPortal() {
                 )}
 
                 {/* Lịch hẹn chờ xác nhận */}
-                {filteredAppointments.filter((a) => a.status === "requested").length > 0 && (
+                {filteredAppointments.some((a) => a.status === "requested") && (
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: "0.8rem", fontWeight: 800, color: "#d97706", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
                       <span>⏳ Chờ xác nhận ({filteredAppointments.filter((a) => a.status === "requested").length})</span>
@@ -1230,7 +1231,7 @@ export default function DoctorPortal() {
                 )}
 
                 {/* Lịch hẹn đã xác nhận */}
-                {filteredAppointments.filter((a) => a.status === "confirmed").length > 0 && (
+                {filteredAppointments.some((a) => a.status === "confirmed") && (
                   <div>
                     <div style={{ fontSize: "0.8rem", fontWeight: 800, color: "#0284c7", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
                       <span>✅ Đã sẵn sàng ({filteredAppointments.filter((a) => a.status === "confirmed").length})</span>
@@ -1786,9 +1787,9 @@ export default function DoctorPortal() {
                   width: 44,
                   height: 44,
                   borderRadius: 12,
-                  backgroundColor: obs.filter((o) => o.status === "sent").length > 0 ? "#fffbeb" : "#f8fafc",
-                  border: obs.filter((o) => o.status === "sent").length > 0 ? "1px solid #fde68a" : "1px solid #e2e8f0",
-                  color: obs.filter((o) => o.status === "sent").length > 0 ? "#d97706" : "#94a3b8",
+                  backgroundColor: obs.some((o) => o.status === "sent") ? "#fffbeb" : "#f8fafc",
+                  border: obs.some((o) => o.status === "sent") ? "1px solid #fde68a" : "1px solid #e2e8f0",
+                  color: obs.some((o) => o.status === "sent") ? "#d97706" : "#94a3b8",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1803,7 +1804,7 @@ export default function DoctorPortal() {
                   className="s-num"
                   style={{
                     color:
-                      obs.filter((o) => o.status === "sent").length > 0 ? "#d97706" : "inherit",
+                      obs.some((o) => o.status === "sent") ? "#d97706" : "inherit",
                   }}
                 >
                   {obs.filter((o) => o.status === "sent").length}
@@ -2316,7 +2317,7 @@ export default function DoctorPortal() {
                     onChange={(e) => handleMedsafeChange(e.target.value)}
                     onKeyDown={handleMedsafeKeyDown}
                     onFocus={() => {
-                      fetchDrugSuggestions(getCurrentQueryToken(medsafeInput));
+                      void fetchDrugSuggestions(getCurrentQueryToken(medsafeInput));
                     }}
                     autoComplete="off"
                   />
