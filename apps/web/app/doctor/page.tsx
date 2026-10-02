@@ -1312,25 +1312,29 @@ export default function DoctorPortal() {
                   />
                 )}
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {filteredPatients.map((p) => (
                     <div
-                      className="list-row"
+                      className={`list-row ${p.unseen_updates > 0 ? "pulse-red-alert" : ""}`}
                       key={p.profile_id}
                       style={{
                         cursor: "pointer",
-                        borderRadius: 10,
-                        border: "1px solid #e2e8f0",
-                        padding: "12px 14px",
-                        transition: "all 0.15s ease",
-                        background: "#ffffff",
+                        borderRadius: 12,
+                        border: p.unseen_updates > 0 ? "1.5px solid #f87171" : "1px solid #e2e8f0",
+                        padding: "14px 18px",
+                        transition: "all 0.18s ease",
+                        background: p.unseen_updates > 0 ? "linear-gradient(135deg, #fff5f5 0%, #ffffff 100%)" : "#ffffff",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 12,
                       }}
                       onClick={() => openPatient(p)}
                     >
-                      <div className="list-main">
-                        <div className="list-title" style={{ fontWeight: 800, fontSize: "0.96rem", color: "#0f172a", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <div className="list-main" style={{ flex: 1 }}>
+                        <div className="list-title" style={{ fontWeight: 800, fontSize: "0.98rem", color: "#0f172a", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                           <span>{p.full_name}</span>
-                          {p.unseen_updates > 0 && (
+                          {p.unseen_updates > 0 ? (
                             <span
                               className={`badge badge-danger ${p.has_critical ? "pulse-badge-danger" : ""}`}
                               style={{
@@ -1340,27 +1344,73 @@ export default function DoctorPortal() {
                                 borderRadius: 9999,
                                 background: p.has_critical ? "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)" : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
                                 color: "#ffffff",
-                                boxShadow: "0 2px 6px rgba(220, 38, 38, 0.3)",
+                                boxShadow: "0 2px 6px rgba(220, 38, 38, 0.25)",
                               }}
-                              title={`${p.unseen_updates} cập nhật mới (triệu chứng mới, thuốc OTC tự dùng, nhật ký check-in)`}
+                              title={`${p.unseen_updates} cập nhật mới chưa xem`}
                             >
-                              {p.has_critical ? "🚨" : "🔔"} {p.unseen_updates}
+                              {p.has_critical ? "🚨" : "🔔"} +{p.unseen_updates} mới
+                            </span>
+                          ) : (
+                            <span
+                              className="badge badge-neutral"
+                              style={{ fontSize: "0.72rem", padding: "1px 6px", color: "#64748b", background: "#f1f5f9" }}
+                            >
+                              0 mới
                             </span>
                           )}
                         </div>
-                        <div className="list-sub" style={{ fontSize: "0.82rem", color: "#64748b", marginTop: 2 }}>
+                        <div className="list-sub" style={{ fontSize: "0.82rem", color: "#64748b", marginTop: 3 }}>
                           {p.gender ?? "—"} · {p.dob ?? "—"}
                         </div>
                       </div>
-                      {p.unseen_updates > 0 ? (
-                        <span className="badge badge-danger" style={{ fontSize: "0.78rem", fontWeight: 700 }}>
-                          {p.unseen_updates} biến động mới
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: "0.82rem", color: "#0284c7", fontWeight: 700 }}>
+
+                      {/* CỘT THÔNG BÁO SỐ LƯỢNG BIẾN ĐỘNG / CẬP NHẬT MỚI */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        {p.unseen_updates > 0 ? (
+                          <div style={{ textAlign: "right" }}>
+                            <span
+                              className={`badge badge-danger ${p.has_critical ? "pulse-badge-danger" : ""}`}
+                              style={{
+                                fontSize: "0.82rem",
+                                fontWeight: 800,
+                                padding: "4px 10px",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 5,
+                              }}
+                            >
+                              <span>{p.has_critical ? "🚨" : "🔔"}</span>
+                              <span>{p.unseen_updates} cập nhật mới</span>
+                            </span>
+                          </div>
+                        ) : (
+                          <span
+                            style={{
+                              fontSize: "0.78rem",
+                              color: "#94a3b8",
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              background: "#f8fafc",
+                            }}
+                          >
+                            0 cập nhật
+                          </span>
+                        )}
+
+                        <span
+                          style={{
+                            fontSize: "0.84rem",
+                            color: "#0284c7",
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
                           Xem hồ sơ →
                         </span>
-                      )}
+                      </div>
                     </div>
                   ))}
                 </div>
