@@ -986,9 +986,9 @@ function DiseaseNoteSidePanel({
           {/* Header thanh ghi chú */}
           <div
             style={{
-              padding: "12px 14px",
-              background: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)",
-              borderBottom: "1px solid #bae6fd",
+              padding: "14px 16px",
+              background: "linear-gradient(135deg, #fff1f2 0%, #fef2f2 100%)",
+              borderBottom: "1.5px solid #fecdd3",
               borderTopLeftRadius: 15,
               borderTopRightRadius: 15,
               display: "flex",
@@ -996,45 +996,33 @@ function DiseaseNoteSidePanel({
               alignItems: "center",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: "1.2rem", color: "#dc2626" }}>📝</span>
-              <strong style={{ fontSize: "0.92rem", color: "#0369a1", fontWeight: 800 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: "1.3rem" }}>✍️</span>
+              <strong style={{ fontSize: "1.15rem", color: "#dc2626", fontWeight: 800, letterSpacing: "-0.01em" }}>
                 Ghi chú:
               </strong>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsCollapsed(true)}
-              style={{
-                background: "transparent",
-                border: "none",
-                fontSize: "1rem",
-                cursor: "pointer",
-                color: "#64748b",
-                padding: "2px 6px",
-                borderRadius: 4,
-              }}
-              title="Thu nhỏ thanh ghi chú"
-            >
-              ✕
-            </button>
+            <span className="badge badge-danger" style={{ fontSize: "0.72rem", fontWeight: 700 }}>
+              Riêng từng bệnh
+            </span>
           </div>
 
           {/* Selector loại bệnh đang ghi chú */}
-          <div style={{ padding: "10px 14px 6px", background: "#ffffff" }}>
+          <div style={{ padding: "12px 14px 8px", background: "#ffffff" }}>
             <label
               htmlFor="condition-note-select"
               style={{
                 display: "block",
-                fontSize: "0.74rem",
-                fontWeight: 700,
-                color: "#64748b",
-                marginBottom: 4,
+                fontSize: "0.76rem",
+                fontWeight: 800,
+                color: "#475569",
+                marginBottom: 5,
                 textTransform: "uppercase",
+                letterSpacing: "0.4px",
               }}
             >
-              Bệnh đang ghi chú:
+              🩺 Bệnh đang ghi chú:
             </label>
             {conditions.length > 1 ? (
               <select
@@ -1043,13 +1031,13 @@ function DiseaseNoteSidePanel({
                 onChange={(e) => onSelectCondition(e.target.value)}
                 style={{
                   width: "100%",
-                  padding: "6px 10px",
+                  padding: "8px 10px",
                   borderRadius: 8,
-                  border: "1px solid #cbd5e1",
-                  fontSize: "0.82rem",
-                  fontWeight: 600,
-                  color: "#0f172a",
-                  background: "#f8fafc",
+                  border: "1.5px solid #7dd3fc",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  color: "#0369a1",
+                  background: "#f0f9ff",
                 }}
               >
                 {conditions.map((c, i) => (
@@ -1061,13 +1049,13 @@ function DiseaseNoteSidePanel({
             ) : (
               <div
                 style={{
-                  fontSize: "0.84rem",
-                  fontWeight: 700,
-                  color: "#0284c7",
+                  fontSize: "0.88rem",
+                  fontWeight: 800,
+                  color: "#0369a1",
                   background: "#f0f9ff",
-                  padding: "6px 10px",
+                  padding: "8px 12px",
                   borderRadius: 8,
-                  border: "1px solid #e0f2fe",
+                  border: "1.5px solid #bae6fd",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
@@ -1077,8 +1065,8 @@ function DiseaseNoteSidePanel({
                 🩺 {currentCondition.name}
               </div>
             )}
-            <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: "#94a3b8", fontStyle: "italic" }}>
-              * Ghi chú riêng cho loại bệnh này (không dùng chung).
+            <p style={{ margin: "6px 0 0", fontSize: "0.74rem", color: "#64748b", fontStyle: "italic" }}>
+              * Thanh ghi chú này thuộc loại bệnh riêng, không dùng chung cho tất cả loại bệnh.
             </p>
           </div>
 
@@ -1093,7 +1081,17 @@ function DiseaseNoteSidePanel({
               }}
               onBlur={handleSaveNote}
               placeholder="Ghi chú về Bệnh Nhân..."
-              rows={6}
+              rows={10}
+              style={{
+                width: "100%",
+                minHeight: "180px",
+                fontSize: "0.92rem",
+                lineHeight: "26px",
+                padding: "12px 14px",
+                borderRadius: 10,
+                border: "1px solid #cbd5e1",
+                fontFamily: "inherit",
+              }}
             />
           </div>
 
@@ -1289,55 +1287,61 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
       {error && <ErrorBox text={error} />}
       {success && <SuccessBox text={success} />}
 
-      {selectedConditionId && activeCondition ? (
-        <ConditionDetailView
-          data={data}
-          activeCondition={activeCondition}
-          isDoctor={isDoctor}
-          isEditing={isEditing}
-          setIsEditing={setIsEditing}
-          onBack={() => {
-            setSelectedConditionId(null);
-            setIsEditing(false);
-            setError("");
-            setSuccess("");
-          }}
-          onStartEdit={startEditCondition}
-          editForm={editForm}
-          setEditForm={setEditForm}
-          onSaveCondition={handleSaveCondition}
-          saving={saving}
-          takenMeds={takenMeds}
-          onToggleMed={toggleMedTaken}
-        />
-      ) : (
-        <ConditionListView
-          data={data}
-          isDoctor={isDoctor}
-          isAdding={isAdding}
-          setIsAdding={(v) => {
-            setIsAdding(v);
-            setError("");
-            setSuccess("");
-          }}
-          onSelectCondition={(id) => setSelectedConditionId(id)}
-          addForm={addForm}
-          setAddForm={setAddForm}
-          onAddCondition={handleAddCondition}
-          adding={adding}
-        />
-      )}
+      <div className={isDoctor && data.conditions && data.conditions.length > 0 ? "timeline-two-column-layout" : ""}>
+        <div className="timeline-left-column">
+          {selectedConditionId && activeCondition ? (
+            <ConditionDetailView
+              data={data}
+              activeCondition={activeCondition}
+              isDoctor={isDoctor}
+              isEditing={isEditing}
+              setIsEditing={setIsEditing}
+              onBack={() => {
+                setSelectedConditionId(null);
+                setIsEditing(false);
+                setError("");
+                setSuccess("");
+              }}
+              onStartEdit={startEditCondition}
+              editForm={editForm}
+              setEditForm={setEditForm}
+              onSaveCondition={handleSaveCondition}
+              saving={saving}
+              takenMeds={takenMeds}
+              onToggleMed={toggleMedTaken}
+            />
+          ) : (
+            <ConditionListView
+              data={data}
+              isDoctor={isDoctor}
+              isAdding={isAdding}
+              setIsAdding={(v) => {
+                setIsAdding(v);
+                setError("");
+                setSuccess("");
+              }}
+              onSelectCondition={(id) => setSelectedConditionId(id)}
+              addForm={addForm}
+              setAddForm={setAddForm}
+              onAddCondition={handleAddCondition}
+              adding={adding}
+            />
+          )}
+        </div>
 
-      {/* THANH GHI CHÚ BÁC SĨ BÊN PHẢI MÀN HÌNH (RIÊNG CHO TỪNG LOẠI BỆNH) */}
-      {isDoctor && data.conditions && data.conditions.length > 0 && (
-        <DiseaseNoteSidePanel
-          conditions={data.conditions}
-          selectedConditionId={selectedConditionId}
-          onSelectCondition={(id) => setSelectedConditionId(id)}
-          profileId={profileId}
-          onNoteUpdated={() => void loadTimeline(true)}
-        />
-      )}
+        {/* THANH GHI CHÚ BÁC SĨ BÊN PHẢI MÀN HÌNH (RIÊNG CHO TỪNG LOẠI BỆNH) */}
+        {isDoctor && data.conditions && data.conditions.length > 0 && (
+          <aside className="timeline-right-column">
+            <DiseaseNoteSidePanel
+              conditions={data.conditions}
+              selectedConditionId={selectedConditionId}
+              onSelectCondition={(id) => setSelectedConditionId(id)}
+              profileId={profileId}
+              onNoteUpdated={() => void loadTimeline(true)}
+            />
+          </aside>
+        )}
+      </div>
     </>
   );
 }

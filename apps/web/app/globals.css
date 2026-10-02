@@ -745,46 +745,55 @@ body {
   letter-spacing: 0.3px;
 }
 
+/* Two-Column Layout: Main Timeline on Left + Persistent Note Sidebar on Right */
+.timeline-two-column-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  align-items: start;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 1180px) {
+  .timeline-two-column-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 960px) {
+  .timeline-two-column-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.timeline-left-column {
+  min-width: 0;
+  width: 100%;
+}
+
+.timeline-right-column {
+  position: sticky;
+  top: 80px;
+  z-index: 25;
+}
+
 /* Sticky Right-Side Note Panel (Cây Ghi Chú Bác Sĩ Bên Phải Màn Hình) */
 .disease-note-dock {
-  position: fixed;
-  top: 90px;
-  right: 20px;
-  width: 320px;
-  max-height: calc(100vh - 120px);
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  width: 100%;
+  background: #ffffff;
   border: 1.5px solid #0284c7;
   border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(2, 132, 199, 0.15), 0 4px 12px rgba(0, 0, 0, 0.08);
-  z-index: 55;
+  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@media (max-width: 1360px) {
-  .disease-note-dock {
-    width: 290px;
-    right: 12px;
-  }
-}
-
-@media (max-width: 1024px) {
-  .disease-note-dock {
-    position: relative;
-    top: auto;
-    right: auto;
-    width: 100%;
-    max-height: none;
-    margin-bottom: 20px;
-    z-index: 10;
-  }
+  transition: all 0.25s ease;
+  overflow: hidden;
 }
 
 .note-paper-area {
-  background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   background-size: 100% 28px;
   line-height: 28px;
   font-size: 0.92rem;
