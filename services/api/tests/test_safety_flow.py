@@ -134,3 +134,33 @@ def test_note_in_result_required_by_status(client: TestClient):
     out = _run_check(client, d1, pid)
     assert "ngoài phạm vi" in out["result"]["note"].lower()
     assert "an toàn" not in out["result"]["note"].lower() or "không" in out["result"]["note"].lower()
+
+
+def test_quick_check_multiple_substances_and_patient_context(client: TestClient):
+    """Kiểm tra nhanh 2/3 chất: tương tác thuốc-thuốc và tương tác với tiền sử dị ứng người bệnh."""
+    d1 = login(client, "doctor1", "doctor123")
+    p1 = login(client, "patient1", "patient123")
+    pid = _profile_id(client, p1)
+
+    # 1) Kiểm tra 2 chất tương tác thuốc-thuốc (Warfarin + Aspirin)
+    r1 = client.post(
+        "/api/v1/safety-checks/quick-check",
+        json={"drugs": ["Warfarin", "Aspirin"]},
+        headers=auth_header(d1),
+    )
+    assert r1.status_code == 200
+    res1 = r1.json()
+    assert res1["status"] == "has_alerts"
+    assert any(a["rule_code"] == "DD001" or a["rule_type"] == "drug_drug" for a in res1["alerts"])
+
+    # 2) Kiểm tra chất có nguy cơ dị ứng với bệnh nhân (patient1 dị ứng Penicillin -> thử Amoxicillin)
+    r2 = client.post(
+        "/api/v1/safety-checks/quick-check",
+        json={"profile_id": pid, "drugs": ["Amoxicillin", "Paracetamol"]},
+        headers=auth_header(d1),
+    )
+    assert r2.status_code == 200
+    res2 = r2.json()
+    assert res2["status"] == "has_alerts"
+    assert any(a["rule_type"] == "drug_allergy" or "dị ứng" in a["message"].lower() for a in res2["alerts"])
+

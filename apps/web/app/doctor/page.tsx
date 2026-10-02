@@ -165,6 +165,30 @@ export default function DoctorPortal() {
   const [showAiModal, setShowAiModal] = useState(false);
   const [previewModalUrl, setPreviewModalUrl] = useState<string | null>(null);
 
+  // Interactive MedSafe Drug Interaction Checker (Nhập 2/3 loại chất & kiểm tra tiền sử bệnh)
+  const [medsafeInput, setMedsafeInput] = useState("");
+  const [medsafeChecking, setMedsafeChecking] = useState(false);
+  const [quickCheckResult, setQuickCheckResult] = useState<{
+    status: string;
+    status_label: string;
+    alerts: Array<{
+      rule_code: string;
+      rule_version: string;
+      rule_type: string;
+      severity: string;
+      message: string;
+      source: string;
+      detail?: Record<string, unknown>;
+    }>;
+    checked_drugs: string[];
+    patient_allergies: string[];
+    patient_conditions: string[];
+    out_of_scope: string[];
+    missing_data: string[];
+    note: string;
+  } | null>(null);
+
+
   useEffect(() => {
     const user = getUser();
     if (!getToken() || !user || (user.role !== "doctor" && user.role !== "pharmacist")) {
@@ -367,23 +391,74 @@ export default function DoctorPortal() {
     }
   }
 
-  async function runSafetyCheck() {
-    if (!selected) return;
-    setLoading(true);
+  async function runInteractiveMedSafeCheck(drugsToCheck?: string[]) {
+    setMedsafeChecking(true);
     setError("");
     setSuccess("");
     try {
-      const res = await api<CheckResult>("/v1/safety-checks", {
+      let drugList: string[] = [];
+      if (drugsToCheck && drugsToCheck.length > 0) {
+        drugList = drugsToCheck;
+      } else if (medsafeInput.trim()) {
+        drugList = medsafeInput
+          .split(/[,;\n+]/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+      } else if (meds.length > 0) {
+        drugList = meds.map((m) => m.raw_name);
+      }
+
+      if (drugList.length === 0) {
+        setError("Vui lòng nhập 2 hoặc 3 loại thuốc/hoạt chất hoặc chọn thuốc của bệnh nhân để kiểm tra tương tác.");
+        setMedsafeChecking(false);
+        return;
+      }
+
+      const res = await api<{
+        status: string;
+        status_label: string;
+        alerts: Array<{
+          rule_code: string;
+          rule_version: string;
+          rule_type: string;
+          severity: string;
+          message: string;
+          source: string;
+          detail?: Record<string, unknown>;
+        }>;
+        checked_drugs: string[];
+        patient_allergies: string[];
+        patient_conditions: string[];
+        out_of_scope: string[];
+        missing_data: string[];
+        note: string;
+      }>("/v1/safety-checks/quick-check", {
         method: "POST",
-        body: { profile_id: selected.profile_id },
+        body: {
+          profile_id: selected?.profile_id ?? null,
+          drugs: drugList,
+        },
       });
-      setCheck(res);
+
+      setQuickCheckResult(res);
+      setSuccess(`Đã kiểm tra tương tác an toàn cho: ${drugList.join(" + ")}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Kiểm tra thất bại");
+      setError(e instanceof Error ? e.message : "Kiểm tra tương tác thất bại");
     } finally {
-      setLoading(false);
+      setMedsafeChecking(false);
     }
   }
+
+  async function runSafetyCheck() {
+    if (!selected) return;
+    const currentMeds = meds.map((m) => m.raw_name);
+    if (currentMeds.length === 0 && !medsafeInput.trim()) {
+      setError("Hồ sơ hiện chưa có thuốc. Hãy nhập 2/3 loại chất vào ô bên dưới để kiểm tra tương tác!");
+      return;
+    }
+    await runInteractiveMedSafeCheck(currentMeds.length > 0 ? currentMeds : undefined);
+  }
+
 
   async function runSuspectRanking() {
     if (!selected || !reaction.trim()) return;
@@ -1328,53 +1403,243 @@ export default function DoctorPortal() {
             )}
           </div>
 
-          <div className="card">
-            <div className="card-title">
-              <span className="t-ico">🛡</span> Kiểm tra an toàn thuốc (MedSafe)
+          {/* MEDSAFE: KIỂM TRA AN TOÀN THUỐC & ĐỐI SOÁT TƯƠNG TÁC ĐA CHẤT / TIỀN SỬ BỆNH */}
+          <div className="card" style={{ border: "1.5px solid #0284c7", background: "linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%)", borderRadius: 16 }}>
+            <div className="card-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 24 }}>🛡️</span>
+                <div>
+                  <span style={{ fontWeight: 800, fontSize: "1.1rem", color: "#0369a1" }}>
+                    Kiểm tra An toàn Thuốc & Đối soát Tương tác (MedSafe)
+                  </span>
+                  <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 400 }}>
+                    Đối chiếu tương tác 2/3 loại chất với nhau và đối chiếu tiền sử dị ứng / bệnh nền của bệnh nhân
+                  </div>
+                </div>
+              </div>
+              <span className="badge badge-info" style={{ fontSize: "0.8rem", fontWeight: 700 }}>
+                Kho 633 tương tác Bộ Y tế
+              </span>
             </div>
-            <p className="muted" style={{ marginBottom: 12 }}>
-              Đối chiếu toàn bộ thuốc với quy tắc được duyệt. Kết quả không thay thế quyết định
-              chuyên môn của bạn.
-            </p>
-            <button className="btn btn-primary" onClick={runSafetyCheck} disabled={loading}>
-              {loading ? "Đang kiểm tra…" : "Chạy kiểm tra an toàn"}
-            </button>
-            <div className="mt16">
-              {check && (
-                <>
-                  <ResultBox result={check.result} />
-                  {check.result_status === "has_alerts" && (
-                    <div className="card" style={{ boxShadow: "none", border: "1px dashed var(--border-strong)" }}>
-                      <div className="card-title">
-                        <span className="t-ico">🖊</span> Ghi nhận quyết định của bác sĩ
+
+            {/* KHUNG NHẬP 2/3 LOẠI CHẤT/THUỐC ĐỂ TEST PHẢN ỨNG */}
+            <div style={{ background: "#ffffff", padding: "16px 18px", borderRadius: 14, border: "1px solid #bae6fd", marginTop: 12, marginBottom: 14, boxShadow: "0 2px 8px rgba(2, 132, 199, 0.06)" }}>
+              <label htmlFor="medsafe-substances" style={{ display: "block", fontWeight: 700, fontSize: "0.88rem", color: "#0f172a", marginBottom: 6 }}>
+                🧪 Nhập 2, 3 hoặc nhiều loại chất/thuốc cần kiểm tra phản ứng:
+              </label>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+                <input
+                  id="medsafe-substances"
+                  type="text"
+                  className="input"
+                  style={{ flex: 1, minWidth: 260, fontSize: "0.92rem", padding: "10px 14px", borderColor: "#0284c7" }}
+                  placeholder="VD: Warfarin, Aspirin hoặc Cefaclor, Augmentin, Paracetamol..."
+                  value={medsafeInput}
+                  onChange={(e) => setMedsafeInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void runInteractiveMedSafeCheck();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ padding: "10px 20px", fontWeight: 700, fontSize: "0.92rem", display: "flex", alignItems: "center", gap: 6 }}
+                  onClick={() => runInteractiveMedSafeCheck()}
+                  disabled={medsafeChecking}
+                >
+                  {medsafeChecking ? "⏳ Đang đối soát…" : "⚡ Kiểm tra Phản ứng & An toàn"}
+                </button>
+              </div>
+
+              {/* Các nút mẫu nhanh & nạp thuốc bệnh nhân */}
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, fontSize: "0.8rem", marginTop: 10 }}>
+                <span style={{ color: "#64748b", fontWeight: 600 }}>Thử nhanh mẫu:</span>
+                {meds.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: "0.78rem", padding: "3px 8px", borderColor: "#0284c7", color: "#0284c7" }}
+                    onClick={() => {
+                      const allM = meds.map((m) => m.raw_name).join(", ");
+                      setMedsafeInput(allM);
+                      void runInteractiveMedSafeCheck(meds.map((m) => m.raw_name));
+                    }}
+                  >
+                    📥 Nạp toàn bộ thuốc BN đang dùng ({meds.length})
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: "0.78rem", padding: "3px 8px" }}
+                  onClick={() => {
+                    setMedsafeInput("Warfarin, Aspirin");
+                    void runInteractiveMedSafeCheck(["Warfarin", "Aspirin"]);
+                  }}
+                >
+                  ⚡ Warfarin + Aspirin (Xuất huyết)
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: "0.78rem", padding: "3px 8px" }}
+                  onClick={() => {
+                    setMedsafeInput("Clarithromycin, Simvastatin");
+                    void runInteractiveMedSafeCheck(["Clarithromycin", "Simvastatin"]);
+                  }}
+                >
+                  ⚡ Clarithromycin + Simvastatin (Tiêu cơ vân)
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: "0.78rem", padding: "3px 8px" }}
+                  onClick={() => {
+                    setMedsafeInput("Panadol, Efferalgan");
+                    void runInteractiveMedSafeCheck(["Panadol", "Efferalgan"]);
+                  }}
+                >
+                  🔁 Panadol + Efferalgan (Trùng Paracetamol)
+                </button>
+                {allergies.length > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: "0.78rem", padding: "3px 8px", borderColor: "#f43f5e", color: "#e11d48" }}
+                    onClick={() => {
+                      const algTest = allergies.map((a) => a.substance).join(", ");
+                      setMedsafeInput(algTest);
+                      void runInteractiveMedSafeCheck(allergies.map((a) => a.substance));
+                    }}
+                  >
+                    🚫 Thử dị ứng: {allergies[0].substance}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* KẾT QUẢ KIỂM TRA MEDSAFE TỔNG THỂ */}
+            {(quickCheckResult || check) && (
+              <div style={{ marginTop: 16 }}>
+                {quickCheckResult && (
+                  <div style={{ marginBottom: 14 }}>
+                    {/* Header trạng thái */}
+                    <div
+                      style={{
+                        padding: "12px 16px",
+                        borderRadius: 12,
+                        backgroundColor:
+                          quickCheckResult.status === "has_alerts"
+                            ? "var(--status-danger-bg)"
+                            : quickCheckResult.status === "insufficient_data"
+                            ? "var(--status-warning-bg)"
+                            : "#f0fdf4",
+                        border:
+                          quickCheckResult.status === "has_alerts"
+                            ? "1.5px solid var(--status-danger-border)"
+                            : quickCheckResult.status === "insufficient_data"
+                            ? "1.5px solid var(--status-warning-border)"
+                            : "1.5px solid #bbf7d0",
+                        marginBottom: 12,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 8,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: "0.95rem", color: quickCheckResult.status === "has_alerts" ? "#dc2626" : quickCheckResult.status === "insufficient_data" ? "#b45309" : "#16a34a" }}>
+                          {quickCheckResult.status_label}
+                        </div>
+                        <div style={{ fontSize: "0.8rem", color: "#475569", marginTop: 2 }}>
+                          Các chất đã đối soát: <strong>{quickCheckResult.checked_drugs.join(" + ")}</strong>
+                        </div>
                       </div>
-                      <div className="field">
-                        <label className="label">Ghi chú (không bắt buộc)</label>
-                        <textarea
-                          className="textarea"
-                          rows={2}
-                          placeholder="VD: Ngừng Aspirin, chuyển sang thuốc khác, theo dõi INR…"
-                          value={reviewNote}
-                          onChange={(e) => setReviewNote(e.target.value)}
-                        />
-                      </div>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button className="btn btn-primary btn-sm" onClick={() => submitReview("action_taken")}>
-                          Đã xử lý
-                        </button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => submitReview("reviewed")}>
-                          Đã xem xét
-                        </button>
-                        <button className="btn btn-danger btn-sm" onClick={() => submitReview("dismissed_with_reason")}>
-                          Không áp dụng (ghi lý do)
-                        </button>
-                      </div>
+                      <span className="badge" style={{ fontSize: "0.78rem", background: "#ffffff" }}>
+                        {quickCheckResult.alerts.length} Cảnh báo phát hiện
+                      </span>
                     </div>
-                  )}
-                </>
-              )}
-            </div>
+
+                    {/* Danh sách các cảnh báo chi tiết theo loại */}
+                    {quickCheckResult.alerts.length > 0 ? (
+                      <div>
+                        {quickCheckResult.alerts.map((al, idx) => (
+                          <div
+                            key={`${al.rule_code}_${idx}`}
+                            style={{
+                              padding: "14px 16px",
+                              borderRadius: 12,
+                              background: al.severity === "high" ? "#fff1f2" : "#fffbeb",
+                              border: al.severity === "high" ? "1px solid #fecdd3" : "1px solid #fde68a",
+                              marginBottom: 10,
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                              <strong style={{ color: al.severity === "high" ? "#e11d48" : "#d97706", fontSize: "0.92rem", display: "flex", alignItems: "center", gap: 6 }}>
+                                <span>{al.severity === "high" ? "🚨 CẢNH BÁO NGUY HIỂM" : "⚠️ CẢNH BÁO THẬN TRỌNG"}</span>
+                                <span style={{ fontSize: "0.75rem", background: "rgba(0,0,0,0.06)", padding: "2px 6px", borderRadius: 4 }}>
+                                  {al.rule_type === "drug_drug" ? "Tương tác thuốc - thuốc" : al.rule_type === "drug_allergy" ? "Trùng tiền sử dị ứng" : al.rule_type === "drug_condition" ? "Chống chỉ định bệnh nền" : "Trùng lặp hoạt chất"}
+                                </span>
+                              </strong>
+                              <span className={al.severity === "high" ? "badge badge-danger" : "badge badge-warning"}>
+                                {al.rule_code}
+                              </span>
+                            </div>
+                            <p style={{ margin: "0 0 6px", fontSize: "0.9rem", color: "#0f172a", lineHeight: 1.5 }}>
+                              {al.message}
+                            </p>
+                            <div style={{ fontSize: "0.78rem", color: "#64748b", fontStyle: "italic" }}>
+                              📚 Nguồn căn cứ: {al.source}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ padding: "14px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, color: "#16a34a", fontSize: "0.88rem" }}>
+                        ✓ Không phát hiện tương tác đối kháng hay cảnh báo nguy hiểm giữa các chất vừa nhập với tiền sử của bệnh nhân trong phạm vi quy tắc đã duyệt.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Form ghi nhận quyết định của bác sĩ */}
+                {(quickCheckResult?.alerts?.length ?? 0) > 0 && (
+                  <div className="card" style={{ boxShadow: "none", border: "1px dashed var(--border-strong)", marginTop: 12 }}>
+                    <div className="card-title">
+                      <span className="t-ico">🖊</span> Ghi nhận quyết định lâm sàng của Bác sĩ
+                    </div>
+                    <div className="field">
+                      <label htmlFor="rev-note" className="label">Lời dặn / Phương án xử lý (nếu có tương tác)</label>
+                      <textarea
+                        id="rev-note"
+                        className="textarea"
+                        rows={2}
+                        placeholder="VD: Thay thế bằng thuốc khác, giảm liều, dặn người bệnh theo dõi triệu chứng xuất huyết/dị ứng..."
+                        value={reviewNote}
+                        onChange={(e) => setReviewNote(e.target.value)}
+                      />
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button className="btn btn-primary btn-sm" onClick={() => submitReview("action_taken")}>
+                        ✓ Đã xử lý (Thay đổi đơn / Điều chỉnh)
+                      </button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => submitReview("reviewed")}>
+                        👁️ Đã xem xét & Theo dõi
+                      </button>
+                      <button className="btn btn-danger btn-sm" onClick={() => submitReview("dismissed_with_reason")}>
+                        🚫 Không áp dụng (Ghi lý do)
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
 
           <div className="card">
             <div className="card-title">

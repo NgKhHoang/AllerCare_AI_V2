@@ -137,10 +137,45 @@ def run_safety_check(
     profile: PatientProfile,
     requested_by_user_id: str,
     medication_ids: list[str] | None = None,
+    custom_drugs: list[str] | None = None,
 ) -> SafetyCheck:
     """Chạy kiểm tra và lưu SafetyCheck + Alert. Trả về SafetyCheck vừa tạo."""
     meds = collect_medications(db, profile, medication_ids)
     engine_drugs = to_engine_drugs(db, meds)
+
+    # Bổ sung custom_drugs nếu bác sĩ truyền vào
+    if custom_drugs:
+        for cd in custom_drugs:
+            if not cd or not cd.strip():
+                continue
+            name = cd.strip()
+            resolved = resolve_drug(db, name)
+            if resolved and resolved.in_scope:
+                links = resolved.ingredients
+                engine_drugs.append(
+                    EngineDrug(
+                        raw_name=name,
+                        drug_id=resolved.id,
+                        name=resolved.name,
+                        ingredient_ids=[li.ingredient_id for li in links],
+                        ingredient_names=[li.ingredient.name for li in links],
+                        is_unverified=False,
+                        status="active",
+                    )
+                )
+            else:
+                engine_drugs.append(
+                    EngineDrug(
+                        raw_name=name,
+                        drug_id=f"adhoc_{name}",
+                        name=name,
+                        ingredient_ids=[f"ing_{name.lower()}"],
+                        ingredient_names=[name],
+                        is_unverified=False,
+                        status="active",
+                    )
+                )
+
     patient = build_patient_context(db, profile)
     rules = load_rules(db)
 
@@ -159,6 +194,7 @@ def run_safety_check(
             }
             for m in meds
         ],
+        "custom_drugs": custom_drugs or [],
         "patient": {
             "verified_allergies": patient.allergy_ingredient_names,
             "chronic_conditions": patient.chronic_conditions,
@@ -195,6 +231,7 @@ def run_safety_check(
             {
                 "rule_code": a.rule_code,
                 "rule_version": a.rule_version,
+                "rule_type": a.rule_type,
                 "severity": a.severity,
                 "message": a.message,
                 "source": f"{a.source_title} (v{a.source_version})",
@@ -215,11 +252,92 @@ def run_safety_check(
     return check
 
 
+def run_quick_check(
+    db: Session,
+    drugs: list[str],
+    profile: PatientProfile | None = None,
+) -> dict:
+    """Kiểm tra nhanh tương tác giữa 2, 3 hoặc nhiều loại chất/thuốc + tiền sử dị ứng/bệnh nền."""
+    engine_drugs: list[EngineDrug] = []
+    for d in drugs:
+        if not d or not d.strip():
+            continue
+        name = d.strip()
+        resolved = resolve_drug(db, name)
+        if resolved and resolved.in_scope:
+            links = resolved.ingredients
+            engine_drugs.append(
+                EngineDrug(
+                    raw_name=name,
+                    drug_id=resolved.id,
+                    name=resolved.name,
+                    ingredient_ids=[li.ingredient_id for li in links],
+                    ingredient_names=[li.ingredient.name for li in links],
+                    is_unverified=False,
+                    status="active",
+                )
+            )
+        else:
+            engine_drugs.append(
+                EngineDrug(
+                    raw_name=name,
+                    drug_id=f"adhoc_{name}",
+                    name=name,
+                    ingredient_ids=[f"ing_{name.lower()}"],
+                    ingredient_names=[name],
+                    is_unverified=False,
+                    status="active",
+                )
+            )
+
+    if profile:
+        patient = build_patient_context(db, profile)
+    else:
+        patient = PatientContext()
+
+    rules = load_rules(db)
+    result: EngineResult = run_checks(rules, engine_drugs, patient)
+
+    alerts_out = [
+        {
+            "rule_code": a.rule_code,
+            "rule_version": a.rule_version,
+            "rule_type": a.rule_type,
+            "severity": a.severity,
+            "message": a.message,
+            "source": f"{a.source_title} (v{a.source_version})",
+            "detail": a.detail,
+        }
+        for a in result.alerts
+    ]
+
+    status_labels = {
+        "has_alerts": "⚠️ CÓ CẢNH BÁO TƯƠNG TÁC / NGUY CƠ",
+        "no_alerts_in_scope": "✓ CHƯA PHÁT HIỆN TƯƠNG TÁC NGUY HIỂM",
+        "insufficient_data": "ℹ️ CHƯA ĐỦ DỮ LIỆU",
+        "out_of_scope": "NGOÀI PHẠM VI HỖ TRỢ",
+        "failed": "✕ KIỂM TRA THẤT BẠI",
+    }
+
+    return {
+        "status": result.status,
+        "status_label": status_labels.get(result.status, result.status),
+        "alerts": alerts_out,
+        "checked_drugs": [d.name or d.raw_name for d in engine_drugs],
+        "patient_allergies": patient.allergy_ingredient_names,
+        "patient_conditions": patient.chronic_conditions,
+        "out_of_scope": result.out_of_scope,
+        "missing_data": result.missing_data,
+        "note": _status_note(result.status),
+    }
+
+
 def _status_note(status: str) -> str:
     return {
         "has_alerts": "Có cảnh báo — xem căn cứ và ghi nhận quyết định.",
-        "no_alerts_in_scope": "Chưa phát hiện cảnh báo trong phạm vi đã kiểm tra — không đồng nghĩa an toàn.",
+        "no_alerts_in_scope": "Chưa phát hiện cảnh báo trong phạm vi đã kiểm tra — không đồng nghĩa an toàn tuyệt đối.",
         "insufficient_data": "Chưa đủ dữ liệu — cần bổ sung thông tin còn thiếu trước khi kết luận.",
         "out_of_scope": "Ngoài phạm vi hỗ trợ — thuốc/quy tắc chưa có trong danh mục.",
         "failed": "Kiểm tra thất bại — không hiển thị như đã kiểm tra thành công.",
     }.get(status, "")
+

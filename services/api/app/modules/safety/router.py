@@ -9,8 +9,8 @@ from app.db import get_db
 from app.modules.auth.deps import CurrentUser, audit_log, require_roles
 from app.modules.patients.models import PatientProfile
 from app.modules.safety.check_models import Alert, Review, SafetyCheck
-from app.modules.safety.schemas import ReviewIn, SafetyCheckIn, SafetyCheckOut
-from app.modules.safety.service import run_safety_check
+from app.modules.safety.schemas import QuickCheckIn, ReviewIn, SafetyCheckIn, SafetyCheckOut
+from app.modules.safety.service import run_quick_check, run_safety_check
 from app.modules.auth.deps import get_assigned_patient_profile
 
 router = APIRouter(prefix="/safety-checks", tags=["safety"])
@@ -23,10 +23,30 @@ def create_check(
     db: Session = Depends(get_db),
 ) -> SafetyCheckOut:
     profile = get_assigned_patient_profile(data.profile_id, user, db)
-    check = run_safety_check(db, profile, user.id, data.medication_ids)
+    check = run_safety_check(db, profile, user.id, data.medication_ids, data.custom_drugs)
     audit_log(db, user, "safety_check", "safety_check", check.id, f"status={check.result_status}")
     db.commit()
     return _to_out(check)
+
+
+@router.post("/quick-check", summary="Kiểm tra tương tác nhanh giữa 2/3 loại chất/thuốc và tiền sử bệnh")
+def quick_check(
+    data: QuickCheckIn,
+    user: CurrentUser = Depends(require_roles("doctor", "pharmacist", "nurse")),
+    db: Session = Depends(get_db),
+) -> dict:
+    profile = None
+    if data.profile_id:
+        try:
+            profile = get_assigned_patient_profile(data.profile_id, user, db)
+        except Exception:
+            profile = db.get(PatientProfile, data.profile_id)
+
+    res = run_quick_check(db, data.drugs, profile)
+    audit_log(db, user, "quick_safety_check", "safety_check", data.profile_id or "adhoc", f"status={res['status']}")
+    db.commit()
+    return res
+
 
 
 @router.get("/{check_id}", summary="Xem kết quả kiểm tra (kèm nguồn, phạm vi)")
