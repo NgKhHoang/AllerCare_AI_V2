@@ -48,7 +48,7 @@ def _to_out(r: SafetyRule) -> RuleOut:
 
 @router.get("", summary="Danh sách quy tắc an toàn")
 def list_rules(
-    user: CurrentUser = Depends(require_roles("pharmacist", "doctor", "admin", "nurse", "patient", "caregiver", "leader")),
+    user: CurrentUser = Depends(require_roles("pharmacist", "doctor", "admin", "nurse", "leader")),
     db: Session = Depends(get_db),
 ) -> list[RuleOut]:
     rows = db.query(SafetyRule).order_by(SafetyRule.code).all()

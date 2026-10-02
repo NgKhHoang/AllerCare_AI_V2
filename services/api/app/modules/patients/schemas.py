@@ -100,6 +100,9 @@ class TreatmentUpdateIn(BaseModel):
     admission_note: str | None = Field(default=None, max_length=1000, description="Ghi chú điều trị / lời dặn bác sĩ")
     new_condition_name: str | None = Field(default=None, max_length=300, description="Tên bệnh mới muốn thêm")
     chronic_conditions: str | list[dict | str] | None = None
+    action: str | None = Field(default=None, description="update | resolve | delete")
+    delete_reason: str | None = Field(default=None, max_length=500, description="Lý do xóa bệnh (bắt buộc khi xóa)")
+
 
 
 class ProfileOut(BaseModel):

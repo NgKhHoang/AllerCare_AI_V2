@@ -173,6 +173,53 @@ def update_treatment(
 
     profile = get_patient_profile_for_access(profile_id, user, db)
 
+    # Xử lý các action đặc biệt: resolve hoặc delete
+    if data.action == "delete" and data.condition_id:
+        deleted_name = ""
+        if data.condition_id == "primary":
+            deleted_name = profile.diagnosis or "Bệnh chính"
+            profile.diagnosis = None
+            profile.treatment_status = "completed"
+        elif profile.chronic_conditions:
+            try:
+                parsed = json.loads(profile.chronic_conditions)
+                if isinstance(parsed, list):
+                    new_list = []
+                    for c in parsed:
+                        if isinstance(c, dict) and c.get("id") == data.condition_id:
+                            deleted_name = c.get("name", "Bệnh")
+                        else:
+                            new_list.append(c)
+                    profile.chronic_conditions = json.dumps(new_list, ensure_ascii=False)
+            except Exception:
+                pass
+        audit_log(db, user, "delete_condition", "patient_profile", profile.id, f"deleted={deleted_name}, reason={data.delete_reason or 'No reason provided'}")
+        db.commit()
+        db.refresh(profile)
+        return ProfileOut.model_validate(profile)
+
+    if data.action == "resolve" and data.condition_id:
+        resolved_name = ""
+        if data.condition_id == "primary":
+            profile.treatment_status = "completed"
+            resolved_name = profile.diagnosis or "Bệnh chính"
+        elif profile.chronic_conditions:
+            try:
+                parsed = json.loads(profile.chronic_conditions)
+                if isinstance(parsed, list):
+                    for c in parsed:
+                        if isinstance(c, dict) and c.get("id") == data.condition_id:
+                            c["status"] = "completed"
+                            resolved_name = c.get("name", "Bệnh")
+                            break
+                    profile.chronic_conditions = json.dumps(parsed, ensure_ascii=False)
+            except Exception:
+                pass
+        audit_log(db, user, "resolve_condition", "patient_profile", profile.id, f"resolved={resolved_name}")
+        db.commit()
+        db.refresh(profile)
+        return ProfileOut.model_validate(profile)
+
     # Thêm loại bệnh mới nếu có new_condition_name
     if data.new_condition_name and data.new_condition_name.strip():
         new_name = data.new_condition_name.strip()
@@ -266,6 +313,7 @@ def update_treatment(
     db.commit()
     db.refresh(profile)
     return ProfileOut.model_validate(profile)
+
 
 
 @router.get("/{profile_id}/timeline", summary="Lấy dữ liệu Cây timeline ngang quá trình điều trị")

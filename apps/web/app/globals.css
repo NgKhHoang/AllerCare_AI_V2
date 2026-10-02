@@ -1194,6 +1194,179 @@ body {
   gap: 5px;
 }
 
+/* ==========================================================================
+   BẢN CẬP NHẬT 10.3: ALARM, PULSING RED ALERT, QUICK CHIPS & SMART PRESCRIBE
+   ========================================================================== */
 
+/* 1. Pulsing Red Alert cho Nhắc nhở uống thuốc & Check-in hàng ngày */
+@keyframes pulse-red-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.45);
+    border-color: #ef4444;
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(220, 38, 38, 0.08);
+    border-color: #dc2626;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.45);
+    border-color: #ef4444;
+  }
+}
 
+.pulse-red-alert {
+  animation: pulse-red-glow 2s infinite ease-in-out !important;
+}
 
+@keyframes pulse-badge-anim {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.pulse-badge-danger {
+  animation: pulse-badge-anim 1.4s infinite ease-in-out;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 2. Quick-Select Chips cho Check-in Sức khỏe hàng ngày */
+.quick-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.quick-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1.5px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.quick-chip-btn:hover {
+  border-color: #0284c7;
+  background-color: #f0f9ff;
+  color: #0369a1;
+  transform: translateY(-1px);
+}
+
+.quick-chip-btn.selected {
+  border-color: #0284c7;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+}
+
+.quick-chip-btn.selected-danger {
+  border-color: #dc2626;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3);
+}
+
+.quick-chip-btn.selected-warning {
+  border-color: #d97706;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.3);
+}
+
+.quick-chip-btn.selected-success {
+  border-color: #16a34a;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3);
+}
+
+/* 3. Autocomplete Dropdown List cho Bác Sĩ kê thuốc */
+.autocomplete-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.autocomplete-dropdown-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  max-height: 280px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1.5px solid #0284c7;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.15);
+  padding: 6px;
+}
+
+.autocomplete-item-row {
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.autocomplete-item-row:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-item-row:hover,
+.autocomplete-item-row.focused {
+  background-color: #f0f9ff;
+}
+
+.autocomplete-item-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #0f172a;
+}
+
+.autocomplete-item-sub {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* 4. Real-time AI Safety Check Card trong Form Kê Thuốc */
+.ai-prescribe-safety-card {
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin: 12px 0;
+  border: 1.5px solid;
+  transition: all 0.2s ease;
+}
+
+.ai-prescribe-safety-card.danger {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.ai-prescribe-safety-card.warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.ai-prescribe-safety-card.safe {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}

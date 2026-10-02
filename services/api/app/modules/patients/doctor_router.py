@@ -48,6 +48,8 @@ class PrescribeIn(BaseModel):
     timing: str | None = Field(default=None, description="Thời điểm dùng (sau ăn, trước ngủ...)")
     start_date: str | None = Field(default=None, description="Ngày bắt đầu dùng")
     instructions: str | None = Field(default=None, description="Lời dặn bác sĩ")
+    condition_id: str | None = Field(default=None, description="Mã loại bệnh")
+    condition_name: str | None = Field(default=None, description="Tên loại bệnh")
 
 
 @router.get("/assigned", summary="Danh sách người bệnh được phân công cho bác sĩ hiện tại")
@@ -76,7 +78,7 @@ def list_assigned_patients(
     )
     result = []
     for profile, account in rows:
-        unseen = (
+        unseen_obs = (
             db.query(ClinicalObservation)
             .filter(
                 ClinicalObservation.patient_profile_id == profile.id,
@@ -84,6 +86,32 @@ def list_assigned_patients(
             )
             .count()
         )
+        unseen_meds = (
+            db.query(MedicationRecord)
+            .filter(
+                MedicationRecord.patient_profile_id == profile.id,
+                MedicationRecord.verification == "unverified",
+            )
+            .count()
+        )
+        unseen_triage = (
+            db.query(TriageAssessment)
+            .filter(
+                TriageAssessment.patient_profile_id == profile.id,
+                TriageAssessment.status == "pending",
+            )
+            .count()
+        )
+        has_critical = (
+            db.query(TriageAssessment)
+            .filter(
+                TriageAssessment.patient_profile_id == profile.id,
+                TriageAssessment.status == "pending",
+                TriageAssessment.level == "red",
+            )
+            .count() > 0
+        )
+        total_unseen = unseen_obs + unseen_meds + unseen_triage
         result.append(
             {
                 "profile_id": profile.id,
@@ -91,10 +119,33 @@ def list_assigned_patients(
                 "dob": profile.dob,
                 "gender": profile.gender,
                 "username": account.username,
-                "unseen_updates": unseen,
+                "unseen_updates": total_unseen,
+                "unseen_obs": unseen_obs,
+                "unseen_meds": unseen_meds,
+                "unseen_triage": unseen_triage,
+                "has_critical": has_critical,
             }
         )
     return result
+
+
+@router.post("/{profile_id}/mark-all-seen", summary="Đánh dấu đã xem toàn bộ cập nhật mới của bệnh nhân")
+def mark_all_seen(
+    profile_id: str,
+    user: CurrentUser = Depends(require_roles("doctor")),
+    db: Session = Depends(get_db),
+) -> dict:
+    profile = get_assigned_patient_profile(profile_id, user, db)
+    db.query(ClinicalObservation).filter(
+        ClinicalObservation.patient_profile_id == profile.id,
+        ClinicalObservation.status == "sent",
+    ).update({"status": "seen"})
+    db.query(TriageAssessment).filter(
+        TriageAssessment.patient_profile_id == profile.id,
+        TriageAssessment.status == "pending",
+    ).update({"status": "confirmed"})
+    db.commit()
+    return {"success": True, "profile_id": profile.id}
 
 
 @router.post("/{profile_id}/prescribe", summary="Bác sĩ kê đơn thuốc cho người bệnh")
@@ -107,6 +158,7 @@ def prescribe_medication(
     profile = get_assigned_patient_profile(profile_id, user, db)
 
     prescriber_name = f"BS. {user.full_name or user.username}"
+    source_lbl = f"Bệnh viện kê — {data.condition_name}" if data.condition_name else f"Bệnh viện kê ({prescriber_name})"
     med = MedicationRecord(
         id=new_id(),
         patient_profile_id=profile.id,
@@ -122,7 +174,8 @@ def prescribe_medication(
         status="active",
         verification="verified",
         reported_by_user_id=user.id,
-        source_label=f"Bệnh viện kê ({prescriber_name})",
+        source_label=source_lbl,
+
     )
     db.add(med)
 
@@ -296,8 +349,8 @@ def ai_summary(
     obs = (
         db.query(ClinicalObservation)
         .filter(ClinicalObservation.patient_profile_id == profile.id)
-        .order_by(ClinicalObservation.occurred_at.desc())
-        .limit(30)
+        .order_by(ClinicalObservation.created_at.desc(), ClinicalObservation.occurred_at.desc())
+        .limit(60)
         .all()
     )
     meds = (

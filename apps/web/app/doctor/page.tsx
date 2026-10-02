@@ -19,6 +19,10 @@ interface AssignedPatient {
   dob: string | null;
   gender: string | null;
   unseen_updates: number;
+  has_critical?: boolean;
+  unseen_obs?: number;
+  unseen_meds?: number;
+  unseen_triage?: number;
 }
 interface ClinicalInfo {
   profile_id: string;
@@ -389,13 +393,22 @@ export default function DoctorPortal() {
   });
   const [savingClinical, setSavingClinical] = useState(false);
 
-  // Kê đơn thuốc mới
+  // Kê đơn thuốc mới (10.3)
   const [prescribeName, setPrescribeName] = useState("");
   const [prescribeDose, setPrescribeDose] = useState("1 viên/lần");
   const [prescribeFreq, setPrescribeFreq] = useState("1 lần/ngày");
   const [prescribeRoute, setPrescribeRoute] = useState("uống");
   const [prescribeTiming, setPrescribeTiming] = useState("Sau ăn 30 phút");
   const [prescribeInstructions, setPrescribeInstructions] = useState("");
+  const [prescribeConditionName, setPrescribeConditionName] = useState("");
+  const [patientConditions, setPatientConditions] = useState<Array<{ id: string; name: string; status?: string }>>([]);
+  const [prescribeSuggestions, setPrescribeSuggestions] = useState<DrugSuggestion[]>([]);
+  const [showPrescribeSuggestions, setShowPrescribeSuggestions] = useState(false);
+  const [prescribeSafetyCheck, setPrescribeSafetyCheck] = useState<{
+    status: "idle" | "checking" | "safe" | "warning" | "danger";
+    message: string;
+    interactions?: any[];
+  }>({ status: "idle", message: "" });
   const [prescribing, setPrescribing] = useState(false);
   const [showPrescribeModal, setShowPrescribeModal] = useState(false);
 
@@ -523,6 +536,15 @@ export default function DoctorPortal() {
           });
         })
         .catch(() => {});
+
+      // Tải các loại bệnh điều trị từ timeline
+      api<any>(`/v1/patients/${p.profile_id}/timeline`)
+        .then((tRes) => {
+          if (tRes && Array.isArray(tRes.conditions)) {
+            setPatientConditions(tRes.conditions);
+          }
+        })
+        .catch(() => {});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Lỗi tải hồ sơ");
     }
@@ -588,6 +610,90 @@ export default function DoctorPortal() {
     }
   }
 
+  async function handlePrescribeNameInput(val: string) {
+    setPrescribeName(val);
+    const token = val.trim();
+    if (token.length >= 1) {
+      try {
+        const url = `/v1/safety-checks/suggest-drugs?q=${encodeURIComponent(token)}${selected ? `&profile_id=${selected.profile_id}` : ""}`;
+        const res = await api<DrugSuggestion[]>(url);
+        setPrescribeSuggestions(res.slice(0, 8));
+        setShowPrescribeSuggestions(true);
+      } catch {
+        setPrescribeSuggestions([]);
+      }
+      void runPrescribeSafetyCheck(val);
+    } else {
+      setShowPrescribeSuggestions(false);
+      setPrescribeSafetyCheck({ status: "idle", message: "" });
+    }
+  }
+
+  async function runPrescribeSafetyCheck(drugName: string) {
+    if (!selected || !drugName.trim()) {
+      setPrescribeSafetyCheck({ status: "idle", message: "" });
+      return;
+    }
+    try {
+      setPrescribeSafetyCheck({ status: "checking", message: "AI Gemini đang phân tích tương tác thuốc & tiền sử dị ứng..." });
+      const res = await api<any>("/v1/safety-checks/quick-check", {
+        method: "POST",
+        body: {
+          drugs: [drugName.trim()],
+          profile_id: selected.profile_id,
+        },
+      });
+      if (res.status === "danger" || res.status === "critical") {
+        setPrescribeSafetyCheck({
+          status: "danger",
+          message: `🔴 CẢNH BÁO NGUY HIỂM / CHỐNG CHỈ ĐỊNH: ${res.summary || "Có tương tác đối kháng nghiêm trọng hoặc trùng tiền sử dị ứng"}`,
+          interactions: res.interactions || [],
+        });
+      } else if (res.status === "warning" || (res.interactions && res.interactions.length > 0)) {
+        setPrescribeSafetyCheck({
+          status: "warning",
+          message: `🟡 THẬN TRỌNG: ${res.summary || "Cần lưu ý theo dõi hoặc giãn cách thời điểm dùng"}`,
+          interactions: res.interactions || [],
+        });
+      } else {
+        setPrescribeSafetyCheck({
+          status: "safe",
+          message: "🟢 AN TOÀN: Không phát hiện tương tác đối kháng với thuốc hiện tại và bệnh lý người bệnh.",
+        });
+      }
+    } catch {
+      setPrescribeSafetyCheck({ status: "idle", message: "" });
+    }
+  }
+
+  function selectPrescribeDrug(item: DrugSuggestion) {
+    setPrescribeName(item.name);
+    if (item.strength) setPrescribeDose(`1 viên (${item.strength})`);
+    if (item.form?.toLowerCase().includes("bôi")) {
+      setPrescribeRoute("bôi ngoài da");
+      setPrescribeTiming("Sáng & Tối");
+    } else if (item.form?.toLowerCase().includes("tiêm")) {
+      setPrescribeRoute("tiêm bắp");
+    } else {
+      setPrescribeRoute("uống");
+    }
+    setShowPrescribeSuggestions(false);
+    void runPrescribeSafetyCheck(item.name);
+  }
+
+  async function handleMarkAllSeen() {
+    if (!selected) return;
+    try {
+      await api(`/v1/patients/${selected.profile_id}/mark-all-seen`, { method: "POST" });
+      setSuccess("Đã đánh dấu xem tất cả cập nhật mới của bệnh nhân!");
+      setSelected((prev) => (prev ? { ...prev, unseen_updates: 0 } : null));
+      const res = await api<AssignedPatient[]>("/v1/patients/assigned");
+      setPatients(res);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Lỗi khi đánh dấu đã xem");
+    }
+  }
+
   async function handlePrescribe(e: React.FormEvent) {
     e.preventDefault();
     if (!selected || !prescribeName.trim()) return;
@@ -604,10 +710,13 @@ export default function DoctorPortal() {
           route: prescribeRoute,
           timing: prescribeTiming.trim() || null,
           instructions: prescribeInstructions.trim() || null,
+          condition_name: prescribeConditionName.trim() || null,
         },
       });
       setSuccess(`Đã kê đơn thành công thuốc "${prescribeName.trim()}" cho ${selected.full_name}. Người bệnh đã nhận được thông báo!`);
       setPrescribeName("");
+      setPrescribeConditionName("");
+      setPrescribeSafetyCheck({ status: "idle", message: "" });
       setShowPrescribeModal(false);
       await openPatient(selected);
     } catch (e) {
@@ -1219,16 +1328,33 @@ export default function DoctorPortal() {
                       onClick={() => openPatient(p)}
                     >
                       <div className="list-main">
-                        <div className="list-title" style={{ fontWeight: 800, fontSize: "0.96rem", color: "#0f172a" }}>
-                          {p.full_name}
+                        <div className="list-title" style={{ fontWeight: 800, fontSize: "0.96rem", color: "#0f172a", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          <span>{p.full_name}</span>
+                          {p.unseen_updates > 0 && (
+                            <span
+                              className={`badge badge-danger ${p.has_critical ? "pulse-badge-danger" : ""}`}
+                              style={{
+                                fontSize: "0.78rem",
+                                fontWeight: 800,
+                                padding: "2px 8px",
+                                borderRadius: 9999,
+                                background: p.has_critical ? "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)" : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                                color: "#ffffff",
+                                boxShadow: "0 2px 6px rgba(220, 38, 38, 0.3)",
+                              }}
+                              title={`${p.unseen_updates} cập nhật mới (triệu chứng mới, thuốc OTC tự dùng, nhật ký check-in)`}
+                            >
+                              {p.has_critical ? "🚨" : "🔔"} {p.unseen_updates}
+                            </span>
+                          )}
                         </div>
                         <div className="list-sub" style={{ fontSize: "0.82rem", color: "#64748b", marginTop: 2 }}>
                           {p.gender ?? "—"} · {p.dob ?? "—"}
                         </div>
                       </div>
                       {p.unseen_updates > 0 ? (
-                        <span className="badge badge-info" style={{ fontSize: "0.78rem", fontWeight: 700 }}>
-                          {p.unseen_updates} cập nhật mới
+                        <span className="badge badge-danger" style={{ fontSize: "0.78rem", fontWeight: 700 }}>
+                          {p.unseen_updates} biến động mới
                         </span>
                       ) : (
                         <span style={{ fontSize: "0.82rem", color: "#0284c7", fontWeight: 700 }}>
@@ -1262,26 +1388,39 @@ export default function DoctorPortal() {
                 </div>
               </div>
 
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => {
-                  setClinicalForm({
-                    full_name: clinicalInfo?.full_name || selected.full_name || "",
-                    dob: clinicalInfo?.dob || selected.dob || "",
-                    gender: clinicalInfo?.gender || selected.gender || "Nam",
-                    weight: clinicalInfo?.weight || "",
-                    heart_rate: clinicalInfo?.heart_rate || "",
-                    blood_pressure: clinicalInfo?.blood_pressure || "",
-                    spo2: clinicalInfo?.spo2 || "",
-                    clinical_note: clinicalInfo?.clinical_note || "",
-                  });
-                  setShowClinicalModal(true);
-                }}
-                style={{ fontSize: "0.84rem", fontWeight: 700, borderColor: "#0284c7", color: "#0284c7" }}
-              >
-                ✏️ Nhập / Sửa thông tin lâm sàng & sinh hiệu
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                {selected.unseen_updates > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={handleMarkAllSeen}
+                    style={{ fontSize: "0.84rem", fontWeight: 700, borderColor: "#22c55e", color: "#16a34a", background: "#f0fdf4" }}
+                    title="Đánh dấu đã xem toàn bộ cập nhật mới từ bệnh nhân này"
+                  >
+                    ✓ Đã xem toàn bộ ({selected.unseen_updates} biến động mới)
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    setClinicalForm({
+                      full_name: clinicalInfo?.full_name || selected.full_name || "",
+                      dob: clinicalInfo?.dob || selected.dob || "",
+                      gender: clinicalInfo?.gender || selected.gender || "Nam",
+                      weight: clinicalInfo?.weight || "",
+                      heart_rate: clinicalInfo?.heart_rate || "",
+                      blood_pressure: clinicalInfo?.blood_pressure || "",
+                      spo2: clinicalInfo?.spo2 || "",
+                      clinical_note: clinicalInfo?.clinical_note || "",
+                    });
+                    setShowClinicalModal(true);
+                  }}
+                  style={{ fontSize: "0.84rem", fontWeight: 700, borderColor: "#0284c7", color: "#0284c7" }}
+                >
+                  ✏️ Nhập / Sửa thông tin lâm sàng & sinh hiệu
+                </button>
+              </div>
             </div>
 
             {/* Lưới các chỉ số sinh hiệu (Vitals) */}
@@ -1648,16 +1787,96 @@ export default function DoctorPortal() {
                 </div>
 
                 <form onSubmit={handlePrescribe}>
+                  {/* CHỌN LOẠI BỆNH ĐIỀU TRỊ */}
                   <div className="field">
-                    <label className="label">Tên thuốc & hàm lượng (*)</label>
+                    <label className="label">Kê đơn cho loại bệnh điều trị (*)</label>
+                    <select
+                      className="input"
+                      value={prescribeConditionName}
+                      onChange={(e) => setPrescribeConditionName(e.target.value)}
+                    >
+                      <option value="">-- Phác đồ điều trị chung / Toàn thân --</option>
+                      {patientConditions.map((c) => (
+                        <option key={c.id} value={c.name}>
+                          🩺 {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* AUTOCOMPLETE TÊN THUỐC & HOẠT CHẤT (10.3) */}
+                  <div className="field autocomplete-wrapper">
+                    <label className="label">
+                      Tên thuốc & hàm lượng (*) — <span style={{ color: "#0284c7", fontWeight: 600 }}>Gõ 1 chữ cái đầu để gợi ý thông minh</span>
+                    </label>
                     <input
                       className="input"
-                      placeholder="VD: Fexofenadine 180mg, Medrol 16mg..."
+                      placeholder="VD: gõ 'c' -> Cetirizine, 'f' -> Fexofenadine, 'm' -> Medrol..."
                       value={prescribeName}
-                      onChange={(e) => setPrescribeName(e.target.value)}
+                      onChange={(e) => handlePrescribeNameInput(e.target.value)}
                       required
+                      autoComplete="off"
                     />
+                    {showPrescribeSuggestions && prescribeSuggestions.length > 0 && (
+                      <div className="autocomplete-dropdown-list">
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>
+                          🔍 GỢI Ý THUỐC & HOẠT CHẤT (DƯỢC THƯ BỘ Y TẾ & AI)
+                        </div>
+                        {prescribeSuggestions.map((item) => (
+                          <div
+                            key={item.name}
+                            className="autocomplete-item-row"
+                            onClick={() => selectPrescribeDrug(item)}
+                          >
+                            <div>
+                              <div className="autocomplete-item-title">
+                                {item.is_allergy ? "⚠️ " : "💊 "}
+                                {item.name}
+                              </div>
+                              <div className="autocomplete-item-sub">
+                                {item.category || item.form || "Thuốc điều trị"} {item.strength ? `· ${item.strength}` : ""}
+                              </div>
+                            </div>
+                            {item.ai_hint && (
+                              <span className="badge badge-warning" style={{ fontSize: 10 }}>
+                                {item.ai_hint.slice(0, 32)}...
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
+
+                  {/* REAL-TIME AI SAFETY GUARDRAILS CARD (10.3) */}
+                  {prescribeSafetyCheck.status !== "idle" && (
+                    <div
+                      className={`ai-prescribe-safety-card ${
+                        prescribeSafetyCheck.status === "danger"
+                          ? "danger"
+                          : prescribeSafetyCheck.status === "warning"
+                          ? "warning"
+                          : prescribeSafetyCheck.status === "safe"
+                          ? "safe"
+                          : ""
+                      }`}
+                    >
+                      <div style={{ fontWeight: 700, fontSize: "0.88rem", display: "flex", alignItems: "center", gap: 6 }}>
+                        <span>{prescribeSafetyCheck.status === "checking" ? "⏳" : "🛡️ AI Safety Guardrails:"}</span>
+                        <span>{prescribeSafetyCheck.message}</span>
+                      </div>
+                      {prescribeSafetyCheck.interactions && prescribeSafetyCheck.interactions.length > 0 && (
+                        <ul style={{ margin: "6px 0 0 18px", fontSize: "0.82rem", lineHeight: 1.5 }}>
+                          {prescribeSafetyCheck.interactions.map((it: any, idx: number) => (
+                            <li key={idx}>
+                              <strong>{it.drug1} + {it.drug2}:</strong> {it.mechanism || it.description || "Có tương tác đối kháng"}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div className="field">
                       <label className="label">Liều dùng</label>

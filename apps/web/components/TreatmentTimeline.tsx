@@ -347,6 +347,8 @@ function ConditionDetailView({
   saving,
   takenMeds,
   onToggleMed,
+  onResolveCondition,
+  onOpenDeleteModal,
 }: {
   readonly data: TreatmentTimelineData;
   readonly activeCondition: DiseaseCondition;
@@ -361,6 +363,8 @@ function ConditionDetailView({
   readonly saving: boolean;
   readonly takenMeds: Record<string, boolean>;
   readonly onToggleMed: (id: string) => void;
+  readonly onResolveCondition?: (id: string) => void;
+  readonly onOpenDeleteModal?: (id: string, name: string) => void;
 }) {
   const statusCfg = STATUS_CONFIG[activeCondition.status] || STATUS_CONFIG.active;
   const condStartDate = activeCondition.start_date || data.treatment_start_date || "2026-09-01";
@@ -372,8 +376,8 @@ function ConditionDetailView({
 
   return (
     <div className="card" style={{ marginBottom: 20, border: "1px solid var(--border-default)", boxShadow: "0 4px 16px rgba(0,0,0,0.04)" }}>
-      {/* Nút quay lại */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+      {/* Nút quay lại & Hành động Bác sĩ */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
         <button
           type="button"
           className="btn btn-secondary"
@@ -383,15 +387,37 @@ function ConditionDetailView({
           ← Quay lại danh sách bệnh của {data.full_name}
         </button>
 
-        {isDoctor && !isEditing && (
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={onStartEdit}
-            style={{ fontSize: "0.85rem", padding: "6px 14px" }}
-          >
-            ✏️ Chỉnh sửa phác đồ bệnh này
-          </button>
+        {isDoctor && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {!isEditing && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={onStartEdit}
+                style={{ fontSize: "0.85rem", padding: "6px 14px" }}
+              >
+                ✏️ Chỉnh sửa phác đồ
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => onResolveCondition && onResolveCondition(activeCondition.id)}
+              style={{ fontSize: "0.85rem", padding: "6px 14px", color: "#16a34a", borderColor: "#86efac", background: "#f0fdf4", fontWeight: 700 }}
+              title="Đánh dấu bệnh nhân đã khỏi / kết thúc đợt điều trị"
+            >
+              ✅ Kết thúc điều trị
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => onOpenDeleteModal && onOpenDeleteModal(activeCondition.id, activeCondition.name)}
+              style={{ fontSize: "0.85rem", padding: "6px 14px", color: "#dc2626", borderColor: "#fca5a5", background: "#fef2f2", fontWeight: 700 }}
+              title="Xóa bệnh điều trị do ghi nhầm"
+            >
+              🗑️ Xóa bệnh
+            </button>
+          </div>
         )}
       </div>
 
@@ -863,7 +889,7 @@ function ConditionListView({
       </div>
 
       {/* 2. MỤC TIỀN SỬ DỊ ỨNG */}
-      <div>
+      <div style={{ paddingBottom: 18, borderBottom: "1px solid var(--border-default)", marginBottom: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
             ⚠️ TIỀN SỬ DỊ ỨNG ({data.allergies?.length || 0})
@@ -887,6 +913,52 @@ function ConditionListView({
         ) : (
           <p className="muted" style={{ fontSize: "0.85rem", fontStyle: "italic", margin: 0 }}>
             Không ghi nhận tiền sử dị ứng thuốc/thức ăn.
+          </p>
+        )}
+      </div>
+
+      {/* 3. MỤC DANH MỤC THUỐC ĐANG ĐIỀU TRỊ (TỔNG HỢP TOÀN DIỆN - TRANG CHỦ) */}
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
+            💊 DANH MỤC THUỐC ĐANG ĐIỀU TRỊ (TỔNG HỢP TOÀN BỘ: {data.active_medications?.length || 0} THUỐC)
+          </h4>
+          <span className="badge badge-info" style={{ fontSize: "0.78rem" }}>
+            Hiển thị tổng quan các thuốc đang nạp vào cơ thể
+          </span>
+        </div>
+
+        {data.active_medications && data.active_medications.length > 0 ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+            {data.active_medications.map((m) => (
+              <div
+                key={m.id}
+                className="list-row"
+                style={{
+                  padding: "12px 14px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  background: "#ffffff",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div className="list-main">
+                  <div style={{ fontWeight: 700, fontSize: "0.92rem", color: "#0f172a" }}>💊 {m.name}</div>
+                  <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: 2 }}>
+                    {m.dose || "1 viên"} · {m.timing || "Sau ăn"} · {m.prescriber || "Bác sĩ kê"}
+                  </div>
+                </div>
+                <span className="badge badge-ok" style={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>
+                  Đang dùng
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="muted" style={{ fontSize: "0.85rem", fontStyle: "italic", margin: 0 }}>
+            Chưa có đơn thuốc nào đang điều trị.
           </p>
         )}
       </div>
@@ -928,6 +1000,14 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
   });
   const [adding, setAdding] = useState(false);
 
+  // Modal Delete Condition State (10.3)
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; condId: string; condName: string; reason: string }>({
+    open: false,
+    condId: "",
+    condName: "",
+    reason: "",
+  });
+
   function toggleMedTaken(medId: string) {
     setTakenMeds((prev) => ({
       ...prev,
@@ -967,6 +1047,57 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
       note: activeCondition.note || "",
     });
     setIsEditing(true);
+  }
+
+  async function handleResolveCondition(condId: string) {
+    if (!confirm("Bác sĩ có chắc chắn muốn KẾT THÚC ĐỢT ĐIỀU TRỊ cho mặt bệnh này? Lịch sử hồ sơ vẫn được bảo toàn vĩnh viễn.")) return;
+    try {
+      setSaving(true);
+      setError("");
+      await api(`/v1/patients/${profileId}/treatment`, {
+        method: "PUT",
+        body: {
+          condition_id: condId,
+          action: "resolve",
+        },
+      });
+      setSuccess("Đã đánh dấu KẾT THÚC ĐỢT ĐIỀU TRỊ thành công!");
+      await loadTimeline(true);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể kết thúc điều trị");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteConditionSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!deleteModal.reason.trim()) {
+      alert("Vui lòng nhập lý do xóa bệnh");
+      return;
+    }
+    try {
+      setSaving(true);
+      setError("");
+      await api(`/v1/patients/${profileId}/treatment`, {
+        method: "PUT",
+        body: {
+          condition_id: deleteModal.condId,
+          action: "delete",
+          delete_reason: deleteModal.reason.trim(),
+        },
+      });
+      setSuccess(`Đã xóa bệnh "${deleteModal.condName}" khỏi danh sách điều trị!`);
+      setDeleteModal({ open: false, condId: "", condName: "", reason: "" });
+      setSelectedConditionId(null);
+      await loadTimeline(false);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể xóa loại bệnh");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleSaveCondition(e: React.FormEvent) {
@@ -1049,6 +1180,82 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
       {error && <ErrorBox text={error} />}
       {success && <SuccessBox text={success} />}
 
+      {/* MODAL XÓA BỆNH ĐIỀU TRỊ (10.3) */}
+      {deleteModal.open && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.6)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: 16,
+              maxWidth: 480,
+              width: "100%",
+              padding: 24,
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
+              border: "1px solid #fecaca",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 24 }}>🗑️</span>
+              <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "#991b1b" }}>
+                Xác nhận xóa bệnh điều trị
+              </h3>
+            </div>
+            <p style={{ fontSize: "0.88rem", color: "#475569", marginBottom: 14, lineHeight: 1.5 }}>
+              Bạn đang yêu cầu xóa mặt bệnh <strong>"{deleteModal.condName}"</strong> khỏi hồ sơ điều trị hiện tại của bệnh nhân. Hành động này chỉ áp dụng khi nhập nhầm chẩn đoán và sẽ được lưu trong Audit Log y khoa.
+            </p>
+            <form onSubmit={handleDeleteConditionSubmit}>
+              <div style={{ marginBottom: 16 }}>
+                <label className="label" style={{ fontWeight: 700, fontSize: "0.82rem" }}>
+                  Lý do xóa chẩn đoán (*)
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="VD: Nhập nhầm từ hồ sơ bệnh nhân khác, chẩn đoán trùng lặp..."
+                  value={deleteModal.reason}
+                  onChange={(e) => setDeleteModal((prev) => ({ ...prev, reason: e.target.value }))}
+                  required
+                  autoFocus
+                />
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setDeleteModal({ open: false, condId: "", condName: "", reason: "" })}
+                  disabled={saving}
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ background: "#dc2626", borderColor: "#dc2626" }}
+                  disabled={saving}
+                >
+                  {saving ? "Đang xóa..." : "🗑️ Xác nhận xóa vĩnh viễn"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {selectedConditionId && activeCondition ? (
         <ConditionDetailView
           data={data}
@@ -1069,6 +1276,8 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
           saving={saving}
           takenMeds={takenMeds}
           onToggleMed={toggleMedTaken}
+          onResolveCondition={handleResolveCondition}
+          onOpenDeleteModal={(id, name) => setDeleteModal({ open: true, condId: id, condName: name, reason: "" })}
         />
       ) : (
         <ConditionListView
@@ -1090,4 +1299,5 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
     </>
   );
 }
+
 
