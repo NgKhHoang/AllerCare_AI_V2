@@ -437,6 +437,9 @@ export default function DoctorPortal() {
     note: string;
   } | null>(null);
 
+  // Collapse / Expand toggle state cho 2 cột tổng quan (Lịch hẹn bên trái, Ca bệnh nhân bên phải)
+  const [showAppointments, setShowAppointments] = useState(true);
+  const [showPatients, setShowPatients] = useState(true);
 
   useEffect(() => {
     const user = getUser();
@@ -936,7 +939,7 @@ export default function DoctorPortal() {
   return (
     <AppShell
       role="doctor"
-      wide={Boolean(selected)}
+      wide={true}
       icon={selected ? "🩺" : "👥"}
       title={selected ? selected.full_name : "Danh sách ca"}
       subtitle={
@@ -954,74 +957,199 @@ export default function DoctorPortal() {
       {error && <ErrorBox text={error} />}
       {success && <SuccessBox text={success} />}
 
-      {!selected && appointments.filter((a) => a.status === "requested").length > 0 && (
-        <div className="card">
-          <div className="card-title">
-            <span className="t-ico">📅</span> Lịch hẹn chờ xác nhận
-          </div>
-          {appointments
-            .filter((a) => a.status === "requested")
-            .map((a) => (
-              <div className="list-row" key={a.id}>
-                <div className="list-main">
-                  <div className="list-title">{a.scheduled_at}</div>
-                  <div className="list-sub">{a.reason ?? "Tái khám định kỳ"}</div>
-                </div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button className="btn btn-primary btn-sm" onClick={() => confirmAppointment(a.id)}>
-                    Xác nhận
-                  </button>
-                  <button className="btn btn-secondary btn-sm" onClick={() => router.push(`/video/${a.id}`)}>
-                    🎥 Vào phòng
-                  </button>
-                </div>
-              </div>
-            ))}
-        </div>
-      )}
-
-      {!selected && appointments.filter((a) => a.status === "confirmed").length > 0 && (
-        <div className="card">
-          <div className="card-title">
-            <span className="t-ico">🎥</span> Lịch hẹn đã xác nhận — vào phòng video
-          </div>
-          {appointments
-            .filter((a) => a.status === "confirmed")
-            .map((a) => (
-              <div className="list-row" key={a.id}>
-                <div className="list-main">
-                  <div className="list-title">{a.scheduled_at}</div>
-                  <div className="list-sub">{a.reason ?? "Tái khám định kỳ"}</div>
-                </div>
-                <button className="btn btn-primary btn-sm" onClick={() => router.push(`/video/${a.id}`)}>
-                  🎥 Vào phòng
-                </button>
-              </div>
-            ))}
-        </div>
-      )}
-
       {!selected && (
-        <div className="card">
-          {patients.length === 0 && <EmptyState icon="👥" text="Chưa có ca nào được phân công." />}
-          {patients.map((p) => (
+        <div className="doctor-dashboard-grid">
+          {/* CỘT BÊN TRÁI: LỊCH HẸN ĐÃ XÁC NHẬN & VÀO PHÒNG VIDEO + CHỜ DUYỆT */}
+          <div className="doctor-dashboard-card">
             <div
-              className="list-row"
-              key={p.profile_id}
-              style={{ cursor: "pointer" }}
-              onClick={() => openPatient(p)}
+              className="doctor-dashboard-card-header"
+              onClick={() => setShowAppointments((v) => !v)}
             >
-              <div className="list-main">
-                <div className="list-title">{p.full_name}</div>
-                <div className="list-sub">
-                  {p.gender ?? "—"} · {p.dob ?? "—"}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 22 }}>🎥</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.02rem", color: "#0f172a", fontWeight: 800 }}>
+                    Lịch hẹn đã xác nhận — vào phòng video
+                  </h3>
+                  <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                    {appointments.filter((a) => a.status === "confirmed").length} đã xác nhận · {appointments.filter((a) => a.status === "requested").length} chờ duyệt
+                  </span>
                 </div>
               </div>
-              {p.unseen_updates > 0 && (
-                <span className="badge badge-info">{p.unseen_updates} cập nhật mới</span>
-              )}
+
+              <button
+                type="button"
+                className="collapse-toggle-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAppointments((v) => !v);
+                }}
+              >
+                {showAppointments ? "▲ Ẩn nội dung" : "▼ Mở nội dung"}
+              </button>
             </div>
-          ))}
+
+            {showAppointments && (
+              <div className="doctor-dashboard-card-body" style={{ padding: 16 }}>
+                {/* Lịch hẹn chờ xác nhận */}
+                {appointments.filter((a) => a.status === "requested").length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: "0.8rem", fontWeight: 800, color: "#d97706", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>⏳ Chờ xác nhận ({appointments.filter((a) => a.status === "requested").length})</span>
+                    </div>
+                    {appointments
+                      .filter((a) => a.status === "requested")
+                      .map((a) => (
+                        <div
+                          className="list-row"
+                          key={a.id}
+                          style={{
+                            borderRadius: 10,
+                            marginBottom: 8,
+                            background: "#fffbeb",
+                            border: "1px solid #fef3c7",
+                            padding: "10px 12px",
+                          }}
+                        >
+                          <div className="list-main">
+                            <div className="list-title" style={{ fontWeight: 700, fontSize: "0.92rem" }}>
+                              {a.scheduled_at}
+                            </div>
+                            <div className="list-sub" style={{ fontSize: "0.8rem" }}>
+                              {a.reason ?? "Tái khám định kỳ"}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button className="btn btn-primary btn-sm" onClick={() => confirmAppointment(a.id)}>
+                              Xác nhận
+                            </button>
+                            <button className="btn btn-secondary btn-sm" onClick={() => router.push(`/video/${a.id}`)}>
+                              🎥 Vào phòng
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+
+                {/* Lịch hẹn đã xác nhận */}
+                {appointments.filter((a) => a.status === "confirmed").length > 0 && (
+                  <div>
+                    <div style={{ fontSize: "0.8rem", fontWeight: 800, color: "#0284c7", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>✅ Đã sẵn sàng ({appointments.filter((a) => a.status === "confirmed").length})</span>
+                    </div>
+                    {appointments
+                      .filter((a) => a.status === "confirmed")
+                      .map((a) => (
+                        <div
+                          className="list-row"
+                          key={a.id}
+                          style={{
+                            borderRadius: 10,
+                            marginBottom: 8,
+                            background: "#f0f9ff",
+                            border: "1.5px solid #bae6fd",
+                            padding: "12px 14px",
+                          }}
+                        >
+                          <div className="list-main">
+                            <div className="list-title" style={{ fontWeight: 800, fontSize: "0.95rem", color: "#0369a1" }}>
+                              {a.scheduled_at}
+                            </div>
+                            <div className="list-sub" style={{ fontSize: "0.82rem", color: "#475569" }}>
+                              {a.reason ?? "Tái khám định kỳ"}
+                            </div>
+                          </div>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            style={{ fontWeight: 700, padding: "6px 14px" }}
+                            onClick={() => router.push(`/video/${a.id}`)}
+                          >
+                            🎥 Vào phòng
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                )}
+
+                {appointments.length === 0 && (
+                  <EmptyState icon="📅" text="Hiện không có lịch hẹn trực tuyến nào." />
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* CỘT BÊN CÁNH PHẢI: CÁC CA BỆNH NHÂN */}
+          <div className="doctor-dashboard-card">
+            <div
+              className="doctor-dashboard-card-header"
+              onClick={() => setShowPatients((v) => !v)}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 22 }}>👥</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.02rem", color: "#0f172a", fontWeight: 800 }}>
+                    Các ca bệnh nhân
+                  </h3>
+                  <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                    Tổng cộng {patients.length} bệnh nhân được phân công
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="collapse-toggle-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPatients((v) => !v);
+                }}
+              >
+                {showPatients ? "▲ Ẩn nội dung" : "▼ Mở nội dung"}
+              </button>
+            </div>
+
+            {showPatients && (
+              <div className="doctor-dashboard-card-body" style={{ padding: 16 }}>
+                {patients.length === 0 && <EmptyState icon="👥" text="Chưa có ca nào được phân công." />}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {patients.map((p) => (
+                    <div
+                      className="list-row"
+                      key={p.profile_id}
+                      style={{
+                        cursor: "pointer",
+                        borderRadius: 10,
+                        border: "1px solid #e2e8f0",
+                        padding: "12px 14px",
+                        transition: "all 0.15s ease",
+                        background: "#ffffff",
+                      }}
+                      onClick={() => openPatient(p)}
+                    >
+                      <div className="list-main">
+                        <div className="list-title" style={{ fontWeight: 800, fontSize: "0.96rem", color: "#0f172a" }}>
+                          {p.full_name}
+                        </div>
+                        <div className="list-sub" style={{ fontSize: "0.82rem", color: "#64748b", marginTop: 2 }}>
+                          {p.gender ?? "—"} · {p.dob ?? "—"}
+                        </div>
+                      </div>
+                      {p.unseen_updates > 0 ? (
+                        <span className="badge badge-info" style={{ fontSize: "0.78rem", fontWeight: 700 }}>
+                          {p.unseen_updates} cập nhật mới
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: "0.82rem", color: "#0284c7", fontWeight: 700 }}>
+                          Xem hồ sơ →
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
