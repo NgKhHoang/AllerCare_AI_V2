@@ -26,15 +26,43 @@ export default function PatientHome() {
   const [submittingCheckIn, setSubmittingCheckIn] = useState(false);
   const [checkInSuccessMsg, setCheckInSuccessMsg] = useState("");
   const [alarmPlaying, setAlarmPlaying] = useState(false);
+  const [alarmTime, setAlarmTime] = useState("07:30");
   const [snoozeUntil, setSnoozeUntil] = useState<string | null>(null);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>("default");
 
   const QUICK_CHIPS = [
     { id: "stable", label: "🟢 Ổn định / Đỡ ngứa / Giảm đỏ", type: "success" },
     { id: "mild_itch", label: "🟡 Còn ngứa nhẹ / Da hơi khô rát", type: "warning" },
     { id: "severe_itch", label: "🔴 Ngứa nhiều / Ban đỏ lan rộng", type: "danger" },
     { id: "blister", label: "⚠️ Có mụn nước / Phù nề / Chảy dịch", type: "danger" },
+    { id: "dry_flake", label: "❄️ Khô rát / Tróc vảy da", type: "warning" },
     { id: "side_effect", label: "🤢 Tác dụng phụ: Buồn nôn / Mệt mỏi", type: "warning" },
   ];
+
+  // Web Audio API Synthesizer cho chuông báo thức y tế êm dịu
+  function playAlarmChime() {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 (chime)
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.18);
+        gain.gain.setValueAtTime(0, ctx.currentTime + idx * 0.18);
+        gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + idx * 0.18 + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.18 + 0.45);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + idx * 0.18);
+        osc.stop(ctx.currentTime + idx * 0.18 + 0.5);
+      });
+    } catch {
+      // AudioContext not allowed before user interaction
+    }
+  }
 
   function toggleChip(label: string) {
     setSelectedChips((prev) =>
@@ -52,7 +80,29 @@ export default function PatientHome() {
   }
 
   function toggleAlarmSound() {
-    setAlarmPlaying(!alarmPlaying);
+    if (!alarmPlaying) {
+      setAlarmPlaying(true);
+      playAlarmChime();
+    } else {
+      setAlarmPlaying(false);
+    }
+  }
+
+  async function requestNotification() {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      try {
+        const perm = await Notification.requestPermission();
+        setNotifPermission(perm);
+        if (perm === "granted") {
+          new Notification("AllerCare AI — Báo thức nhắc thuốc", {
+            body: "Đã kích hoạt chế độ nhắc nhở uống thuốc đúng giờ mỗi sáng!",
+            icon: "/favicon.ico",
+          });
+        }
+      } catch {
+        // Notification permission request failed
+      }
+    }
   }
 
   async function handleDailyCheckInSubmit(e: React.FormEvent) {
@@ -77,6 +127,10 @@ export default function PatientHome() {
         body: { message: combinedMessage },
       });
 
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (profile?.id) {
+        localStorage.setItem(`allercare_checkin_${profile.id}_${todayStr}`, "true");
+      }
       setIsTodayCheckedIn(true);
       setCheckInSuccessMsg("Đã gửi báo cáo ngày thành công! Bác sĩ điều trị đã nhận được tín hiệu cập nhật.");
       await reload();
@@ -91,6 +145,14 @@ export default function PatientHome() {
     try {
       const p = await api<Profile>("/v1/patients/me/profile");
       setProfile(p);
+      if (p?.id) {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const saved = localStorage.getItem(`allercare_checkin_${p.id}_${todayStr}`);
+        if (saved === "true") {
+          setIsTodayCheckedIn(true);
+          setHasTakenMeds(true);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không tải được hồ sơ");
     }
@@ -100,6 +162,9 @@ export default function PatientHome() {
     if (!getToken()) {
       window.location.href = "/login";
       return;
+    }
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setNotifPermission(Notification.permission);
     }
     reload();
   }, []);
@@ -179,9 +244,31 @@ export default function PatientHome() {
             </p>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             {!isTodayCheckedIn && (
               <>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#ffffff", padding: "4px 8px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 12 }}>
+                  <span>⏰ Giờ nhắc:</span>
+                  <input
+                    type="time"
+                    value={alarmTime}
+                    onChange={(e) => setAlarmTime(e.target.value)}
+                    style={{ border: "none", fontSize: 12, fontWeight: 700, outline: "none", background: "transparent" }}
+                  />
+                </div>
+
+                {notifPermission !== "granted" && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={requestNotification}
+                    style={{ fontSize: 12, backgroundColor: "#ffffff" }}
+                    title="Bật thông báo đẩy trên trình duyệt/điện thoại"
+                  >
+                    🔔 Bật thông báo
+                  </button>
+                )}
+
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
