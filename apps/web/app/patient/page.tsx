@@ -148,7 +148,8 @@ export default function PatientHome() {
       if (p?.id) {
         const todayStr = new Date().toISOString().slice(0, 10);
         const saved = localStorage.getItem(`allercare_checkin_${p.id}_${todayStr}`);
-        if (saved === "true") {
+        const triageSaved = localStorage.getItem(`allercare_triage_done_${todayStr}`);
+        if (saved === "true" || triageSaved === "true") {
           setIsTodayCheckedIn(true);
           setHasTakenMeds(true);
         }
@@ -417,20 +418,59 @@ export default function PatientHome() {
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--brand-600)" }}>Xem đơn thuốc →</span>
         </Link>
 
-        <Link className="smart-tile" href="/patient/triage" style={{ border: "1.5px solid #fed7aa", background: "linear-gradient(135deg, #fffbeb 0%, #ffffff 100%)" }}>
+        <Link
+          className={`smart-tile ${!isTodayCheckedIn ? "pulse-red-alert" : ""}`}
+          href="/patient/triage"
+          style={{
+            border: !isTodayCheckedIn ? "1.8px solid #f87171" : "1.5px solid #86efac",
+            background: !isTodayCheckedIn
+              ? "linear-gradient(135deg, #fff1f2 0%, #ffffff 100%)"
+              : "linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%)",
+            transition: "all 0.3s ease",
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div className="tile-icon" style={{ background: "#ffedd5", color: "#ea580c" }}>
-              🚦
+            <div
+              className="tile-icon"
+              style={{
+                background: !isTodayCheckedIn ? "#fee2e2" : "#dcfce7",
+                color: !isTodayCheckedIn ? "#dc2626" : "#16a34a",
+              }}
+            >
+              {!isTodayCheckedIn ? "🚨" : "✅"}
             </div>
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                <span className="tile-title">Phân luồng TriageGuard</span>
-                <span className="badge badge-warning" style={{ fontSize: 11, padding: "2px 7px" }}>Quy tắc hàng ngày</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 2 }}>
+                <span className="tile-title" style={{ color: !isTodayCheckedIn ? "#991b1b" : "#166534" }}>
+                  Phân luồng TriageGuard AI
+                </span>
+                {!isTodayCheckedIn ? (
+                  <span className="badge badge-danger pulse-badge-danger" style={{ fontSize: 11, padding: "2px 8px", fontWeight: 800 }}>
+                    ⚠️ Chưa khai báo hôm nay
+                  </span>
+                ) : (
+                  <span className="badge badge-ok" style={{ fontSize: 11, padding: "2px 8px", fontWeight: 700 }}>
+                    ✅ Đã hoàn thành hôm nay
+                  </span>
+                )}
               </div>
-              <div className="tile-desc">Người bệnh/Người nhà nhập mô tả triệu chứng mỗi ngày để AI phân luồng</div>
+              <div className="tile-desc" style={{ color: !isTodayCheckedIn ? "#7f1d1d" : "#15803d" }}>
+                {!isTodayCheckedIn
+                  ? "Bắt buộc: Bệnh nhân/Người nhà nhập mô tả triệu chứng hôm nay để AI phân luồng cấp cứu & Bác sĩ theo dõi."
+                  : "Đã gửi dữ liệu lâm sàng ngày hôm nay. Bác sĩ điều trị đã nhận được cập nhật."}
+              </div>
             </div>
           </div>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#ea580c" }}>Khai báo triệu chứng hôm nay →</span>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 800,
+              color: !isTodayCheckedIn ? "#dc2626" : "#16a34a",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {!isTodayCheckedIn ? "👉 Khai báo ngay →" : "✓ Xem lại phân luồng →"}
+          </span>
         </Link>
       </div>
 

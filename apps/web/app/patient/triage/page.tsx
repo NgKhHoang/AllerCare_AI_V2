@@ -63,6 +63,12 @@ export default function TriagePage() {
       });
       setResult(r);
       setHistory((prev) => [r, ...prev].slice(0, 30));
+      const todayStr = new Date().toISOString().slice(0, 10);
+      try {
+        localStorage.setItem(`allercare_triage_done_${todayStr}`, "true");
+      } catch {
+        // LocalStorage not accessible
+      }
       setMessage("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không gửi được khai báo");
