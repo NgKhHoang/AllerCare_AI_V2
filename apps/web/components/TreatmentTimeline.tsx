@@ -45,6 +45,7 @@ export interface ActiveMedicationItem {
   timing?: string | null;
   frequency?: string | null;
   prescriber?: string | null;
+  source_label?: string | null;
   verification?: string;
   status?: string;
 }
@@ -425,8 +426,20 @@ function ConditionDetailView({
   const condFollowupDate = activeCondition.followup_date || data.followup_date || "Chưa hẹn";
 
   const liveStats = calcLiveTreatmentProgress(condStartDate, condFollowupDate);
-  const takenCount = Object.values(takenMeds).filter(Boolean).length;
-  const totalMeds = data.active_medications?.length || 0;
+  const conditionIndex = data.conditions?.findIndex((c) => c.id === activeCondition.id) ?? -1;
+  const conditionOrderLabel = conditionIndex >= 0 ? `Loại ${conditionIndex + 1}` : "Bệnh lý";
+
+  // Lọc danh mục thuốc riêng cho loại bệnh này
+  const conditionMeds = (data.active_medications || []).filter((m) => {
+    if (!m) return false;
+    const src = (m.source_label || m.prescriber || "").toLowerCase();
+    const condName = activeCondition.name.toLowerCase();
+    return src.includes(condName) || (data.conditions?.length === 1);
+  });
+  const conditionTakenCount = conditionMeds.filter((m) => !!takenMeds[m.id]).length;
+  const conditionTotalMeds = conditionMeds.length;
+  const totalMeds = conditionTotalMeds;
+  const takenCount = conditionTakenCount;
 
   return (
     <div className="card" style={{ marginBottom: 20, border: "1px solid var(--border-default)", boxShadow: "0 4px 16px rgba(0,0,0,0.04)" }}>
@@ -736,20 +749,26 @@ function ConditionDetailView({
         </div>
       </div>
 
-      {/* TIẾN TRÌNH UỐNG THUỐC HÔM NAY */}
+      {/* DANH MỤC THUỐC RIÊNG CHO TỪNG LOẠI BỆNH (CHUẨN 10.3) */}
       <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--border-default)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-          <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
-            💊 TIẾN TRÌNH UỐNG THUỐC HÔM NAY ({totalMeds} loại thuốc)
-          </h4>
-          <span style={{ fontSize: "0.82rem", color: takenCount === totalMeds && totalMeds > 0 ? "#16a34a" : "#0284c7", fontWeight: 700 }}>
-            {totalMeds > 0 && takenCount === totalMeds ? "✓ Đã hoàn thành uống thuốc hôm nay!" : `Đã uống: ${takenCount}/${totalMeds} thuốc`}
+          <div>
+            <h4 style={{ margin: 0, fontSize: "0.98rem", color: "#0f172a", display: "flex", alignItems: "center", gap: 8, fontWeight: 800 }}>
+              💊 DANH MỤC THUỐC — {conditionOrderLabel.toUpperCase()}: {activeCondition.name.toUpperCase()} ({conditionTotalMeds} THUỐC)
+            </h4>
+            <span style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
+              Phác đồ thuốc được kê riêng cho điều trị bệnh {activeCondition.name}
+            </span>
+          </div>
+
+          <span style={{ fontSize: "0.82rem", color: conditionTotalMeds > 0 && conditionTakenCount === conditionTotalMeds ? "#16a34a" : "#0284c7", fontWeight: 700 }}>
+            {conditionTotalMeds > 0 && conditionTakenCount === conditionTotalMeds ? "✓ Đã hoàn thành uống thuốc cho bệnh này!" : `Đã uống: ${conditionTakenCount}/${conditionTotalMeds} thuốc`}
           </span>
         </div>
 
-        {data.active_medications && data.active_medications.length > 0 ? (
+        {conditionMeds.length > 0 ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
-            {data.active_medications.map((m) => (
+            {conditionMeds.map((m) => (
               <MedicationAdherenceItem
                 key={m.id}
                 med={m}
@@ -759,9 +778,14 @@ function ConditionDetailView({
             ))}
           </div>
         ) : (
-          <p className="muted" style={{ fontSize: "0.85rem", fontStyle: "italic", margin: 0 }}>
-            Chưa có đơn thuốc nào được ghi nhận cho đợt điều trị này.
-          </p>
+          <div style={{ padding: "16px 18px", background: "#f8fafc", borderRadius: 12, border: "1px dashed #cbd5e1" }}>
+            <p className="muted" style={{ fontSize: "0.86rem", fontStyle: "italic", margin: "0 0 6px" }}>
+              Chưa có thuốc nào được kê riêng cho {activeCondition.name}.
+            </p>
+            <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+              Bác sĩ có thể bấm nút kê đơn để bổ sung thuốc điều trị riêng cho bệnh này, hoặc xem danh mục thuốc toàn thân tại trang tổng quan.
+            </span>
+          </div>
         )}
       </div>
     </div>

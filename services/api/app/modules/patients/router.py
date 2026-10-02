@@ -441,6 +441,7 @@ def get_treatment_timeline(
                 "timing": m.timing or "8h sáng và 20h tối",
                 "frequency": m.frequency or "Hàng ngày",
                 "prescriber": m.prescriber or m.source_label or "Bác sĩ kê",
+                "source_label": m.source_label or "",
                 "verification": m.verification,
                 "status": m.status,
             })
