@@ -1346,202 +1346,38 @@ export default function DoctorPortal() {
             </div>
 
             {/* Form Kê đơn thuốc mới của Bác sĩ */}
-            {showPrescribeModal && (
-              <div style={{ background: "rgba(14, 165, 233, 0.08)", border: "1px solid rgba(14, 165, 233, 0.3)", borderRadius: 14, padding: 16, marginBottom: 18 }}>
-                <div style={{ fontWeight: 700, color: "var(--brand-600)", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                  <span>🩺 Kê đơn thuốc chính thức (Ký bởi Bác sĩ)</span>
-                </div>
-
-                {/* Thuốc mẫu nhanh */}
-                <div style={{ marginBottom: 12 }}>
-                  <span style={{ fontSize: 12, color: "var(--text-secondary)", marginRight: 8 }}>Gợi ý nhanh:</span>
-                  {[
-                    { name: "Fexofenadine 180mg", dose: "1 viên", freq: "1 lần/ngày", timing: "Sau ăn sáng" },
-                    { name: "Cetirizine 10mg", dose: "1 viên", freq: "1 lần/ngày", timing: "Sau ăn tối 20h" },
-                    { name: "Methylprednisolon 16mg", dose: "1 viên", freq: "1 lần/ngày", timing: "Sau ăn no sáng" },
-                    { name: "Kem Hydrocortisone 1%", dose: "Lớp mỏng", freq: "2 lần/ngày", timing: "Sáng & Tối", route: "bôi ngoài da" },
-                  ].map((item) => (
-                    <button
-                      key={item.name}
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      style={{ fontSize: 11.5, padding: "3px 9px", marginRight: 6, marginBottom: 6, backgroundColor: "#ffffff" }}
-                      onClick={() => {
-                        setPrescribeName(item.name);
-                        setPrescribeDose(item.dose);
-                        setPrescribeFreq(item.freq);
-                        setPrescribeTiming(item.timing);
-                        if (item.route) setPrescribeRoute(item.route);
-                      }}
-                    >
-                      + {item.name}
-                    </button>
-                  ))}
-                </div>
-
-                <form onSubmit={handlePrescribe}>
-                  {/* CHỌN LOẠI BỆNH ĐIỀU TRỊ */}
-                  <div className="field">
-                    <label htmlFor="prescribe-condition" className="label">
-                      Kê đơn cho loại bệnh điều trị (*)
-                    </label>
-                    <select
-                      id="prescribe-condition"
-                      className="input"
-                      value={prescribeConditionName}
-                      onChange={(e) => setPrescribeConditionName(e.target.value)}
-                    >
-                      <option value="">-- Phác đồ điều trị chung / Toàn thân --</option>
-                      {patientConditions.map((c) => (
-                        <option key={c.id} value={c.name}>
-                          🩺 {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* AUTOCOMPLETE TÊN THUỐC & HOẠT CHẤT (10.3) */}
-                  <div className="field autocomplete-wrapper">
-                    <label htmlFor="prescribe-name" className="label">
-                      Tên thuốc & hàm lượng (*) — <span style={{ color: "#0284c7", fontWeight: 600 }}>Gõ 1 chữ cái đầu để gợi ý thông minh</span>
-                    </label>
-                    <input
-                      id="prescribe-name"
-                      className="input"
-                      placeholder="VD: gõ 'c' -> Cetirizine, 'f' -> Fexofenadine, 'm' -> Medrol..."
-                      value={prescribeName}
-                      onChange={(e) => handlePrescribeNameInput(e.target.value)}
-                      required
-                      autoComplete="off"
-                    />
-                    {showPrescribeSuggestions && prescribeSuggestions.length > 0 && (
-                      <div className="autocomplete-dropdown-list">
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>
-                          🔍 GỢI Ý THUỐC & HOẠT CHẤT (DƯỢC THƯ BỘ Y TẾ & AI)
-                        </div>
-                        {prescribeSuggestions.map((item) => (
-                          <button
-                            type="button"
-                            key={item.name}
-                            className="autocomplete-item-row"
-                            style={{ width: "100%", textAlign: "left", background: "none", border: "none", font: "inherit", cursor: "pointer" }}
-                            onClick={() => selectPrescribeDrug(item)}
-                          >
-                            <div>
-                              <div className="autocomplete-item-title">
-                                {item.is_allergy ? "⚠️ " : "💊 "}
-                                {item.name}
-                              </div>
-                              <div className="autocomplete-item-sub">
-                                {item.category || item.form || "Thuốc điều trị"} {item.strength ? `· ${item.strength}` : ""}
-                              </div>
-                            </div>
-                            {item.ai_hint && (
-                              <span className="badge badge-warning" style={{ fontSize: 10 }}>
-                                {item.ai_hint.slice(0, 32)}...
-                              </span>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* REAL-TIME AI SAFETY GUARDRAILS CARD (10.3) */}
-                  {prescribeSafetyCheck.status !== "idle" && (
-                    <div
-                      className={`ai-prescribe-safety-card ${getSafetyStatusClass(prescribeSafetyCheck.status)}`}
-                    >
-                      <div style={{ fontWeight: 700, fontSize: "0.88rem", display: "flex", alignItems: "center", gap: 6 }}>
-                        <span>{prescribeSafetyCheck.status === "checking" ? "⏳" : "🛡️ AI Safety Guardrails:"}</span>
-                        <span>{prescribeSafetyCheck.message}</span>
-                      </div>
-                      {prescribeSafetyCheck.interactions && prescribeSafetyCheck.interactions.length > 0 && (
-                        <ul style={{ margin: "6px 0 0 18px", fontSize: "0.82rem", lineHeight: 1.5 }}>
-                          {prescribeSafetyCheck.interactions.map((it: any, idx: number) => (
-                            <li key={`interaction-${it.drug1}-${it.drug2}-${idx}`}>
-                              <strong>{it.drug1} + {it.drug2}:</strong> {it.mechanism || it.description || "Có tương tác đối kháng"}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <div className="field">
-                      <label htmlFor="prescribe-dose" className="label">Liều dùng</label>
-                      <input
-                        id="prescribe-dose"
-                        className="input"
-                        placeholder="VD: 1 viên/lần"
-                        value={prescribeDose}
-                        onChange={(e) => setPrescribeDose(e.target.value)}
-                      />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="prescribe-freq" className="label">Tần suất</label>
-                      <input
-                        id="prescribe-freq"
-                        className="input"
-                        placeholder="VD: 1 lần/ngày, 2 lần/ngày"
-                        value={prescribeFreq}
-                        onChange={(e) => setPrescribeFreq(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <div className="field">
-                      <label htmlFor="prescribe-route" className="label">Đường dùng</label>
-                      <select
-                        id="prescribe-route"
-                        className="input"
-                        value={prescribeRoute}
-                        onChange={(e) => setPrescribeRoute(e.target.value)}
-                      >
-                        <option value="uống">Uống (Oral)</option>
-                        <option value="bôi ngoài da">Bôi ngoài da (Topical)</option>
-                        <option value="nhỏ mắt/mũi">Nhỏ mắt / Mũi</option>
-                        <option value="tiêm bắp">Tiêm bắp (IM)</option>
-                        <option value="tiêm tĩnh mạch">Tiêm tĩnh mạch (IV)</option>
-                      </select>
-                    </div>
-                    <div className="field">
-                      <label htmlFor="prescribe-timing" className="label">Thời điểm dùng</label>
-                      <input
-                        id="prescribe-timing"
-                        className="input"
-                        placeholder="VD: Sau ăn 30 phút, trước ngủ..."
-                        value={prescribeTiming}
-                        onChange={(e) => setPrescribeTiming(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label htmlFor="prescribe-instructions" className="label">Lời dặn của bác sĩ</label>
-                    <input
-                      id="prescribe-instructions"
-                      className="input"
-                      placeholder="VD: Uống nhiều nước, nếu nổi mẩn ngừng ngay..."
-                      value={prescribeInstructions}
-                      onChange={(e) => setPrescribeInstructions(e.target.value)}
-                    />
-                  </div>
-                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                    <button className="btn btn-primary btn-sm" type="submit" disabled={prescribing}>
-                      {prescribing ? "Đang kê đơn..." : "✓ Kê đơn & Gửi người bệnh"}
-                    </button>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      type="button"
-                      onClick={() => setShowPrescribeModal(false)}
-                    >
-                      Hủy
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
+            <PrescribeModal
+              show={showPrescribeModal}
+              prescribeName={prescribeName}
+              prescribeDose={prescribeDose}
+              setPrescribeDose={setPrescribeDose}
+              prescribeFreq={prescribeFreq}
+              setPrescribeFreq={setPrescribeFreq}
+              prescribeRoute={prescribeRoute}
+              setPrescribeRoute={setPrescribeRoute}
+              prescribeTiming={prescribeTiming}
+              setPrescribeTiming={setPrescribeTiming}
+              prescribeInstructions={prescribeInstructions}
+              setPrescribeInstructions={setPrescribeInstructions}
+              prescribeConditionName={prescribeConditionName}
+              setPrescribeConditionName={setPrescribeConditionName}
+              patientConditions={patientConditions}
+              prescribeSuggestions={prescribeSuggestions}
+              showPrescribeSuggestions={showPrescribeSuggestions}
+              prescribeSafetyCheck={prescribeSafetyCheck}
+              prescribing={prescribing}
+              onNameInput={handlePrescribeNameInput}
+              onSelectSuggestion={selectPrescribeDrug}
+              onApplyPreset={(p) => {
+                setPrescribeName(p.name);
+                setPrescribeDose(p.dose);
+                setPrescribeFreq(p.freq);
+                setPrescribeTiming(p.timing);
+                if (p.route) setPrescribeRoute(p.route);
+              }}
+              onSubmit={handlePrescribe}
+              onClose={() => setShowPrescribeModal(false)}
+            />
 
             {meds.length === 0 && <EmptyState icon="💊" text="Chưa có thuốc nào trong danh mục." />}
             
@@ -1618,96 +1454,22 @@ export default function DoctorPortal() {
               </button>
             </div>
 
-            {showAddAllergyModal && (
-              <div
-                style={{
-                  backgroundColor: "#fff1f2",
-                  border: "1px solid #fecdd3",
-                  borderRadius: 14,
-                  padding: 16,
-                  marginBottom: 16,
-                }}
-              >
-                <div style={{ fontWeight: 700, fontSize: 13.5, color: "#9f1239", marginBottom: 6 }}>
-                  ⚠️ Khai báo dị ứng thuốc / thức ăn / dị nguyên
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-                  <span style={{ fontSize: 11.5, color: "#64748b", alignSelf: "center" }}>Gợi ý nhanh:</span>
-                  {[
-                    { name: "Penicillin (Kháng sinh)", r: "Nổi mề đay, mẩn ngứa" },
-                    { name: "Aspirin / NSAIDs", r: "Khó thở dạng hen, phù mạch" },
-                    { name: "Cephalosporin", r: "Phát ban đỏ toàn thân" },
-                    { name: "Cản quang chứa Iod", r: "Sốc phản vệ, tụt huyết áp" },
-                    { name: "Hải sản / Tôm cua", r: "Sưng môi, ngứa họng" },
-                  ].map((item) => (
-                    <button
-                      key={item.name}
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      style={{ fontSize: 11.5, padding: "3px 9px", backgroundColor: "#fff" }}
-                      onClick={() => {
-                        setAllergySubstance(item.name);
-                        setAllergyReaction(item.r);
-                      }}
-                    >
-                      + {item.name}
-                    </button>
-                  ))}
-                </div>
-
-                <form onSubmit={handleAddAllergy}>
-                  <div className="field">
-                    <label htmlFor="allergy-substance" className="label">Tên tác nhân / dị nguyên (*)</label>
-                    <input
-                      id="allergy-substance"
-                      className="input"
-                      placeholder="VD: Penicillin, Ciprofloxacin, Tôm cua..."
-                      value={allergySubstance}
-                      onChange={(e) => setAllergySubstance(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <div className="field">
-                      <label htmlFor="allergy-reaction" className="label">Biểu hiện phản ứng</label>
-                      <input
-                        id="allergy-reaction"
-                        className="input"
-                        placeholder="VD: Mề đay, khó thở, sốc phản vệ..."
-                        value={allergyReaction}
-                        onChange={(e) => setAllergyReaction(e.target.value)}
-                      />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="allergy-severity" className="label">Mức độ nghiêm trọng</label>
-                      <select
-                        id="allergy-severity"
-                        className="input"
-                        value={allergySeverity}
-                        onChange={(e) => setAllergySeverity(e.target.value)}
-                      >
-                        <option value="mild">Nhẹ (Mild - chỉ mẩn đỏ nhẹ)</option>
-                        <option value="medium">Trung bình (Medium - mề đay diện rộng)</option>
-                        <option value="severe">Nặng (Severe - phù mạch, co thắt phế quản)</option>
-                        <option value="fatal">Nguy kịch (Fatal - sốc phản vệ)</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                    <button className="btn btn-primary btn-sm" type="submit" disabled={addingAllergy} style={{ backgroundColor: "#e11d48", borderColor: "#be123c" }}>
-                      {addingAllergy ? "Đang lưu..." : "✓ Lưu tiền sử dị ứng"}
-                    </button>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      type="button"
-                      onClick={() => setShowAddAllergyModal(false)}
-                    >
-                      Hủy
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
+            <AddAllergyModal
+              show={showAddAllergyModal}
+              allergySubstance={allergySubstance}
+              setAllergySubstance={setAllergySubstance}
+              allergyReaction={allergyReaction}
+              setAllergyReaction={setAllergyReaction}
+              allergySeverity={allergySeverity}
+              setAllergySeverity={setAllergySeverity}
+              addingAllergy={addingAllergy}
+              onApplyPreset={(substance, reaction) => {
+                setAllergySubstance(substance);
+                setAllergyReaction(reaction);
+              }}
+              onSubmit={handleAddAllergy}
+              onClose={() => setShowAddAllergyModal(false)}
+            />
 
             {allergies.length === 0 && (
               <div
@@ -1788,431 +1550,38 @@ export default function DoctorPortal() {
           </div>
 
           {/* MEDSAFE: KIỂM TRA AN TOÀN THUỐC & ĐỐI SOÁT TƯƠNG TÁC ĐA CHẤT / TIỀN SỬ BỆNH */}
-          <div className="card" style={{ border: "1.5px solid #0284c7", background: "linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%)", borderRadius: 16 }}>
-            <div className="card-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 24 }}>🛡️</span>
-                <div>
-                  <span style={{ fontWeight: 800, fontSize: "1.1rem", color: "#0369a1" }}>
-                    Kiểm tra An toàn Thuốc & Đối soát Tương tác (MedSafe)
-                  </span>
-                  <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 400 }}>
-                    Đối chiếu tương tác 2/3 loại chất với nhau và đối chiếu tiền sử dị ứng / bệnh nền của bệnh nhân
-                  </div>
-                </div>
-              </div>
-              <span className="badge badge-info" style={{ fontSize: "0.8rem", fontWeight: 700 }}>
-                Kho 633 tương tác Bộ Y tế
-              </span>
-            </div>
+          <MedsafeSection
+            medsafeInput={medsafeInput}
+            setMedsafeInput={setMedsafeInput}
+            medsafeChecking={medsafeChecking}
+            showSuggestions={showSuggestions}
+            setShowSuggestions={setShowSuggestions}
+            medsafeSuggestions={medsafeSuggestions}
+            activeSuggestionIdx={activeSuggestionIdx}
+            setActiveSuggestionIdx={setActiveSuggestionIdx}
+            quickCheckResult={quickCheckResult}
+            check={check}
+            meds={meds}
+            allergies={allergies}
+            reviewNote={reviewNote}
+            setReviewNote={setReviewNote}
+            onMedsafeChange={handleMedsafeChange}
+            onMedsafeKeyDown={handleMedsafeKeyDown}
+            onSelectSuggestion={handleSelectSuggestion}
+            onRunCheck={(customDrugs) => {
+              void runInteractiveMedSafeCheck(customDrugs);
+            }}
+            onFocusInput={() => {
+              void fetchDrugSuggestions(getCurrentQueryToken(medsafeInput));
+            }}
+            onSubmitReview={submitReview}
+          />
 
-            {/* KHUNG NHẬP 2/3 LOẠI CHẤT/THUỐC ĐỂ TEST PHẢN ỨNG CÓ AUTOCOMPLETE & PHÍM TAB */}
-            <div style={{ background: "#ffffff", padding: "16px 18px", borderRadius: 14, border: "1px solid #bae6fd", marginTop: 12, marginBottom: 14, boxShadow: "0 2px 8px rgba(2, 132, 199, 0.06)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 6 }}>
-                <label htmlFor="medsafe-substances" style={{ fontWeight: 700, fontSize: "0.88rem", color: "#0f172a" }}>
-                  🧪 Nhập 2, 3 hoặc nhiều loại chất/thuốc (ngăn cách bởi dấu phẩy):
-                </label>
-                <span style={{ fontSize: "0.78rem", color: "#0284c7", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                  <span>💡 Gõ tên thuốc rồi nhấn</span>
-                  <kbd style={{ background: "#e0f2fe", border: "1px solid #7dd3fc", borderRadius: 4, padding: "1px 6px", fontSize: "0.75rem", fontWeight: 700, color: "#0369a1" }}>Tab ↹</kbd>
-                  <span>để tự động điền nhanh theo Dược thư & AI</span>
-                </span>
-              </div>
-
-              <div style={{ position: "relative", marginBottom: 8 }}>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <input
-                    id="medsafe-substances"
-                    type="text"
-                    className="input"
-                    style={{ flex: 1, minWidth: 260, fontSize: "0.92rem", padding: "10px 14px", borderColor: "#0284c7", borderRadius: 8 }}
-                    placeholder="VD: Warfarin, Aspirin hoặc Cefaclor, Augmentin, Paracetamol..."
-                    value={medsafeInput}
-                    onChange={(e) => handleMedsafeChange(e.target.value)}
-                    onKeyDown={handleMedsafeKeyDown}
-                    onFocus={() => {
-                      void fetchDrugSuggestions(getCurrentQueryToken(medsafeInput));
-                    }}
-                    autoComplete="off"
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    style={{ padding: "10px 20px", fontWeight: 700, fontSize: "0.92rem", display: "flex", alignItems: "center", gap: 6 }}
-                    onClick={() => {
-                      setShowSuggestions(false);
-                      void runInteractiveMedSafeCheck();
-                    }}
-                    disabled={medsafeChecking}
-                  >
-                    {medsafeChecking ? "⏳ Đang đối soát…" : "⚡ Kiểm tra Phản ứng & An toàn"}
-                  </button>
-                </div>
-
-                {/* DANH SÁCH GỢI Ý THUỐC THÔNG MINH (DROPDOWN AUTOCOMPLETE) */}
-                {showSuggestions && medsafeSuggestions.length > 0 && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "calc(100% + 4px)",
-                      left: 0,
-                      right: 0,
-                      background: "#ffffff",
-                      border: "1.5px solid #38bdf8",
-                      borderRadius: 12,
-                      boxShadow: "0 12px 30px rgba(2, 132, 199, 0.18), 0 4px 12px rgba(0,0,0,0.08)",
-                      zIndex: 100,
-                      maxHeight: 330,
-                      overflowY: "auto",
-                      padding: "6px 0",
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: "6px 14px 8px",
-                        background: "#f0f9ff",
-                        borderBottom: "1px solid #e0f2fe",
-                        fontSize: "0.76rem",
-                        color: "#0369a1",
-                        fontWeight: 700,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <span>🤖 GỢI Ý DƯỢC THƯ BỘ Y TẾ & AI GEMINI ({medsafeSuggestions.length} kết quả)</span>
-                      <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 500 }}>
-                        Dùng <kbd style={{ background: "#fff", padding: "1px 4px", borderRadius: 3, border: "1px solid #cbd5e1" }}>↑</kbd> <kbd style={{ background: "#fff", padding: "1px 4px", borderRadius: 3, border: "1px solid #cbd5e1" }}>↓</kbd> để di chuyển, <kbd style={{ background: "#0284c7", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>Tab ↹</kbd> hoặc <kbd style={{ background: "#fff", padding: "1px 4px", borderRadius: 3, border: "1px solid #cbd5e1" }}>Enter</kbd> để chọn
-                      </span>
-                    </div>
-
-                    {medsafeSuggestions.map((s, idx) => {
-                      const isHighlighted = idx === activeSuggestionIdx;
-                      return (
-                        <button
-                          type="button"
-                          key={`${s.name}-${idx}`}
-                          style={{
-                            width: "100%",
-                            textAlign: "left",
-                            font: "inherit",
-                            border: "none",
-                            padding: "9px 14px",
-                            cursor: "pointer",
-                            background: isHighlighted ? "#e0f2fe" : "transparent",
-                            borderLeft: isHighlighted ? "4px solid #0284c7" : "4px solid transparent",
-                            transition: "all 0.15s ease",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            gap: 12,
-                          }}
-                          onMouseEnter={() => setActiveSuggestionIdx(idx)}
-                          onClick={() => handleSelectSuggestion(s)}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                              <span style={{ fontWeight: 700, fontSize: "0.9rem", color: s.is_allergy ? "#be123c" : "#0f172a" }}>
-                                {getDrugIcon(s)} {s.name}
-                              </span>
-                              {s.strength && (
-                                <span style={{ fontSize: "0.75rem", color: "#64748b", background: "#f1f5f9", padding: "1px 6px", borderRadius: 4 }}>
-                                  {s.strength}
-                                </span>
-                              )}
-                              {s.is_allergy && (
-                                <span className="badge badge-danger" style={{ fontSize: "0.7rem", fontWeight: 700, background: "#ffe4e6", color: "#be123c", border: "1px solid #fecdd3" }}>
-                                  ⚠️ Tiền sử Dị ứng của BN
-                                </span>
-                              )}
-                              {s.is_current && (
-                                <span className="badge badge-info" style={{ fontSize: "0.7rem", fontWeight: 700 }}>
-                                  💊 Thuốc BN đang dùng
-                                </span>
-                              )}
-                              {s.interactions_count > 0 && !s.is_allergy && (
-                                <span className="badge badge-warning" style={{ fontSize: "0.7rem", fontWeight: 600 }}>
-                                  ⚡ {s.interactions_count} tương tác BYT
-                                </span>
-                              )}
-                              <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 500 }}>
-                                • {s.category}
-                              </span>
-                            </div>
-
-                            {s.ai_hint && (
-                              <div style={{ fontSize: "0.76rem", color: s.is_allergy ? "#e11d48" : "#0369a1", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                💡 <em>{s.ai_hint}</em>
-                              </div>
-                            )}
-                          </div>
-
-                          <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                            <span
-                              style={{
-                                background: isHighlighted ? "#0284c7" : "#f1f5f9",
-                                color: isHighlighted ? "#ffffff" : "#64748b",
-                                border: isHighlighted ? "1px solid #0284c7" : "1px solid #cbd5e1",
-                                borderRadius: 4,
-                                padding: "2px 7px",
-                                fontSize: "0.72rem",
-                                fontWeight: 700,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 3,
-                              }}
-                            >
-                              Tab ↹
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Các nút mẫu nhanh & nạp thuốc bệnh nhân */}
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, fontSize: "0.8rem", marginTop: 10 }}>
-                <span style={{ color: "#64748b", fontWeight: 600 }}>Thử nhanh mẫu:</span>
-                {meds.length > 0 && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    style={{ fontSize: "0.78rem", padding: "3px 8px", borderColor: "#0284c7", color: "#0284c7" }}
-                    onClick={() => {
-                      const allM = meds.map((m) => m.raw_name).join(", ");
-                      setMedsafeInput(allM);
-                      void runInteractiveMedSafeCheck(meds.map((m) => m.raw_name));
-                    }}
-                  >
-                    📥 Nạp toàn bộ thuốc BN đang dùng ({meds.length})
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  style={{ fontSize: "0.78rem", padding: "3px 8px" }}
-                  onClick={() => {
-                    setMedsafeInput("Warfarin, Aspirin");
-                    void runInteractiveMedSafeCheck(["Warfarin", "Aspirin"]);
-                  }}
-                >
-                  ⚡ Warfarin + Aspirin (Xuất huyết)
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  style={{ fontSize: "0.78rem", padding: "3px 8px" }}
-                  onClick={() => {
-                    setMedsafeInput("Clarithromycin, Simvastatin");
-                    void runInteractiveMedSafeCheck(["Clarithromycin", "Simvastatin"]);
-                  }}
-                >
-                  ⚡ Clarithromycin + Simvastatin (Tiêu cơ vân)
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  style={{ fontSize: "0.78rem", padding: "3px 8px" }}
-                  onClick={() => {
-                    setMedsafeInput("Panadol, Efferalgan");
-                    void runInteractiveMedSafeCheck(["Panadol", "Efferalgan"]);
-                  }}
-                >
-                  🔁 Panadol + Efferalgan (Trùng Paracetamol)
-                </button>
-                {allergies.length > 0 && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    style={{ fontSize: "0.78rem", padding: "3px 8px", borderColor: "#f43f5e", color: "#e11d48" }}
-                    onClick={() => {
-                      const algTest = allergies.map((a) => a.substance).join(", ");
-                      setMedsafeInput(algTest);
-                      void runInteractiveMedSafeCheck(allergies.map((a) => a.substance));
-                    }}
-                  >
-                    🚫 Thử dị ứng: {allergies[0].substance}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* KẾT QUẢ KIỂM TRA MEDSAFE TỔNG THỂ */}
-            {(quickCheckResult || check) && (
-              <div style={{ marginTop: 16 }}>
-                {quickCheckResult && (
-                  <div style={{ marginBottom: 14 }}>
-                    {/* Header trạng thái */}
-                    <div
-                      style={{
-                        padding: "12px 16px",
-                        borderRadius: 12,
-                        backgroundColor: getQuickCheckBg(quickCheckResult.status),
-                        border: getQuickCheckBorder(quickCheckResult.status),
-                        marginBottom: 12,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                        gap: 8,
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: "0.95rem", color: getQuickCheckColor(quickCheckResult.status) }}>
-                          {quickCheckResult.status_label}
-                        </div>
-                        <div style={{ fontSize: "0.8rem", color: "#475569", marginTop: 2 }}>
-                          Các chất đã đối soát: <strong>{quickCheckResult.checked_drugs.join(" + ")}</strong>
-                        </div>
-                      </div>
-                      <span className="badge" style={{ fontSize: "0.78rem", background: "#ffffff" }}>
-                        {quickCheckResult.alerts.length} Cảnh báo phát hiện
-                      </span>
-                    </div>
-
-                    {/* Danh sách các cảnh báo chi tiết theo loại */}
-                    {quickCheckResult.alerts.length > 0 ? (
-                      <div>
-                        {quickCheckResult.alerts.map((al, idx) => (
-                          <div
-                            key={`${al.rule_code}_${idx}`}
-                            style={{
-                              padding: "14px 16px",
-                              borderRadius: 12,
-                              background: al.severity === "high" ? "#fff1f2" : "#fffbeb",
-                              border: al.severity === "high" ? "1px solid #fecdd3" : "1px solid #fde68a",
-                              marginBottom: 10,
-                            }}
-                          >
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                              <strong style={{ color: al.severity === "high" ? "#e11d48" : "#d97706", fontSize: "0.92rem", display: "flex", alignItems: "center", gap: 6 }}>
-                                <span>{al.severity === "high" ? "🚨 CẢNH BÁO NGUY HIỂM" : "⚠️ CẢNH BÁO THẬN TRỌNG"}</span>
-                                <span style={{ fontSize: "0.75rem", background: "rgba(0,0,0,0.06)", padding: "2px 6px", borderRadius: 4 }}>
-                                  {getRuleTypeLabel(al.rule_type)}
-                                </span>
-                              </strong>
-                              <span className={al.severity === "high" ? "badge badge-danger" : "badge badge-warning"}>
-                                {al.rule_code}
-                              </span>
-                            </div>
-                            <p style={{ margin: "0 0 6px", fontSize: "0.9rem", color: "#0f172a", lineHeight: 1.5 }}>
-                              {al.message}
-                            </p>
-                            <div style={{ fontSize: "0.78rem", color: "#64748b", fontStyle: "italic" }}>
-                              📚 Nguồn căn cứ: {al.source}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{ padding: "14px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, color: "#16a34a", fontSize: "0.88rem" }}>
-                        ✓ Không phát hiện tương tác đối kháng hay cảnh báo nguy hiểm giữa các chất vừa nhập với tiền sử của bệnh nhân trong phạm vi quy tắc đã duyệt.
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Form ghi nhận quyết định của bác sĩ */}
-                {(quickCheckResult?.alerts?.length ?? 0) > 0 && (
-                  <div className="card" style={{ boxShadow: "none", border: "1px dashed var(--border-strong)", marginTop: 12 }}>
-                    <div className="card-title">
-                      <span className="t-ico">🖊</span> Ghi nhận quyết định lâm sàng của Bác sĩ
-                    </div>
-                    <div className="field">
-                      <label htmlFor="rev-note" className="label">Lời dặn / Phương án xử lý (nếu có tương tác)</label>
-                      <textarea
-                        id="rev-note"
-                        className="textarea"
-                        rows={2}
-                        placeholder="VD: Thay thế bằng thuốc khác, giảm liều, dặn người bệnh theo dõi triệu chứng xuất huyết/dị ứng..."
-                        value={reviewNote}
-                        onChange={(e) => setReviewNote(e.target.value)}
-                      />
-                    </div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button className="btn btn-primary btn-sm" onClick={() => submitReview("action_taken")}>
-                        ✓ Đã xử lý (Thay đổi đơn / Điều chỉnh)
-                      </button>
-                      <button className="btn btn-secondary btn-sm" onClick={() => submitReview("reviewed")}>
-                        👁️ Đã xem xét & Theo dõi
-                      </button>
-                      <button className="btn btn-danger btn-sm" onClick={() => submitReview("dismissed_with_reason")}>
-                        🚫 Không áp dụng (Ghi lý do)
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-
-          <div className="card">
-            <div className="card-title">
-              <span className="t-ico">🩺</span> Triệu chứng / cập nhật bởi Người Bệnh
-            </div>
-            {obs.length === 0 && <EmptyState icon="🩺" text="Chưa có cập nhật nào." />}
-            {obs.map((o) => (
-              <div className="list-row" key={o.id} style={{ alignItems: "center" }}>
-                {o.image_url ? (
-                  <button
-                    type="button"
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 8,
-                      overflow: "hidden",
-                      border: "1px solid #cbd5e1",
-                      flexShrink: 0,
-                      cursor: "pointer",
-                      backgroundColor: "#f1f5f9",
-                      padding: 0,
-                    }}
-                    onClick={() => setPreviewModalUrl(o.image_url ?? null)}
-                    title="Bác sĩ bấm để xem ảnh tổn thương da phóng to"
-                  >
-                    <img
-                      src={o.image_url}
-                      alt="Ảnh tổn thương"
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  </button>
-                ) : null}
-
-                <div className="list-main">
-                  <div className="list-title" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>{o.label}</span>
-                    {o.image_url && (
-                      <button
-                        type="button"
-                        onClick={() => setPreviewModalUrl(o.image_url ?? null)}
-                        className="badge badge-info"
-                        style={{ border: "none", cursor: "pointer", fontSize: 11, padding: "2px 6px" }}
-                      >
-                        📷 Xem ảnh tổn thương
-                      </button>
-                    )}
-                  </div>
-                  <div className="list-sub">
-                    {o.occurred_at}
-                    {o.value ? ` · ${o.value} ${o.unit ?? ""}` : ""}
-                  </div>
-                </div>
-                {o.status === "sent" ? (
-                  <button className="btn btn-secondary btn-sm" onClick={() => markSeen(o.id)}>
-                    Đánh dấu đã xem
-                  </button>
-                ) : (
-                  <span className="badge badge-ok">Đã xem</span>
-                )}
-              </div>
-            ))}
-          </div>
+          <PatientObservationsSection
+            obs={obs}
+            onPreviewImage={(url) => setPreviewModalUrl(url)}
+            onMarkSeen={markSeen}
+          />
 
           {/* Shortcut to Dedicated AI Suspect Page */}
           <button
@@ -2957,7 +2326,7 @@ function DoctorDashboardOverview({
                     alignItems: "center",
                     gap: 12,
                   }}
-                  onClick={() => void openPatient(p)}
+                  onClick={() => openPatient(p)}
                 >
                   <div className="list-main" style={{ flex: 1 }}>
                     <div className="list-title" style={{ fontWeight: 800, fontSize: "0.98rem", color: "#0f172a", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -3257,3 +2626,864 @@ function ClinicalInfoModal({
     </div>
   );
 }
+
+function PrescribeModal({
+  show,
+  prescribeName,
+  prescribeDose,
+  setPrescribeDose,
+  prescribeFreq,
+  setPrescribeFreq,
+  prescribeRoute,
+  setPrescribeRoute,
+  prescribeTiming,
+  setPrescribeTiming,
+  prescribeInstructions,
+  setPrescribeInstructions,
+  prescribeConditionName,
+  setPrescribeConditionName,
+  patientConditions,
+  prescribeSuggestions,
+  showPrescribeSuggestions,
+  prescribeSafetyCheck,
+  prescribing,
+  onNameInput,
+  onSelectSuggestion,
+  onApplyPreset,
+  onSubmit,
+  onClose,
+}: Readonly<{
+  show: boolean;
+  prescribeName: string;
+  prescribeDose: string;
+  setPrescribeDose: React.Dispatch<React.SetStateAction<string>>;
+  prescribeFreq: string;
+  setPrescribeFreq: React.Dispatch<React.SetStateAction<string>>;
+  prescribeRoute: string;
+  setPrescribeRoute: React.Dispatch<React.SetStateAction<string>>;
+  prescribeTiming: string;
+  setPrescribeTiming: React.Dispatch<React.SetStateAction<string>>;
+  prescribeInstructions: string;
+  setPrescribeInstructions: React.Dispatch<React.SetStateAction<string>>;
+  prescribeConditionName: string;
+  setPrescribeConditionName: React.Dispatch<React.SetStateAction<string>>;
+  patientConditions: Array<{ id: string; name: string; status?: string }>;
+  prescribeSuggestions: DrugSuggestion[];
+  showPrescribeSuggestions: boolean;
+  prescribeSafetyCheck: {
+    status: "idle" | "checking" | "safe" | "warning" | "danger";
+    message: string;
+    interactions?: any[];
+  };
+  prescribing: boolean;
+  onNameInput: (val: string) => void;
+  onSelectSuggestion: (item: DrugSuggestion) => void;
+  onApplyPreset: (preset: { name: string; dose: string; freq: string; timing: string; route?: string }) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onClose: () => void;
+}>) {
+  if (!show) return null;
+  return (
+    <div style={{ background: "rgba(14, 165, 233, 0.08)", border: "1px solid rgba(14, 165, 233, 0.3)", borderRadius: 14, padding: 16, marginBottom: 18 }}>
+      <div style={{ fontWeight: 700, color: "var(--brand-600)", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+        <span>🩺 Kê đơn thuốc chính thức (Ký bởi Bác sĩ)</span>
+      </div>
+
+      {/* Thuốc mẫu nhanh */}
+      <div style={{ marginBottom: 12 }}>
+        <span style={{ fontSize: 12, color: "var(--text-secondary)", marginRight: 8 }}>Gợi ý nhanh:</span>
+        {[
+          { name: "Fexofenadine 180mg", dose: "1 viên", freq: "1 lần/ngày", timing: "Sau ăn sáng" },
+          { name: "Cetirizine 10mg", dose: "1 viên", freq: "1 lần/ngày", timing: "Sau ăn tối 20h" },
+          { name: "Methylprednisolon 16mg", dose: "1 viên", freq: "1 lần/ngày", timing: "Sau ăn no sáng" },
+          { name: "Kem Hydrocortisone 1%", dose: "Lớp mỏng", freq: "2 lần/ngày", timing: "Sáng & Tối", route: "bôi ngoài da" },
+        ].map((item) => (
+          <button
+            key={item.name}
+            type="button"
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: 11.5, padding: "3px 9px", marginRight: 6, marginBottom: 6, backgroundColor: "#ffffff" }}
+            onClick={() => onApplyPreset(item)}
+          >
+            + {item.name}
+          </button>
+        ))}
+      </div>
+
+      <form onSubmit={onSubmit}>
+        {/* CHỌN LOẠI BỆNH ĐIỀU TRỊ */}
+        <div className="field">
+          <label htmlFor="prescribe-condition" className="label">
+            Kê đơn cho loại bệnh điều trị (*)
+          </label>
+          <select
+            id="prescribe-condition"
+            className="input"
+            value={prescribeConditionName}
+            onChange={(e) => setPrescribeConditionName(e.target.value)}
+          >
+            <option value="">-- Phác đồ điều trị chung / Toàn thân --</option>
+            {patientConditions.map((c) => (
+              <option key={c.id} value={c.name}>
+                🩺 {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* AUTOCOMPLETE TÊN THUỐC & HOẠT CHẤT (10.3) */}
+        <div className="field autocomplete-wrapper">
+          <label htmlFor="prescribe-name" className="label">
+            Tên thuốc & hàm lượng (*) — <span style={{ color: "#0284c7", fontWeight: 600 }}>Gõ 1 chữ cái đầu để gợi ý thông minh</span>
+          </label>
+          <input
+            id="prescribe-name"
+            className="input"
+            placeholder="VD: gõ 'c' -> Cetirizine, 'f' -> Fexofenadine, 'm' -> Medrol..."
+            value={prescribeName}
+            onChange={(e) => onNameInput(e.target.value)}
+            required
+            autoComplete="off"
+          />
+          {showPrescribeSuggestions && prescribeSuggestions.length > 0 && (
+            <div className="autocomplete-dropdown-list">
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", padding: "4px 8px", borderBottom: "1px solid #e2e8f0" }}>
+                🔍 GỢI Ý THUỐC & HOẠT CHẤT (DƯỢC THƯ BỘ Y TẾ & AI)
+              </div>
+              {prescribeSuggestions.map((item) => (
+                <button
+                  type="button"
+                  key={item.name}
+                  className="autocomplete-item-row"
+                  style={{ width: "100%", textAlign: "left", background: "none", border: "none", font: "inherit", cursor: "pointer" }}
+                  onClick={() => onSelectSuggestion(item)}
+                >
+                  <div>
+                    <div className="autocomplete-item-title">
+                      {item.is_allergy ? "⚠️ " : "💊 "}
+                      {item.name}
+                    </div>
+                    <div className="autocomplete-item-sub">
+                      {item.category || item.form || "Thuốc điều trị"} {item.strength ? `· ${item.strength}` : ""}
+                    </div>
+                  </div>
+                  {item.ai_hint && (
+                    <span className="badge badge-warning" style={{ fontSize: 10 }}>
+                      {item.ai_hint.slice(0, 32)}...
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* REAL-TIME AI SAFETY GUARDRAILS CARD (10.3) */}
+        {prescribeSafetyCheck.status !== "idle" && (
+          <div className={`ai-prescribe-safety-card ${getSafetyStatusClass(prescribeSafetyCheck.status)}`}>
+            <div style={{ fontWeight: 700, fontSize: "0.88rem", display: "flex", alignItems: "center", gap: 6 }}>
+              <span>{prescribeSafetyCheck.status === "checking" ? "⏳" : "🛡️ AI Safety Guardrails:"}</span>
+              <span>{prescribeSafetyCheck.message}</span>
+            </div>
+            {prescribeSafetyCheck.interactions && prescribeSafetyCheck.interactions.length > 0 && (
+              <ul style={{ margin: "6px 0 0 18px", fontSize: "0.82rem", lineHeight: 1.5 }}>
+                {prescribeSafetyCheck.interactions.map((it: any, idx: number) => (
+                  <li key={`interaction-${it.drug1}-${it.drug2}-${idx}`}>
+                    <strong>{it.drug1} + {it.drug2}:</strong> {it.mechanism || it.description || "Có tương tác đối kháng"}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="field">
+            <label htmlFor="prescribe-dose" className="label">Liều dùng</label>
+            <input
+              id="prescribe-dose"
+              className="input"
+              placeholder="VD: 1 viên/lần"
+              value={prescribeDose}
+              onChange={(e) => setPrescribeDose(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="prescribe-freq" className="label">Tần suất</label>
+            <input
+              id="prescribe-freq"
+              className="input"
+              placeholder="VD: 1 lần/ngày, 2 lần/ngày"
+              value={prescribeFreq}
+              onChange={(e) => setPrescribeFreq(e.target.value)}
+            />
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="field">
+            <label htmlFor="prescribe-route" className="label">Đường dùng</label>
+            <select
+              id="prescribe-route"
+              className="input"
+              value={prescribeRoute}
+              onChange={(e) => setPrescribeRoute(e.target.value)}
+            >
+              <option value="uống">Uống (Oral)</option>
+              <option value="bôi ngoài da">Bôi ngoài da (Topical)</option>
+              <option value="nhỏ mắt/mũi">Nhỏ mắt / Mũi</option>
+              <option value="tiêm bắp">Tiêm bắp (IM)</option>
+              <option value="tiêm tĩnh mạch">Tiêm tĩnh mạch (IV)</option>
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="prescribe-timing" className="label">Thời điểm dùng</label>
+            <input
+              id="prescribe-timing"
+              className="input"
+              placeholder="VD: Sau ăn 30 phút, trước ngủ..."
+              value={prescribeTiming}
+              onChange={(e) => setPrescribeTiming(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="field">
+          <label htmlFor="prescribe-instructions" className="label">Lời dặn của bác sĩ</label>
+          <input
+            id="prescribe-instructions"
+            className="input"
+            placeholder="VD: Uống nhiều nước, nếu nổi mẩn ngừng ngay..."
+            value={prescribeInstructions}
+            onChange={(e) => setPrescribeInstructions(e.target.value)}
+          />
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <button className="btn btn-primary btn-sm" type="submit" disabled={prescribing}>
+            {prescribing ? "Đang kê đơn..." : "✓ Kê đơn & Gửi người bệnh"}
+          </button>
+          <button
+            className="btn btn-secondary btn-sm"
+            type="button"
+            onClick={onClose}
+          >
+            Hủy
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function AddAllergyModal({
+  show,
+  allergySubstance,
+  setAllergySubstance,
+  allergyReaction,
+  setAllergyReaction,
+  allergySeverity,
+  setAllergySeverity,
+  addingAllergy,
+  onApplyPreset,
+  onSubmit,
+  onClose,
+}: Readonly<{
+  show: boolean;
+  allergySubstance: string;
+  setAllergySubstance: React.Dispatch<React.SetStateAction<string>>;
+  allergyReaction: string;
+  setAllergyReaction: React.Dispatch<React.SetStateAction<string>>;
+  allergySeverity: string;
+  setAllergySeverity: React.Dispatch<React.SetStateAction<string>>;
+  addingAllergy: boolean;
+  onApplyPreset: (name: string, r: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onClose: () => void;
+}>) {
+  if (!show) return null;
+  return (
+    <div
+      style={{
+        backgroundColor: "#fff1f2",
+        border: "1px solid #fecdd3",
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 16,
+      }}
+    >
+      <div style={{ fontWeight: 700, fontSize: 13.5, color: "#9f1239", marginBottom: 6 }}>
+        ⚠️ Khai báo dị ứng thuốc / thức ăn / dị nguyên
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+        <span style={{ fontSize: 11.5, color: "#64748b", alignSelf: "center" }}>Gợi ý nhanh:</span>
+        {[
+          { name: "Penicillin (Kháng sinh)", r: "Nổi mề đay, mẩn ngứa" },
+          { name: "Aspirin / NSAIDs", r: "Khó thở dạng hen, phù mạch" },
+          { name: "Cephalosporin", r: "Phát ban đỏ toàn thân" },
+          { name: "Cản quang chứa Iod", r: "Sốc phản vệ, tụt huyết áp" },
+          { name: "Hải sản / Tôm cua", r: "Sưng môi, ngứa họng" },
+        ].map((item) => (
+          <button
+            key={item.name}
+            type="button"
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: 11.5, padding: "3px 9px", backgroundColor: "#fff" }}
+            onClick={() => onApplyPreset(item.name, item.r)}
+          >
+            + {item.name}
+          </button>
+        ))}
+      </div>
+
+      <form onSubmit={onSubmit}>
+        <div className="field">
+          <label htmlFor="allergy-substance" className="label">Tên tác nhân / dị nguyên (*)</label>
+          <input
+            id="allergy-substance"
+            className="input"
+            placeholder="VD: Penicillin, Ciprofloxacin, Tôm cua..."
+            value={allergySubstance}
+            onChange={(e) => setAllergySubstance(e.target.value)}
+            required
+          />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div className="field">
+            <label htmlFor="allergy-reaction" className="label">Biểu hiện phản ứng</label>
+            <input
+              id="allergy-reaction"
+              className="input"
+              placeholder="VD: Mề đay, khó thở, sốc phản vệ..."
+              value={allergyReaction}
+              onChange={(e) => setAllergyReaction(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="allergy-severity" className="label">Mức độ nghiêm trọng</label>
+            <select
+              id="allergy-severity"
+              className="input"
+              value={allergySeverity}
+              onChange={(e) => setAllergySeverity(e.target.value)}
+            >
+              <option value="mild">Nhẹ (Mild - chỉ mẩn đỏ nhẹ)</option>
+              <option value="medium">Trung bình (Medium - mề đay diện rộng)</option>
+              <option value="severe">Nặng (Severe - phù mạch, co thắt phế quản)</option>
+              <option value="fatal">Nguy kịch (Fatal - sốc phản vệ)</option>
+            </select>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <button className="btn btn-primary btn-sm" type="submit" disabled={addingAllergy} style={{ backgroundColor: "#e11d48", borderColor: "#be123c" }}>
+            {addingAllergy ? "Đang lưu..." : "✓ Lưu tiền sử dị ứng"}
+          </button>
+          <button
+            className="btn btn-secondary btn-sm"
+            type="button"
+            onClick={onClose}
+          >
+            Hủy
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function MedsafeSection({
+  medsafeInput,
+  setMedsafeInput,
+  medsafeChecking,
+  showSuggestions,
+  setShowSuggestions,
+  medsafeSuggestions,
+  activeSuggestionIdx,
+  setActiveSuggestionIdx,
+  quickCheckResult,
+  check,
+  meds,
+  allergies,
+  reviewNote,
+  setReviewNote,
+  onMedsafeChange,
+  onMedsafeKeyDown,
+  onSelectSuggestion,
+  onRunCheck,
+  onFocusInput,
+  onSubmitReview,
+}: Readonly<{
+  medsafeInput: string;
+  setMedsafeInput: React.Dispatch<React.SetStateAction<string>>;
+  medsafeChecking: boolean;
+  showSuggestions: boolean;
+  setShowSuggestions: React.Dispatch<React.SetStateAction<boolean>>;
+  medsafeSuggestions: DrugSuggestion[];
+  activeSuggestionIdx: number;
+  setActiveSuggestionIdx: React.Dispatch<React.SetStateAction<number>>;
+  quickCheckResult: {
+    status: string;
+    status_label: string;
+    alerts: Array<{
+      rule_code: string;
+      rule_version: string;
+      rule_type: string;
+      severity: string;
+      message: string;
+      source: string;
+      detail?: Record<string, unknown>;
+    }>;
+    checked_drugs: string[];
+    patient_allergies: string[];
+    patient_conditions: string[];
+    out_of_scope: string[];
+    missing_data: string[];
+    note: string;
+  } | null;
+  check: CheckResult | null;
+  meds: Medication[];
+  allergies: Allergy[];
+  reviewNote: string;
+  setReviewNote: React.Dispatch<React.SetStateAction<string>>;
+  onMedsafeChange: (val: string) => void;
+  onMedsafeKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onSelectSuggestion: (s: DrugSuggestion) => void;
+  onRunCheck: (customDrugs?: string[]) => void;
+  onFocusInput: () => void;
+  onSubmitReview: (action: "reviewed" | "action_taken" | "dismissed_with_reason") => void;
+}>) {
+  return (
+    <div className="card" style={{ border: "1.5px solid #0284c7", background: "linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%)", borderRadius: 16 }}>
+      <div className="card-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 24 }}>🛡️</span>
+          <div>
+            <span style={{ fontWeight: 800, fontSize: "1.1rem", color: "#0369a1" }}>
+              Kiểm tra An toàn Thuốc & Đối soát Tương tác (MedSafe)
+            </span>
+            <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 400 }}>
+              Đối chiếu tương tác 2/3 loại chất với nhau và đối chiếu tiền sử dị ứng / bệnh nền của bệnh nhân
+            </div>
+          </div>
+        </div>
+        <span className="badge badge-info" style={{ fontSize: "0.8rem", fontWeight: 700 }}>
+          Kho 633 tương tác Bộ Y tế
+        </span>
+      </div>
+
+      {/* KHUNG NHẬP 2/3 LOẠI CHẤT/THUỐC ĐỂ TEST PHẢN ỨNG CÓ AUTOCOMPLETE & PHÍM TAB */}
+      <div style={{ background: "#ffffff", padding: "16px 18px", borderRadius: 14, border: "1px solid #bae6fd", marginTop: 12, marginBottom: 14, boxShadow: "0 2px 8px rgba(2, 132, 199, 0.06)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 6 }}>
+          <label htmlFor="medsafe-substances" style={{ fontWeight: 700, fontSize: "0.88rem", color: "#0f172a" }}>
+            🧪 Nhập 2, 3 hoặc nhiều loại chất/thuốc (ngăn cách bởi dấu phẩy):
+          </label>
+          <span style={{ fontSize: "0.78rem", color: "#0284c7", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+            <span>💡 Gõ tên thuốc rồi nhấn</span>
+            <kbd style={{ background: "#e0f2fe", border: "1px solid #7dd3fc", borderRadius: 4, padding: "1px 6px", fontSize: "0.75rem", fontWeight: 700, color: "#0369a1" }}>Tab ↹</kbd>
+            <span>để tự động điền nhanh theo Dược thư & AI</span>
+          </span>
+        </div>
+
+        <div style={{ position: "relative", marginBottom: 8 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <input
+              id="medsafe-substances"
+              type="text"
+              className="input"
+              style={{ flex: 1, minWidth: 260, fontSize: "0.92rem", padding: "10px 14px", borderColor: "#0284c7", borderRadius: 8 }}
+              placeholder="VD: Warfarin, Aspirin hoặc Cefaclor, Augmentin, Paracetamol..."
+              value={medsafeInput}
+              onChange={(e) => onMedsafeChange(e.target.value)}
+              onKeyDown={onMedsafeKeyDown}
+              onFocus={onFocusInput}
+              autoComplete="off"
+            />
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ padding: "10px 20px", fontWeight: 700, fontSize: "0.92rem", display: "flex", alignItems: "center", gap: 6 }}
+              onClick={() => {
+                setShowSuggestions(false);
+                onRunCheck();
+              }}
+              disabled={medsafeChecking}
+            >
+              {medsafeChecking ? "⏳ Đang đối soát…" : "⚡ Kiểm tra Phản ứng & An toàn"}
+            </button>
+          </div>
+
+          {/* DANH SÁCH GỢI Ý THUỐC THÔNG MINH (DROPDOWN AUTOCOMPLETE) */}
+          {showSuggestions && medsafeSuggestions.length > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                left: 0,
+                right: 0,
+                background: "#ffffff",
+                border: "1.5px solid #38bdf8",
+                borderRadius: 12,
+                boxShadow: "0 12px 30px rgba(2, 132, 199, 0.18), 0 4px 12px rgba(0,0,0,0.08)",
+                zIndex: 100,
+                maxHeight: 330,
+                overflowY: "auto",
+                padding: "6px 0",
+              }}
+            >
+              <div
+                style={{
+                  padding: "6px 14px 8px",
+                  background: "#f0f9ff",
+                  borderBottom: "1px solid #e0f2fe",
+                  fontSize: "0.76rem",
+                  color: "#0369a1",
+                  fontWeight: 700,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span>🤖 GỢI Ý DƯỢC THƯ BỘ Y TẾ & AI GEMINI ({medsafeSuggestions.length} kết quả)</span>
+                <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 500 }}>
+                  Dùng <kbd style={{ background: "#fff", padding: "1px 4px", borderRadius: 3, border: "1px solid #cbd5e1" }}>↑</kbd> <kbd style={{ background: "#fff", padding: "1px 4px", borderRadius: 3, border: "1px solid #cbd5e1" }}>↓</kbd> để di chuyển, <kbd style={{ background: "#0284c7", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>Tab ↹</kbd> hoặc <kbd style={{ background: "#fff", padding: "1px 4px", borderRadius: 3, border: "1px solid #cbd5e1" }}>Enter</kbd> để chọn
+                </span>
+              </div>
+
+              {medsafeSuggestions.map((s, idx) => {
+                const isHighlighted = idx === activeSuggestionIdx;
+                return (
+                  <button
+                    type="button"
+                    key={`${s.name}-${idx}`}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      font: "inherit",
+                      border: "none",
+                      padding: "9px 14px",
+                      cursor: "pointer",
+                      background: isHighlighted ? "#e0f2fe" : "transparent",
+                      borderLeft: isHighlighted ? "4px solid #0284c7" : "4px solid transparent",
+                      transition: "all 0.15s ease",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 12,
+                    }}
+                    onMouseEnter={() => setActiveSuggestionIdx(idx)}
+                    onClick={() => onSelectSuggestion(s)}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 700, fontSize: "0.9rem", color: s.is_allergy ? "#be123c" : "#0f172a" }}>
+                          {getDrugIcon(s)} {s.name}
+                        </span>
+                        {s.strength && (
+                          <span style={{ fontSize: "0.75rem", color: "#64748b", background: "#f1f5f9", padding: "1px 6px", borderRadius: 4 }}>
+                            {s.strength}
+                          </span>
+                        )}
+                        {s.is_allergy && (
+                          <span className="badge badge-danger" style={{ fontSize: "0.7rem", fontWeight: 700, background: "#ffe4e6", color: "#be123c", border: "1px solid #fecdd3" }}>
+                            ⚠️ Tiền sử Dị ứng của BN
+                          </span>
+                        )}
+                        {s.is_current && (
+                          <span className="badge badge-info" style={{ fontSize: "0.7rem", fontWeight: 700 }}>
+                            💊 Thuốc BN đang dùng
+                          </span>
+                        )}
+                        {s.interactions_count > 0 && !s.is_allergy && (
+                          <span className="badge badge-warning" style={{ fontSize: "0.7rem", fontWeight: 600 }}>
+                            ⚡ {s.interactions_count} tương tác BYT
+                          </span>
+                        )}
+                        <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 500 }}>
+                          • {s.category}
+                        </span>
+                      </div>
+
+                      {s.ai_hint && (
+                        <div style={{ fontSize: "0.76rem", color: s.is_allergy ? "#e11d48" : "#0369a1", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          💡 <em>{s.ai_hint}</em>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span
+                        style={{
+                          background: isHighlighted ? "#0284c7" : "#f1f5f9",
+                          color: isHighlighted ? "#ffffff" : "#64748b",
+                          border: isHighlighted ? "1px solid #0284c7" : "1px solid #cbd5e1",
+                          borderRadius: 4,
+                          padding: "2px 7px",
+                          fontSize: "0.72rem",
+                          fontWeight: 700,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 3,
+                        }}
+                      >
+                        Tab ↹
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Các nút mẫu nhanh & nạp thuốc bệnh nhân */}
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, fontSize: "0.8rem", marginTop: 10 }}>
+          <span style={{ color: "#64748b", fontWeight: 600 }}>Thử nhanh mẫu:</span>
+          {meds.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: "0.78rem", padding: "3px 8px", borderColor: "#0284c7", color: "#0284c7" }}
+              onClick={() => {
+                const allM = meds.map((m) => m.raw_name).join(", ");
+                setMedsafeInput(allM);
+                onRunCheck(meds.map((m) => m.raw_name));
+              }}
+            >
+              📥 Nạp toàn bộ thuốc BN đang dùng ({meds.length})
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: "0.78rem", padding: "3px 8px" }}
+            onClick={() => {
+              setMedsafeInput("Warfarin, Aspirin");
+              onRunCheck(["Warfarin", "Aspirin"]);
+            }}
+          >
+            ⚡ Warfarin + Aspirin (Xuất huyết)
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: "0.78rem", padding: "3px 8px" }}
+            onClick={() => {
+              setMedsafeInput("Clarithromycin, Simvastatin");
+              onRunCheck(["Clarithromycin", "Simvastatin"]);
+            }}
+          >
+            ⚡ Clarithromycin + Simvastatin (Tiêu cơ vân)
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: "0.78rem", padding: "3px 8px" }}
+            onClick={() => {
+              setMedsafeInput("Panadol, Efferalgan");
+              onRunCheck(["Panadol", "Efferalgan"]);
+            }}
+          >
+            🔁 Panadol + Efferalgan (Trùng Paracetamol)
+          </button>
+          {allergies.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: "0.78rem", padding: "3px 8px", borderColor: "#f43f5e", color: "#e11d48" }}
+              onClick={() => {
+                const algTest = allergies.map((a) => a.substance).join(", ");
+                setMedsafeInput(algTest);
+                onRunCheck(allergies.map((a) => a.substance));
+              }}
+            >
+              🚫 Thử dị ứng: {allergies[0].substance}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* KẾT QUẢ KIỂM TRA MEDSAFE TỔNG THỂ */}
+      {(quickCheckResult || check) && (
+        <div style={{ marginTop: 16 }}>
+          {quickCheckResult && (
+            <div style={{ marginBottom: 14 }}>
+              {/* Header trạng thái */}
+              <div
+                style={{
+                  padding: "12px 16px",
+                  borderRadius: 12,
+                  backgroundColor: getQuickCheckBg(quickCheckResult.status),
+                  border: getQuickCheckBorder(quickCheckResult.status),
+                  marginBottom: 12,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: "0.95rem", color: getQuickCheckColor(quickCheckResult.status) }}>
+                    {quickCheckResult.status_label}
+                  </div>
+                  <div style={{ fontSize: "0.8rem", color: "#475569", marginTop: 2 }}>
+                    Các chất đã đối soát: <strong>{quickCheckResult.checked_drugs.join(" + ")}</strong>
+                  </div>
+                </div>
+                <span className="badge" style={{ fontSize: "0.78rem", background: "#ffffff" }}>
+                  {quickCheckResult.alerts.length} Cảnh báo phát hiện
+                </span>
+              </div>
+
+              {/* Danh sách các cảnh báo chi tiết theo loại */}
+              {quickCheckResult.alerts.length > 0 ? (
+                <div>
+                  {quickCheckResult.alerts.map((al, idx) => (
+                    <div
+                      key={`${al.rule_code}_${idx}`}
+                      style={{
+                        padding: "14px 16px",
+                        borderRadius: 12,
+                        background: al.severity === "high" ? "#fff1f2" : "#fffbeb",
+                        border: al.severity === "high" ? "1px solid #fecdd3" : "1px solid #fde68a",
+                        marginBottom: 10,
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <strong style={{ color: al.severity === "high" ? "#e11d48" : "#d97706", fontSize: "0.92rem", display: "flex", alignItems: "center", gap: 6 }}>
+                          <span>{al.severity === "high" ? "🚨 CẢNH BÁO NGUY HIỂM" : "⚠️ CẢNH BÁO THẬN TRỌNG"}</span>
+                          <span style={{ fontSize: "0.75rem", background: "rgba(0,0,0,0.06)", padding: "2px 6px", borderRadius: 4 }}>
+                            {getRuleTypeLabel(al.rule_type)}
+                          </span>
+                        </strong>
+                        <span className={al.severity === "high" ? "badge badge-danger" : "badge badge-warning"}>
+                          {al.rule_code}
+                        </span>
+                      </div>
+                      <p style={{ margin: "0 0 6px", fontSize: "0.9rem", color: "#0f172a", lineHeight: 1.5 }}>
+                        {al.message}
+                      </p>
+                      <div style={{ fontSize: "0.78rem", color: "#64748b", fontStyle: "italic" }}>
+                        📚 Nguồn căn cứ: {al.source}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: "14px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, color: "#16a34a", fontSize: "0.88rem" }}>
+                  ✓ Không phát hiện tương tác đối kháng hay cảnh báo nguy hiểm giữa các chất vừa nhập với tiền sử của bệnh nhân trong phạm vi quy tắc đã duyệt.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Form ghi nhận quyết định của bác sĩ */}
+          {(quickCheckResult?.alerts?.length ?? 0) > 0 && (
+            <div className="card" style={{ boxShadow: "none", border: "1px dashed var(--border-strong)", marginTop: 12 }}>
+              <div className="card-title">
+                <span className="t-ico">🖊</span> Ghi nhận quyết định lâm sàng của Bác sĩ
+              </div>
+              <div className="field">
+                <label htmlFor="rev-note" className="label">Lời dặn / Phương án xử lý (nếu có tương tác)</label>
+                <textarea
+                  id="rev-note"
+                  className="textarea"
+                  rows={2}
+                  placeholder="VD: Thay thế bằng thuốc khác, giảm liều, dặn người bệnh theo dõi triệu chứng xuất huyết/dị ứng..."
+                  value={reviewNote}
+                  onChange={(e) => setReviewNote(e.target.value)}
+                />
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button className="btn btn-primary btn-sm" onClick={() => onSubmitReview("action_taken")}>
+                  ✓ Đã xử lý (Thay đổi đơn / Điều chỉnh)
+                </button>
+                <button className="btn btn-secondary btn-sm" onClick={() => onSubmitReview("reviewed")}>
+                  👁️ Đã xem xét & Theo dõi
+                </button>
+                <button className="btn btn-danger btn-sm" onClick={() => onSubmitReview("dismissed_with_reason")}>
+                  🚫 Không áp dụng (Ghi lý do)
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PatientObservationsSection({
+  obs,
+  onPreviewImage,
+  onMarkSeen,
+}: Readonly<{
+  obs: Observation[];
+  onPreviewImage: (url: string) => void;
+  onMarkSeen: (obsId: string) => void;
+}>) {
+  return (
+    <div className="card">
+      <div className="card-title">
+        <span className="t-ico">🩺</span> Triệu chứng / cập nhật bởi Người Bệnh
+      </div>
+      {obs.length === 0 && <EmptyState icon="🩺" text="Chưa có cập nhật nào." />}
+      {obs.map((o) => (
+        <div className="list-row" key={o.id} style={{ alignItems: "center" }}>
+          {o.image_url ? (
+            <button
+              type="button"
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 8,
+                overflow: "hidden",
+                border: "1px solid #cbd5e1",
+                flexShrink: 0,
+                cursor: "pointer",
+                backgroundColor: "#f1f5f9",
+                padding: 0,
+              }}
+              onClick={() => onPreviewImage(o.image_url!)}
+              title="Bác sĩ bấm để xem ảnh tổn thương da phóng to"
+            >
+              <img
+                src={o.image_url}
+                alt="Ảnh tổn thương"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            </button>
+          ) : null}
+
+          <div className="list-main">
+            <div className="list-title" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span>{o.label}</span>
+              {o.image_url && (
+                <button
+                  type="button"
+                  onClick={() => onPreviewImage(o.image_url!)}
+                  className="badge badge-info"
+                  style={{ border: "none", cursor: "pointer", fontSize: 11, padding: "2px 6px" }}
+                >
+                  📷 Xem ảnh tổn thương
+                </button>
+              )}
+            </div>
+            <div className="list-sub">
+              {o.occurred_at}
+              {o.value ? ` · ${o.value} ${o.unit ?? ""}` : ""}
+            </div>
+          </div>
+          {o.status === "sent" ? (
+            <button className="btn btn-secondary btn-sm" onClick={() => onMarkSeen(o.id)}>
+              Đánh dấu đã xem
+            </button>
+          ) : (
+            <span className="badge badge-ok">Đã xem</span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
