@@ -105,6 +105,13 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     load();
+    const interval = setInterval(() => {
+      // Tự động đồng bộ thời gian thực từ người bệnh mà không giật màn hình
+      api<Notification[]>("/v1/notifications")
+        .then((data) => setItems(data))
+        .catch(() => {});
+    }, 4000);
+    return () => clearInterval(interval);
   }, [load]);
 
   async function markRead(id: string) {

@@ -205,9 +205,16 @@ export function AppShell({
   useEffect(() => {
     setUser(getUser());
     setPath(window.location.pathname);
-    api<{ id: string; is_read: boolean }[]>("/v1/notifications")
-      .then((ns) => setUnread(ns.filter((n) => !n.is_read).length))
-      .catch(() => {});
+
+    function fetchUnread() {
+      api<{ id: string; is_read: boolean }[]>("/v1/notifications")
+        .then((ns) => setUnread(ns.filter((n) => !n.is_read).length))
+        .catch(() => {});
+    }
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const initials = (user?.full_name ?? "?")
