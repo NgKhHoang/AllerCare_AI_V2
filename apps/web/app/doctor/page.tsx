@@ -369,6 +369,54 @@ function getRuleTypeLabel(ruleType: string): string {
   }
 }
 
+function getSafetyStatusClass(status: string): string {
+  if (status === "danger") return "danger";
+  if (status === "warning") return "warning";
+  if (status === "safe") return "safe";
+  return "";
+}
+
+function getAllergySeverityBadgeClass(severity?: string): string {
+  if (severity === "fatal" || severity === "severe") return "badge badge-danger";
+  return "badge badge-warning";
+}
+
+function getAllergySeverityLabel(severity?: string): string {
+  if (severity === "fatal") return "Nguy kịch";
+  if (severity === "severe") return "Nặng";
+  return "Trung bình";
+}
+
+function getQuickCheckBg(status: string): string {
+  if (status === "has_alerts") return "var(--status-danger-bg)";
+  if (status === "insufficient_data") return "var(--status-warning-bg)";
+  return "#f0fdf4";
+}
+
+function getQuickCheckBorder(status: string): string {
+  if (status === "has_alerts") return "1.5px solid var(--status-danger-border)";
+  if (status === "insufficient_data") return "1.5px solid var(--status-warning-border)";
+  return "1.5px solid #bbf7d0";
+}
+
+function getQuickCheckColor(status: string): string {
+  if (status === "has_alerts") return "#dc2626";
+  if (status === "insufficient_data") return "#b45309";
+  return "#16a34a";
+}
+
+function getHighlightAlertClass(highlight: string): string {
+  if (highlight.startsWith("🚨") || highlight.startsWith("⚠")) return "alertbox alertbox-danger";
+  if (highlight.startsWith("?")) return "alertbox alertbox-warning";
+  return "alertbox alertbox-neutral";
+}
+
+function getDrugIcon(s: { is_allergy?: boolean; is_current?: boolean }): string {
+  if (s.is_allergy) return "🚫";
+  if (s.is_current) return "💊";
+  return "🏷️";
+}
+
 function getCurrentQueryToken(fullText: string): string {
   const trimmed = fullText;
   const lastSep = Math.max(
@@ -1065,18 +1113,7 @@ export default function DoctorPortal() {
         <div className="doctor-dashboard-grid">
           {/* CỘT BÊN TRÁI: LỊCH HẸN ĐÃ XÁC NHẬN & VÀO PHÒNG VIDEO + CHỜ DUYỆT */}
           <div className="doctor-dashboard-card">
-            <div
-              className="doctor-dashboard-card-header"
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setShowAppointments((v) => !v);
-                }
-              }}
-              onClick={() => setShowAppointments((v) => !v)}
-            >
+            <div className="doctor-dashboard-card-header">
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 22 }}>🎥</span>
                 <div>
@@ -1092,10 +1129,7 @@ export default function DoctorPortal() {
               <button
                 type="button"
                 className="collapse-toggle-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowAppointments((v) => !v);
-                }}
+                onClick={() => setShowAppointments((v) => !v)}
               >
                 {showAppointments ? "▲ Ẩn nội dung" : "▼ Mở nội dung"}
               </button>
@@ -1224,18 +1258,7 @@ export default function DoctorPortal() {
 
           {/* CỘT BÊN CÁNH PHẢI: CÁC CA BỆNH NHÂN */}
           <div className="doctor-dashboard-card">
-            <div
-              className="doctor-dashboard-card-header"
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setShowPatients((v) => !v);
-                }
-              }}
-              onClick={() => setShowPatients((v) => !v)}
-            >
+            <div className="doctor-dashboard-card-header">
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 22 }}>👥</span>
                 <div>
@@ -1251,10 +1274,7 @@ export default function DoctorPortal() {
               <button
                 type="button"
                 className="collapse-toggle-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowPatients((v) => !v);
-                }}
+                onClick={() => setShowPatients((v) => !v)}
               >
                 {showPatients ? "▲ Ẩn nội dung" : "▼ Mở nội dung"}
               </button>
@@ -1299,18 +1319,14 @@ export default function DoctorPortal() {
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {filteredPatients.map((p) => (
-                    <div
+                    <button
+                      type="button"
                       className={`list-row ${p.unseen_updates > 0 ? "pulse-red-alert" : ""}`}
                       key={p.profile_id}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          openPatient(p);
-                        }
-                      }}
                       style={{
+                        width: "100%",
+                        textAlign: "left",
+                        font: "inherit",
                         cursor: "pointer",
                         borderRadius: 12,
                         border: p.unseen_updates > 0 ? "1.5px solid #f87171" : "1px solid #e2e8f0",
@@ -1322,7 +1338,7 @@ export default function DoctorPortal() {
                         alignItems: "center",
                         gap: 12,
                       }}
-                      onClick={() => openPatient(p)}
+                      onClick={() => void openPatient(p)}
                     >
                       <div className="list-main" style={{ flex: 1 }}>
                         <div className="list-title" style={{ fontWeight: 800, fontSize: "0.98rem", color: "#0f172a", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -1404,7 +1420,7 @@ export default function DoctorPortal() {
                           Xem hồ sơ →
                         </span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1509,10 +1525,7 @@ export default function DoctorPortal() {
             <div
               style={{
                 position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
+                inset: 0,
                 backgroundColor: "rgba(15, 23, 42, 0.6)",
                 backdropFilter: "blur(4px)",
                 zIndex: 100,
@@ -1521,7 +1534,6 @@ export default function DoctorPortal() {
                 justifyContent: "center",
                 padding: 16,
               }}
-              onClick={() => setShowClinicalModal(false)}
             >
               <div
                 style={{
@@ -1534,7 +1546,6 @@ export default function DoctorPortal() {
                   maxHeight: "90vh",
                   overflowY: "auto",
                 }}
-                onClick={(e) => e.stopPropagation()}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                   <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#0f172a", fontWeight: 800 }}>
@@ -1870,17 +1881,11 @@ export default function DoctorPortal() {
                           🔍 GỢI Ý THUỐC & HOẠT CHẤT (DƯỢC THƯ BỘ Y TẾ & AI)
                         </div>
                         {prescribeSuggestions.map((item) => (
-                          <div
+                          <button
+                            type="button"
                             key={item.name}
                             className="autocomplete-item-row"
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                selectPrescribeDrug(item);
-                              }
-                            }}
+                            style={{ width: "100%", textAlign: "left", background: "none", border: "none", font: "inherit", cursor: "pointer" }}
                             onClick={() => selectPrescribeDrug(item)}
                           >
                             <div>
@@ -1897,7 +1902,7 @@ export default function DoctorPortal() {
                                 {item.ai_hint.slice(0, 32)}...
                               </span>
                             )}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -1906,15 +1911,7 @@ export default function DoctorPortal() {
                   {/* REAL-TIME AI SAFETY GUARDRAILS CARD (10.3) */}
                   {prescribeSafetyCheck.status !== "idle" && (
                     <div
-                      className={`ai-prescribe-safety-card ${
-                        prescribeSafetyCheck.status === "danger"
-                          ? "danger"
-                          : prescribeSafetyCheck.status === "warning"
-                          ? "warning"
-                          : prescribeSafetyCheck.status === "safe"
-                          ? "safe"
-                          : ""
-                      }`}
+                      className={`ai-prescribe-safety-card ${getSafetyStatusClass(prescribeSafetyCheck.status)}`}
                     >
                       <div style={{ fontWeight: 700, fontSize: "0.88rem", display: "flex", alignItems: "center", gap: 6 }}>
                         <span>{prescribeSafetyCheck.status === "checking" ? "⏳" : "🛡️ AI Safety Guardrails:"}</span>
@@ -2216,14 +2213,10 @@ export default function DoctorPortal() {
                         <span>🚫 {a.substance}</span>
                         {a.severity && (
                           <span
-                            className={
-                              a.severity === "fatal" || a.severity === "severe"
-                                ? "badge badge-danger"
-                                : "badge badge-warning"
-                            }
+                            className={getAllergySeverityBadgeClass(a.severity)}
                             style={{ fontSize: 11 }}
                           >
-                            {a.severity === "fatal" ? "Nguy kịch" : a.severity === "severe" ? "Nặng" : "Trung bình"}
+                            {getAllergySeverityLabel(a.severity)}
                           </span>
                         )}
                       </div>
@@ -2357,17 +2350,14 @@ export default function DoctorPortal() {
                     {medsafeSuggestions.map((s, idx) => {
                       const isHighlighted = idx === activeSuggestionIdx;
                       return (
-                        <div
+                        <button
+                          type="button"
                           key={`${s.name}-${idx}`}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              handleSelectSuggestion(s);
-                            }
-                          }}
                           style={{
+                            width: "100%",
+                            textAlign: "left",
+                            font: "inherit",
+                            border: "none",
                             padding: "9px 14px",
                             cursor: "pointer",
                             background: isHighlighted ? "#e0f2fe" : "transparent",
@@ -2384,7 +2374,7 @@ export default function DoctorPortal() {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                               <span style={{ fontWeight: 700, fontSize: "0.9rem", color: s.is_allergy ? "#be123c" : "#0f172a" }}>
-                                {s.is_allergy ? "🚫" : s.is_current ? "💊" : "🏷️"} {s.name}
+                                {getDrugIcon(s)} {s.name}
                               </span>
                               {s.strength && (
                                 <span style={{ fontSize: "0.75rem", color: "#64748b", background: "#f1f5f9", padding: "1px 6px", borderRadius: 4 }}>
@@ -2436,7 +2426,7 @@ export default function DoctorPortal() {
                               Tab ↹
                             </span>
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -2520,18 +2510,8 @@ export default function DoctorPortal() {
                       style={{
                         padding: "12px 16px",
                         borderRadius: 12,
-                        backgroundColor:
-                          quickCheckResult.status === "has_alerts"
-                            ? "var(--status-danger-bg)"
-                            : quickCheckResult.status === "insufficient_data"
-                            ? "var(--status-warning-bg)"
-                            : "#f0fdf4",
-                        border:
-                          quickCheckResult.status === "has_alerts"
-                            ? "1.5px solid var(--status-danger-border)"
-                            : quickCheckResult.status === "insufficient_data"
-                            ? "1.5px solid var(--status-warning-border)"
-                            : "1.5px solid #bbf7d0",
+                        backgroundColor: getQuickCheckBg(quickCheckResult.status),
+                        border: getQuickCheckBorder(quickCheckResult.status),
                         marginBottom: 12,
                         display: "flex",
                         justifyContent: "space-between",
@@ -2541,7 +2521,7 @@ export default function DoctorPortal() {
                       }}
                     >
                       <div>
-                        <div style={{ fontWeight: 800, fontSize: "0.95rem", color: quickCheckResult.status === "has_alerts" ? "#dc2626" : quickCheckResult.status === "insufficient_data" ? "#b45309" : "#16a34a" }}>
+                        <div style={{ fontWeight: 800, fontSize: "0.95rem", color: getQuickCheckColor(quickCheckResult.status) }}>
                           {quickCheckResult.status_label}
                         </div>
                         <div style={{ fontSize: "0.8rem", color: "#475569", marginTop: 2 }}>
@@ -2571,7 +2551,7 @@ export default function DoctorPortal() {
                               <strong style={{ color: al.severity === "high" ? "#e11d48" : "#d97706", fontSize: "0.92rem", display: "flex", alignItems: "center", gap: 6 }}>
                                 <span>{al.severity === "high" ? "🚨 CẢNH BÁO NGUY HIỂM" : "⚠️ CẢNH BÁO THẬN TRỌNG"}</span>
                                 <span style={{ fontSize: "0.75rem", background: "rgba(0,0,0,0.06)", padding: "2px 6px", borderRadius: 4 }}>
-                                  {al.rule_type === "drug_drug" ? "Tương tác thuốc - thuốc" : al.rule_type === "drug_allergy" ? "Trùng tiền sử dị ứng" : al.rule_type === "drug_condition" ? "Chống chỉ định bệnh nền" : "Trùng lặp hoạt chất"}
+                                  {getRuleTypeLabel(al.rule_type)}
                                 </span>
                               </strong>
                               <span className={al.severity === "high" ? "badge badge-danger" : "badge badge-warning"}>
@@ -2638,15 +2618,8 @@ export default function DoctorPortal() {
             {obs.map((o) => (
               <div className="list-row" key={o.id} style={{ alignItems: "center" }}>
                 {o.image_url ? (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setPreviewModalUrl(o.image_url ?? null);
-                      }
-                    }}
+                  <button
+                    type="button"
                     style={{
                       width: 48,
                       height: 48,
@@ -2656,6 +2629,7 @@ export default function DoctorPortal() {
                       flexShrink: 0,
                       cursor: "pointer",
                       backgroundColor: "#f1f5f9",
+                      padding: 0,
                     }}
                     onClick={() => setPreviewModalUrl(o.image_url ?? null)}
                     title="Bác sĩ bấm để xem ảnh tổn thương da phóng to"
@@ -2668,7 +2642,7 @@ export default function DoctorPortal() {
                         (e.target as HTMLImageElement).style.display = "none";
                       }}
                     />
-                  </div>
+                  </button>
                 ) : null}
 
                 <div className="list-main">
@@ -2702,17 +2676,13 @@ export default function DoctorPortal() {
           </div>
 
           {/* Shortcut to Dedicated AI Suspect Page */}
-          <div
+          <button
+            type="button"
             className="card"
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                router.push(`/doctor/ai-suspect?profile=${selected.profile_id}`);
-              }
-            }}
             style={{
+              width: "100%",
+              textAlign: "left",
+              font: "inherit",
               background: "linear-gradient(135deg, #f8fafc 0%, #f0f9ff 100%)",
               border: "1px solid #bae6fd",
               cursor: "pointer",
@@ -2752,7 +2722,7 @@ export default function DoctorPortal() {
                 Mở trang AI gợi ý tác nhân →
               </span>
             </div>
-          </div>
+          </button>
 
           {/* Floating AssistiveTouch AI Button */}
           <div
@@ -2825,10 +2795,7 @@ export default function DoctorPortal() {
             <div
               style={{
                 position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
+                inset: 0,
                 backgroundColor: "rgba(15, 23, 42, 0.55)",
                 backdropFilter: "blur(4px)",
                 zIndex: 1050,
@@ -2837,7 +2804,6 @@ export default function DoctorPortal() {
                 justifyContent: "center",
                 padding: 16,
               }}
-              onClick={() => setShowAiModal(false)}
             >
               <div
                 style={{
@@ -2852,7 +2818,6 @@ export default function DoctorPortal() {
                   boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
                   border: "1px solid rgba(226, 232, 240, 0.8)",
                 }}
-                onClick={(e) => e.stopPropagation()}
               >
                 {/* Modal Header */}
                 <div
@@ -2963,13 +2928,7 @@ export default function DoctorPortal() {
                           {aiSummary.highlights.map((h, i) => (
                             <div
                               key={`ai-highlight-${h.slice(0, 24)}-${i}`}
-                              className={
-                                h.startsWith("🚨") || h.startsWith("⚠")
-                                  ? "alertbox alertbox-danger"
-                                  : h.startsWith("?")
-                                  ? "alertbox alertbox-warning"
-                                  : "alertbox alertbox-neutral"
-                              }
+                              className={getHighlightAlertClass(h)}
                               style={{ marginTop: 6, fontSize: 13, padding: "8px 12px" }}
                             >
                               {h}
@@ -3089,7 +3048,6 @@ export default function DoctorPortal() {
                 justifyContent: "center",
                 padding: 20,
               }}
-              onClick={() => setPreviewModalUrl(null)}
             >
               <div
                 style={{
@@ -3103,7 +3061,6 @@ export default function DoctorPortal() {
                   display: "flex",
                   flexDirection: "column",
                 }}
-                onClick={(e) => e.stopPropagation()}
               >
                 <div
                   style={{
