@@ -38,7 +38,7 @@ var api = builder.AddDockerfile("allercare-api", "../../services/api")
 
 // 4. Next.js 14 Web Frontend (Clinical Glassmorphism UI + Voice & OCR Vision)
 var web = builder.AddNpmApp("allercare-web", "../../apps/web", "dev")
-    .WithHttpEndpoint(port: 3000, targetPort: 3000, name: "http")
+    .WithHttpEndpoint(port: 3000, env: "PORT")
     .WithExternalHttpEndpoints()
     .WithEnvironment("API_ORIGIN", "http://localhost:8000");
 
