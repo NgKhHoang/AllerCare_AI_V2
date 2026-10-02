@@ -1067,6 +1067,14 @@ export default function DoctorPortal() {
           <div className="doctor-dashboard-card">
             <div
               className="doctor-dashboard-card-header"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setShowAppointments((v) => !v);
+                }
+              }}
               onClick={() => setShowAppointments((v) => !v)}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1218,6 +1226,14 @@ export default function DoctorPortal() {
           <div className="doctor-dashboard-card">
             <div
               className="doctor-dashboard-card-header"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setShowPatients((v) => !v);
+                }
+              }}
               onClick={() => setShowPatients((v) => !v)}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1286,6 +1302,14 @@ export default function DoctorPortal() {
                     <div
                       className={`list-row ${p.unseen_updates > 0 ? "pulse-red-alert" : ""}`}
                       key={p.profile_id}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openPatient(p);
+                        }
+                      }}
                       style={{
                         cursor: "pointer",
                         borderRadius: 12,
@@ -1808,8 +1832,11 @@ export default function DoctorPortal() {
                 <form onSubmit={handlePrescribe}>
                   {/* CHỌN LOẠI BỆNH ĐIỀU TRỊ */}
                   <div className="field">
-                    <label className="label">Kê đơn cho loại bệnh điều trị (*)</label>
+                    <label htmlFor="prescribe-condition" className="label">
+                      Kê đơn cho loại bệnh điều trị (*)
+                    </label>
                     <select
+                      id="prescribe-condition"
                       className="input"
                       value={prescribeConditionName}
                       onChange={(e) => setPrescribeConditionName(e.target.value)}
@@ -1825,10 +1852,11 @@ export default function DoctorPortal() {
 
                   {/* AUTOCOMPLETE TÊN THUỐC & HOẠT CHẤT (10.3) */}
                   <div className="field autocomplete-wrapper">
-                    <label className="label">
+                    <label htmlFor="prescribe-name" className="label">
                       Tên thuốc & hàm lượng (*) — <span style={{ color: "#0284c7", fontWeight: 600 }}>Gõ 1 chữ cái đầu để gợi ý thông minh</span>
                     </label>
                     <input
+                      id="prescribe-name"
                       className="input"
                       placeholder="VD: gõ 'c' -> Cetirizine, 'f' -> Fexofenadine, 'm' -> Medrol..."
                       value={prescribeName}
@@ -1845,6 +1873,14 @@ export default function DoctorPortal() {
                           <div
                             key={item.name}
                             className="autocomplete-item-row"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                selectPrescribeDrug(item);
+                              }
+                            }}
                             onClick={() => selectPrescribeDrug(item)}
                           >
                             <div>
@@ -1898,8 +1934,9 @@ export default function DoctorPortal() {
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div className="field">
-                      <label className="label">Liều dùng</label>
+                      <label htmlFor="prescribe-dose" className="label">Liều dùng</label>
                       <input
+                        id="prescribe-dose"
                         className="input"
                         placeholder="VD: 1 viên/lần"
                         value={prescribeDose}
@@ -1907,8 +1944,9 @@ export default function DoctorPortal() {
                       />
                     </div>
                     <div className="field">
-                      <label className="label">Tần suất</label>
+                      <label htmlFor="prescribe-freq" className="label">Tần suất</label>
                       <input
+                        id="prescribe-freq"
                         className="input"
                         placeholder="VD: 1 lần/ngày, 2 lần/ngày"
                         value={prescribeFreq}
@@ -1918,8 +1956,9 @@ export default function DoctorPortal() {
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div className="field">
-                      <label className="label">Đường dùng</label>
+                      <label htmlFor="prescribe-route" className="label">Đường dùng</label>
                       <select
+                        id="prescribe-route"
                         className="input"
                         value={prescribeRoute}
                         onChange={(e) => setPrescribeRoute(e.target.value)}
@@ -1932,8 +1971,9 @@ export default function DoctorPortal() {
                       </select>
                     </div>
                     <div className="field">
-                      <label className="label">Thời điểm dùng</label>
+                      <label htmlFor="prescribe-timing" className="label">Thời điểm dùng</label>
                       <input
+                        id="prescribe-timing"
                         className="input"
                         placeholder="VD: Sau ăn 30 phút, trước ngủ..."
                         value={prescribeTiming}
@@ -1942,8 +1982,9 @@ export default function DoctorPortal() {
                     </div>
                   </div>
                   <div className="field">
-                    <label className="label">Lời dặn của bác sĩ</label>
+                    <label htmlFor="prescribe-instructions" className="label">Lời dặn của bác sĩ</label>
                     <input
+                      id="prescribe-instructions"
                       className="input"
                       placeholder="VD: Uống nhiều nước, nếu nổi mẩn ngừng ngay..."
                       value={prescribeInstructions}
@@ -1985,6 +2026,7 @@ export default function DoctorPortal() {
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
                     <VerifiedBadge verification={m.verification} />
                     <button
+                      type="button"
                       className="btn btn-secondary btn-sm"
                       onClick={() => verifyMed(m.id, m.verification !== "verified")}
                       style={{ whiteSpace: "nowrap" }}
@@ -1992,6 +2034,7 @@ export default function DoctorPortal() {
                       {m.verification === "verified" ? "Bỏ xác minh" : "Xác minh"}
                     </button>
                     <button
+                      type="button"
                       className="btn btn-secondary btn-sm"
                       style={{ color: "#e11d48", borderColor: "#fecdd3", backgroundColor: "#fff1f2", whiteSpace: "nowrap" }}
                       onClick={() => deleteMed(m.id, m.raw_name)}
@@ -2006,16 +2049,17 @@ export default function DoctorPortal() {
 
             <form onSubmit={addPlannedMed} className="mt16" style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 14 }}>
               <div className="field">
-                <label className="label" style={{ fontSize: 12.5, fontWeight: 600 }}>Thử nghiệm thuốc dự kiến (Simulate MedSafe)</label>
+                <label htmlFor="simulate-med" className="label" style={{ fontSize: 12.5, fontWeight: 600 }}>Thử nghiệm thuốc dự kiến (Simulate MedSafe)</label>
                 <div style={{ display: "flex", gap: 8 }}>
                   <input
+                    id="simulate-med"
                     className="input"
                     placeholder="VD: Amoxicillin 500mg (để thử tương tác trước khi kê)"
                     value={newDrug}
                     onChange={(e) => setNewDrug(e.target.value)}
                   />
-                  <button className="btn btn-secondary btn-sm" style={{ whiteSpace: "nowrap" }}>
-                    + Thêm thử nghiệm
+                  <button className="btn btn-secondary btn-sm" type="submit" style={{ whiteSpace: "nowrap" }}>
+                    + Thử nghiệm
                   </button>
                 </div>
               </div>
@@ -2029,6 +2073,7 @@ export default function DoctorPortal() {
                 <span className="t-ico">🚫</span> Tiền sử Dị ứng & Phản vệ ({allergies.length})
               </div>
               <button
+                type="button"
                 className="btn btn-primary btn-sm"
                 style={{ fontSize: 12.5 }}
                 onClick={() => setShowAddAllergyModal(!showAddAllergyModal)}
@@ -2076,8 +2121,9 @@ export default function DoctorPortal() {
 
                 <form onSubmit={handleAddAllergy}>
                   <div className="field">
-                    <label className="label">Tên tác nhân / dị nguyên (*)</label>
+                    <label htmlFor="allergy-substance" className="label">Tên tác nhân / dị nguyên (*)</label>
                     <input
+                      id="allergy-substance"
                       className="input"
                       placeholder="VD: Penicillin, Ciprofloxacin, Tôm cua..."
                       value={allergySubstance}
@@ -2087,8 +2133,9 @@ export default function DoctorPortal() {
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div className="field">
-                      <label className="label">Biểu hiện phản ứng</label>
+                      <label htmlFor="allergy-reaction" className="label">Biểu hiện phản ứng</label>
                       <input
+                        id="allergy-reaction"
                         className="input"
                         placeholder="VD: Mề đay, khó thở, sốc phản vệ..."
                         value={allergyReaction}
@@ -2096,8 +2143,9 @@ export default function DoctorPortal() {
                       />
                     </div>
                     <div className="field">
-                      <label className="label">Mức độ nghiêm trọng</label>
+                      <label htmlFor="allergy-severity" className="label">Mức độ nghiêm trọng</label>
                       <select
+                        id="allergy-severity"
                         className="input"
                         value={allergySeverity}
                         onChange={(e) => setAllergySeverity(e.target.value)}
@@ -2311,6 +2359,14 @@ export default function DoctorPortal() {
                       return (
                         <div
                           key={`${s.name}-${idx}`}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleSelectSuggestion(s);
+                            }
+                          }}
                           style={{
                             padding: "9px 14px",
                             cursor: "pointer",
@@ -2583,6 +2639,14 @@ export default function DoctorPortal() {
               <div className="list-row" key={o.id} style={{ alignItems: "center" }}>
                 {o.image_url ? (
                   <div
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setPreviewModalUrl(o.image_url ?? null);
+                      }
+                    }}
                     style={{
                       width: 48,
                       height: 48,
@@ -2640,6 +2704,14 @@ export default function DoctorPortal() {
           {/* Shortcut to Dedicated AI Suspect Page */}
           <div
             className="card"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                router.push(`/doctor/ai-suspect?profile=${selected.profile_id}`);
+              }
+            }}
             style={{
               background: "linear-gradient(135deg, #f8fafc 0%, #f0f9ff 100%)",
               border: "1px solid #bae6fd",
