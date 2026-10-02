@@ -30,12 +30,18 @@ const KIND_STYLE: Record<string, { icon: string; cls: string }> = {
 export default function NotificationsPage() {
   const [items, setItems] = useState<Notification[]>([]);
   const [error, setError] = useState("");
+  const [role, setRole] = useState<"patient" | "doctor" | "nurse" | "leader" | "admin">("doctor");
 
   useEffect(() => {
     const user = getUser();
     if (!getToken() || !user) {
       window.location.href = "/login";
       return;
+    }
+    if (user.role === "patient") {
+      setRole("patient");
+    } else if (["doctor", "pharmacist", "nurse", "leader", "admin"].includes(user.role)) {
+      setRole(user.role === "pharmacist" ? "doctor" : (user.role as "doctor" | "nurse" | "leader" | "admin"));
     }
   }, []);
 
@@ -73,7 +79,8 @@ export default function NotificationsPage() {
 
   return (
     <AppShell
-      role={getUser()?.role === "patient" ? "patient" : "doctor"}
+      role={role}
+      wide={true}
       icon="🔔"
       title="Thông báo"
       subtitle={unread > 0 ? `${unread} thông báo chưa đọc` : "Bạn đã đọc hết thông báo"}
