@@ -163,25 +163,28 @@ function calcLiveTreatmentProgress(startDateStr?: string, followupDateStr?: stri
 function DiseaseCardButton({
   cond,
   index,
+  isDoctor,
   onSelect,
+  onResolve,
+  onDelete,
 }: {
   readonly cond: DiseaseCondition;
   readonly index: number;
+  readonly isDoctor?: boolean;
   readonly onSelect: (id: string) => void;
+  readonly onResolve?: (id: string) => void;
+  readonly onDelete?: (id: string, name: string) => void;
 }) {
   const cfg = STATUS_CONFIG[cond.status] || STATUS_CONFIG.active;
   const cardStats = calcLiveTreatmentProgress(cond.start_date, cond.followup_date);
 
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(cond.id)}
+    <div
       style={{
         padding: "16px 18px",
         background: "var(--bg-surface, #ffffff)",
         border: `1.5px solid ${cfg.border}`,
         borderRadius: 12,
-        cursor: "pointer",
         transition: "all 0.2s ease-in-out",
         boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
         display: "flex",
@@ -189,20 +192,18 @@ function DiseaseCardButton({
         justifyContent: "space-between",
         textAlign: "left",
         width: "100%",
-        fontFamily: "inherit",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-3px)";
-        e.currentTarget.style.boxShadow = "0 8px 20px rgba(2, 132, 199, 0.12)";
-        e.currentTarget.style.borderColor = "#0284c7";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "none";
-        e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.03)";
-        e.currentTarget.style.borderColor = cfg.border;
+        position: "relative",
       }}
     >
-      <div>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelect(cond.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") onSelect(cond.id);
+        }}
+        style={{ cursor: "pointer" }}
+      >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
           <span style={{ fontSize: "0.78rem", color: "#0284c7", fontWeight: 800, background: "#e0f2fe", padding: "2px 8px", borderRadius: 6 }}>
             Loại {index + 1}
@@ -251,23 +252,76 @@ function DiseaseCardButton({
         </div>
       </div>
 
+      {/* FOOTER ACTIONS: KẾT THÚC / XÓA BỆNH CHO BÁC SĨ HOẶC XEM PHÁC ĐỒ */}
       <div
         style={{
           marginTop: 14,
           paddingTop: 10,
           borderTop: "1px dashed var(--border-default)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          color: "#0284c7",
-          fontSize: "0.85rem",
-          fontWeight: 700,
         }}
       >
-        <span>Xem chi tiết phác đồ & Timeline</span>
-        <span>➔</span>
+        {isDoctor ? (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => onSelect(cond.id)}
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: "0.78rem", padding: "4px 8px", color: "#0284c7", borderColor: "#bae6fd", background: "#f0f9ff", fontWeight: 700 }}
+              title="Xem chi tiết phác đồ và dòng thời gian điều trị"
+            >
+              🔍 Xem phác đồ →
+            </button>
+            <div style={{ display: "flex", gap: 4 }}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onResolve) onResolve(cond.id);
+                }}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: "0.76rem", padding: "4px 8px", color: "#16a34a", borderColor: "#86efac", background: "#f0fdf4", fontWeight: 700 }}
+                title="Kết thúc đợt điều trị cho loại bệnh này (bảo toàn lịch sử)"
+              >
+                ✅ Kết thúc
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onDelete) onDelete(cond.id, cond.name);
+                }}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: "0.76rem", padding: "4px 8px", color: "#dc2626", borderColor: "#fca5a5", background: "#fef2f2", fontWeight: 700 }}
+                title="Xóa loại bệnh này khỏi danh sách điều trị"
+              >
+                🗑️ Xóa
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => onSelect(cond.id)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") onSelect(cond.id);
+            }}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              color: "#0284c7",
+              fontSize: "0.85rem",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            <span>Xem chi tiết phác đồ & Timeline</span>
+            <span>➔</span>
+          </div>
+        )}
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -727,6 +781,8 @@ function ConditionListView({
   setAddForm,
   onAddCondition,
   adding,
+  onResolveCondition,
+  onOpenDeleteModal,
 }: {
   readonly data: TreatmentTimelineData;
   readonly isDoctor: boolean;
@@ -737,6 +793,8 @@ function ConditionListView({
   readonly setAddForm: React.Dispatch<React.SetStateAction<{ name: string; status: TreatmentStatus; startDate: string; followupDate: string; note: string }>>;
   readonly onAddCondition: (e: React.FormEvent) => void;
   readonly adding: boolean;
+  readonly onResolveCondition?: (id: string) => void;
+  readonly onOpenDeleteModal?: (id: string, name: string) => void;
 }) {
   return (
     <div className="card" style={{ marginBottom: 20, border: "1px solid var(--border-default)", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
@@ -876,7 +934,10 @@ function ConditionListView({
                 key={cond.id}
                 cond={cond}
                 index={index}
+                isDoctor={isDoctor}
                 onSelect={onSelectCondition}
+                onResolve={onResolveCondition}
+                onDelete={onOpenDeleteModal}
               />
             ))}
           </div>
@@ -1294,6 +1355,8 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
           setAddForm={setAddForm}
           onAddCondition={handleAddCondition}
           adding={adding}
+          onResolveCondition={handleResolveCondition}
+          onOpenDeleteModal={(id, name) => setDeleteModal({ open: true, condId: id, condName: name, reason: "" })}
         />
       )}
     </>
