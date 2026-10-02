@@ -148,7 +148,7 @@ export default function GuidesPage() {
           <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>
             Gặp nổi mẩn, ngứa nhiều, sưng mặt/môi hoặc khó thở sau khi dùng thuốc:{" "}
             <strong>ngừng thuốc</strong>, dùng mục <strong>Phân luồng AI</strong> hoặc gọi{" "}
-            <strong>115</strong> ngay nếu khó thở nặng.
+            <strong>115</strong> / Hotline <strong>+84 98 1224426</strong> ngay nếu khó thở nặng.
           </p>
         </div>
       )}

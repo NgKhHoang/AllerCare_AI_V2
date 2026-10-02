@@ -352,12 +352,29 @@ export function EmergencyBanner() {
       <div className="emergency-text">
         <span style={{ fontSize: 20 }}>🚨</span>
         <span>
-          <strong>Dấu hiệu khẩn cấp?</strong> Khó thở, sưng môi lưỡi, choáng váng hãy gọi ngay <strong>115</strong>.
+          <strong>Dấu hiệu khẩn cấp?</strong> Khó thở, sưng môi lưỡi, choáng váng hãy gọi ngay <strong>115</strong> hoặc Hotline cấp cứu <strong>+84 98 1224426</strong>.
         </span>
       </div>
-      <a href="tel:115" className="emergency-btn">
-        📞 GỌI 115
-      </a>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <a href="tel:115" className="emergency-btn">
+          📞 GỌI 115
+        </a>
+        <a
+          href="tel:+84981224426"
+          className="emergency-btn"
+          style={{
+            backgroundColor: "#dc2626",
+            border: "1px solid #f87171",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            whiteSpace: "nowrap",
+          }}
+          title="Gọi Hotline cấp cứu +84 98 1224426"
+        >
+          ☎️ Hotline: +84 98 1224426
+        </a>
+      </div>
     </div>
   );
 }

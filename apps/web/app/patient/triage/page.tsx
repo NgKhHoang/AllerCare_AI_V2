@@ -220,13 +220,22 @@ export default function TriagePage() {
             )}
           </div>
           {isRed && (
-            <a
-              href="tel:115"
-              className="btn btn-danger"
-              style={{ width: "100%", marginTop: 10, textAlign: "center", fontSize: 18 }}
-            >
-              📞 GỌI CẤP CỨU 115 NGAY
-            </a>
+            <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+              <a
+                href="tel:115"
+                className="btn btn-danger"
+                style={{ flex: 1, minWidth: 200, textAlign: "center", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              >
+                📞 GỌI CẤP CỨU 115 NGAY
+              </a>
+              <a
+                href="tel:+84981224426"
+                className="btn btn-danger"
+                style={{ flex: 1, minWidth: 200, textAlign: "center", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: "#dc2626" }}
+              >
+                ☎️ HOTLINE: +84 98 1224426
+              </a>
+            </div>
           )}
         </div>
       )}

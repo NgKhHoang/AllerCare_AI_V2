@@ -233,7 +233,7 @@ export default function PatientChat() {
       role="patient"
       icon="💬"
       title="Hỏi đáp AI"
-      subtitle="Trợ lý AI tích hợp Gemini & 633 tương tác thuốc Bộ Y tế · Hỗ trợ giọng nói · Khẩn cấp gọi 115"
+      subtitle="Trợ lý AI tích hợp Gemini & 633 tương tác thuốc Bộ Y tế · Hỗ trợ giọng nói · Khẩn cấp gọi 115 / Hotline: +84 98 1224426"
     >
       <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
         <button className="btn btn-primary btn-sm" onClick={newChat}>

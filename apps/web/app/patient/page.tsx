@@ -491,7 +491,7 @@ export default function PatientHome() {
         <ul style={{ paddingLeft: 20, color: "var(--text-secondary)", lineHeight: 1.8, fontSize: 13.5, margin: 0 }}>
           <li>Uống thuốc đúng liều lượng và thời điểm bác sĩ hướng dẫn; không tự ý ngừng hoặc đổi liều.</li>
           <li>Khi quên liều: <strong>Tuyệt đối không uống gấp đôi</strong> ở lần tiếp theo để bù liều.</li>
-          <li>Khi gặp triệu chứng khó thở, sưng môi lưỡi hoặc nổi mày đay cấp: <strong>Gọi ngay 115</strong>.</li>
+          <li>Khi gặp triệu chứng khó thở, sưng môi lưỡi hoặc nổi mày đay cấp: <strong>Gọi ngay 115</strong> hoặc Hotline cấp cứu <strong>+84 98 1224426</strong>.</li>
         </ul>
       </div>
     </AppShell>
