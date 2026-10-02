@@ -254,6 +254,13 @@ export default function PatientHome() {
   );
 }
 
+function getChipSelectedClass(type: string): string {
+  if (type === "danger") return "selected-danger";
+  if (type === "warning") return "selected-warning";
+  if (type === "success") return "selected-success";
+  return "selected";
+}
+
 interface PatientAlarmCardProps {
   isTodayCheckedIn: boolean;
   checkInSuccessMsg: string;
@@ -404,97 +411,130 @@ function PatientAlarmCard(props: Readonly<PatientAlarmCardProps>) {
         </div>
       </div>
 
-      {/* FORM CHECK-IN 1 CHẠM (NẾU CHƯA CHECK-IN) */}
       {!isTodayCheckedIn && (
-        <form onSubmit={handleDailyCheckInSubmit} style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(220, 38, 38, 0.15)" }}>
-          {/* 1. TÍCH CHỌN ĐÃ UỐNG THUỐC */}
-          <div style={{ marginBottom: 14 }}>
-            <label
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 10,
-                cursor: "pointer",
-                padding: "10px 16px",
-                borderRadius: 10,
-                background: hasTakenMeds ? "#dcfce7" : "#ffffff",
-                border: hasTakenMeds ? "1.5px solid #22c55e" : "1.5px solid #cbd5e1",
-                fontWeight: 700,
-                fontSize: "0.92rem",
-                color: hasTakenMeds ? "#15803d" : "#334155",
-                transition: "all 0.18s ease",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={hasTakenMeds}
-                onChange={(e) => setHasTakenMeds(e.target.checked)}
-                style={{ width: 18, height: 18, accentColor: "#16a34a" }}
-              />
-              <span>💊 {hasTakenMeds ? "✓ Đã uống đủ thuốc theo đơn sáng nay" : "Chạm vào đây để xác nhận: Đã uống đủ thuốc sáng nay"}</span>
-            </label>
-          </div>
-
-          {/* 2. CHỌN NHANH TRẠNG THÁI (QUICK-SELECT CHIPS) */}
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: "0.84rem", fontWeight: 700, color: "#334155", marginBottom: 6 }}>
-              1. Chọn nhanh tình trạng da & cảm giác hiện tại (1 chạm):
-            </div>
-            <div className="quick-chips-container">
-              {QUICK_CHIPS.map((chip) => {
-                const isSelected = selectedChips.includes(chip.label);
-                let selClass = "selected";
-                if (chip.type === "danger") selClass = "selected-danger";
-                if (chip.type === "warning") selClass = "selected-warning";
-                if (chip.type === "success") selClass = "selected-success";
-
-                return (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    className={`quick-chip-btn ${isSelected ? selClass : ""}`}
-                    onClick={() => toggleChip(chip.label)}
-                  >
-                    {chip.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 3. NHẬP GHI CHÚ BỔ SUNG */}
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: "0.84rem", fontWeight: 700, color: "#334155", marginBottom: 6 }}>
-              2. Ghi chú thêm cho Bác sĩ (Tùy chọn):
-            </div>
-            <input
-              type="text"
-              className="input"
-              placeholder="VD: Cảm thấy hơi buồn ngủ sau uống, vùng da cẳng tay bớt ngứa..."
-              value={dailyNote}
-              onChange={(e) => setDailyNote(e.target.value)}
-              style={{ backgroundColor: "#ffffff" }}
-            />
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={submittingCheckIn}
-              style={{
-                fontWeight: 800,
-                fontSize: "0.92rem",
-                padding: "10px 22px",
-                background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
-              }}
-            >
-              {submittingCheckIn ? "Đang gửi sang Bác sĩ..." : "🚀 GỬI BÁO CÁO NGÀY CHO BÁC SĨ"}
-            </button>
-          </div>
-        </form>
+        <PatientCheckInForm
+          onSubmit={handleDailyCheckInSubmit}
+          hasTakenMeds={hasTakenMeds}
+          setHasTakenMeds={setHasTakenMeds}
+          selectedChips={selectedChips}
+          toggleChip={toggleChip}
+          dailyNote={dailyNote}
+          setDailyNote={setDailyNote}
+          submittingCheckIn={submittingCheckIn}
+        />
       )}
     </div>
+  );
+}
+
+interface PatientCheckInFormProps {
+  onSubmit: (e: React.FormEvent) => Promise<void>;
+  hasTakenMeds: boolean;
+  setHasTakenMeds: (v: boolean) => void;
+  selectedChips: string[];
+  toggleChip: (label: string) => void;
+  dailyNote: string;
+  setDailyNote: (v: string) => void;
+  submittingCheckIn: boolean;
+}
+
+function PatientCheckInForm(props: Readonly<PatientCheckInFormProps>) {
+  const {
+    onSubmit,
+    hasTakenMeds,
+    setHasTakenMeds,
+    selectedChips,
+    toggleChip,
+    dailyNote,
+    setDailyNote,
+    submittingCheckIn,
+  } = props;
+
+  return (
+    <form onSubmit={onSubmit} style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(220, 38, 38, 0.15)" }}>
+      {/* 1. TÍCH CHỌN ĐÃ UỐNG THUỐC */}
+      <div style={{ marginBottom: 14 }}>
+        <label
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 10,
+            cursor: "pointer",
+            padding: "10px 16px",
+            borderRadius: 10,
+            background: hasTakenMeds ? "#dcfce7" : "#ffffff",
+            border: hasTakenMeds ? "1.5px solid #22c55e" : "1.5px solid #cbd5e1",
+            fontWeight: 700,
+            fontSize: "0.92rem",
+            color: hasTakenMeds ? "#15803d" : "#334155",
+            transition: "all 0.18s ease",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={hasTakenMeds}
+            onChange={(e) => setHasTakenMeds(e.target.checked)}
+            style={{ width: 18, height: 18, accentColor: "#16a34a" }}
+          />
+          <span>💊 {hasTakenMeds ? "✓ Đã uống đủ thuốc theo đơn sáng nay" : "Chạm vào đây để xác nhận: Đã uống đủ thuốc sáng nay"}</span>
+        </label>
+      </div>
+
+      {/* 2. CHỌN NHANH TRẠNG THÁI (QUICK-SELECT CHIPS) */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: "0.84rem", fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+          1. Chọn nhanh tình trạng da & cảm giác hiện tại (1 chạm):
+        </div>
+        <div className="quick-chips-container">
+          {QUICK_CHIPS.map((chip) => {
+            const isSelected = selectedChips.includes(chip.label);
+            const selClass = isSelected ? getChipSelectedClass(chip.type) : "";
+
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                className={`quick-chip-btn ${selClass}`}
+                onClick={() => toggleChip(chip.label)}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3. NHẬP GHI CHÚ BỔ SUNG */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: "0.84rem", fontWeight: 700, color: "#334155", marginBottom: 6 }}>
+          2. Ghi chú thêm cho Bác sĩ (Tùy chọn):
+        </div>
+        <input
+          type="text"
+          className="input"
+          placeholder="VD: Cảm thấy hơi buồn ngủ sau uống, vùng da cẳng tay bớt ngứa..."
+          value={dailyNote}
+          onChange={(e) => setDailyNote(e.target.value)}
+          style={{ backgroundColor: "#ffffff" }}
+        />
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={submittingCheckIn}
+          style={{
+            fontWeight: 800,
+            fontSize: "0.92rem",
+            padding: "10px 22px",
+            background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
+          }}
+        >
+          {submittingCheckIn ? "Đang gửi sang Bác sĩ..." : "🚀 GỬI BÁO CÁO NGÀY CHO BÁC SĨ"}
+        </button>
+      </div>
+    </form>
   );
 }
 

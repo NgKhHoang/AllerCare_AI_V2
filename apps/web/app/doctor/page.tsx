@@ -100,6 +100,14 @@ interface Guide {
   acknowledgment: string;
   created_at: string;
 }
+
+type SafetyCheckStatus = "idle" | "checking" | "safe" | "warning" | "danger";
+
+interface PrescribeSafetyCheckState {
+  status: SafetyCheckStatus;
+  message: string;
+  interactions?: any[];
+}
 interface AiSummary {
   summary: string;
   highlights: string[];
@@ -472,11 +480,7 @@ export default function DoctorPortal() {
   const [patientConditions, setPatientConditions] = useState<Array<{ id: string; name: string; status?: string }>>([]);
   const [prescribeSuggestions, setPrescribeSuggestions] = useState<DrugSuggestion[]>([]);
   const [showPrescribeSuggestions, setShowPrescribeSuggestions] = useState(false);
-  const [prescribeSafetyCheck, setPrescribeSafetyCheck] = useState<{
-    status: "idle" | "checking" | "safe" | "warning" | "danger";
-    message: string;
-    interactions?: any[];
-  }>({ status: "idle", message: "" });
+  const [prescribeSafetyCheck, setPrescribeSafetyCheck] = useState<PrescribeSafetyCheckState>({ status: "idle", message: "" });
   const [prescribing, setPrescribing] = useState(false);
   const [showPrescribeModal, setShowPrescribeModal] = useState(false);
 
@@ -2533,11 +2537,7 @@ function PrescribeModal({
   patientConditions: Array<{ id: string; name: string; status?: string }>;
   prescribeSuggestions: DrugSuggestion[];
   showPrescribeSuggestions: boolean;
-  prescribeSafetyCheck: {
-    status: "idle" | "checking" | "safe" | "warning" | "danger";
-    message: string;
-    interactions?: any[];
-  };
+  prescribeSafetyCheck: PrescribeSafetyCheckState;
   prescribing: boolean;
   onNameInput: (val: string) => void;
   onSelectSuggestion: (item: DrugSuggestion) => void;
@@ -3457,7 +3457,7 @@ interface DoctorPatientMedsCardProps {
   patientConditions: Array<{ id: string; name: string; status?: string }>;
   prescribeSuggestions: DrugSuggestion[];
   showPrescribeSuggestions: boolean;
-  prescribeSafetyCheck: { status: "idle" | "checking" | "safe" | "warning" | "danger"; message: string; interactions?: any[] };
+  prescribeSafetyCheck: PrescribeSafetyCheckState;
   prescribing: boolean;
   onPrescribeNameInput: (v: string) => void;
   onSelectPrescribeDrug: (drug: DrugSuggestion) => void;
