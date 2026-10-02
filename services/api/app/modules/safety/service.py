@@ -342,67 +342,21 @@ def _status_note(status: str) -> str:
     }.get(status, "")
 
 
-def suggest_drugs(
-    db: Session,
-    query: str = "",
-    profile: PatientProfile | None = None,
-    limit: int = 15,
-) -> list[dict]:
-    """Gợi ý thuốc & hoạt chất thông minh dựa trên:
-    1. Danh mục thuốc Bộ Y tế & Database AllerCare (Biệt dược, Hoạt chất INN)
-    2. Kho 633 quy tắc tương tác thuốc Bộ Y tế
-    3. Ngữ cảnh hồ sơ bệnh nhân (Thuốc đang dùng, Tiền sử dị ứng đã xác minh)
-    4. AI Knowledge Brain & Gemini RAG
-    """
-    q = query.strip().lower()
+CATEGORY_ANALGESIC = "Hạ sốt & Giảm đau"
+CATEGORY_ANTIHISTAMINE = "Kháng Histamin H1 thế hệ 2"
 
-    # 1. Thu thập bối cảnh bệnh nhân
-    patient_allergies: list[str] = []
-    patient_meds: list[str] = []
-    if profile:
-        allergies = (
-            db.query(AllergyRecord)
-            .filter(AllergyRecord.patient_profile_id == profile.id)
-            .all()
-        )
-        patient_allergies = [a.substance.strip() for a in allergies if a.substance.strip()]
 
-        med_records = (
-            db.query(MedicationRecord)
-            .filter(
-                MedicationRecord.patient_profile_id == profile.id,
-                MedicationRecord.status == "active",
-            )
-            .all()
-        )
-        patient_meds = [m.raw_name.strip() for m in med_records if m.raw_name.strip()]
-
-    # 2. Thu thập toàn bộ danh mục thuốc & hoạt chất
-    drugs = db.query(Drug).filter(Drug.in_scope == True).all()  # noqa: E712
-    rules = load_rules(db)
-
-    # Đếm số tương tác cho từng hoạt chất trong kho 633 quy tắc
-    interaction_counts: dict[str, int] = {}
-    for r in rules:
-        if r.get("rule_type") == "drug_interaction":
-            c1 = (r.get("drug1_ingredient") or "").lower()
-            c2 = (r.get("drug2_ingredient") or "").lower()
-            if c1:
-                interaction_counts[c1] = interaction_counts.get(c1, 0) + 1
-            if c2:
-                interaction_counts[c2] = interaction_counts.get(c2, 0) + 1
-
-    # Map phân loại lâm sàng mẫu & AI hints
-    clinical_meta: dict[str, dict] = {
+def _get_clinical_meta() -> dict[str, dict]:
+    return {
         "warfarin": {"category": "Kháng đông kháng Vitamin K", "hint": "Nguy cơ xuất huyết cao khi phối hợp NSAID, Aspirin, Clopidogrel"},
         "aspirin": {"category": "Kháng kết tập tiểu cầu / NSAID", "hint": "Thận trọng loét dạ dày, phối hợp chống đông tăng xuất huyết"},
         "clopidogrel": {"category": "Kháng kết tập tiểu cầu", "hint": "Tránh dùng cùng Omeprazole làm giảm hoạt tính chống đông"},
         "clarithromycin": {"category": "Kháng sinh nhóm Macrolid", "hint": "Ức chế mạnh CYP3A4, chống chỉ định Simvastatin/Lovastatin (tiêu cơ vân)"},
         "simvastatin": {"category": "Hạ lipid máu nhóm Statin", "hint": "Nguy cơ tiêu cơ vân cấp khi phối hợp Clarithromycin, Itraconazole"},
         "atorvastatin": {"category": "Hạ lipid máu nhóm Statin", "hint": "Theo dõi men gan và đau cơ, liều tối đa khi phối hợp thuốc ức chế protease"},
-        "panadol": {"category": "Hạ sốt & Giảm đau", "hint": "Chứa Paracetamol - không dùng quá 4000mg/ngày, tránh phối hợp Efferalgan"},
-        "paracetamol": {"category": "Hạ sốt & Giảm đau", "hint": "Độc tính trên gan khi quá liều hoặc dùng đồng thời nhiều biệt dược chứa Paracetamol"},
-        "efferalgan": {"category": "Hạ sốt & Giảm đau", "hint": "Chứa Paracetamol viên sủi - chú ý hàm lượng Natri ở người tăng huyết áp"},
+        "panadol": {"category": CATEGORY_ANALGESIC, "hint": "Chứa Paracetamol - không dùng quá 4000mg/ngày, tránh phối hợp Efferalgan"},
+        "paracetamol": {"category": CATEGORY_ANALGESIC, "hint": "Độc tính trên gan khi quá liều hoặc dùng đồng thời nhiều biệt dược chứa Paracetamol"},
+        "efferalgan": {"category": CATEGORY_ANALGESIC, "hint": "Chứa Paracetamol viên sủi - chú ý hàm lượng Natri ở người tăng huyết áp"},
         "cefaclor": {"category": "Kháng sinh Cephalosporin thế hệ 2", "hint": "Nguy cơ dị ứng chéo với Penicillin (khoảng 5-10%)"},
         "amoxicillin": {"category": "Kháng sinh nhóm Aminopenicillin", "hint": "Chống chỉ định tuyệt đối nếu có tiền sử sốc phản vệ với Penicillin"},
         "augmentin": {"category": "Kháng sinh Amoxicillin + Acid Clavulanic", "hint": "Theo dõi chức năng gan và tiêu chảy do acid clavulanic"},
@@ -419,15 +373,83 @@ def suggest_drugs(
         "spironolactone": {"category": "Lợi tiểu giữ Kali", "hint": "Nguy cơ tăng kali máu nguy hiểm khi phối hợp ACEI/ARB hoặc bổ sung Kali"},
         "omeprazole": {"category": "Ức chế bơm Proton (PPI)", "hint": "Giảm chuyển hóa Clopidogrel qua CYP2C19 thành dạng có hoạt tính"},
         "nexium": {"category": "Ức chế bơm Proton (Esomeprazole)", "hint": "Ức chế acid dịch vị, dùng trước ăn 30-60 phút"},
-        "fexofenadine": {"category": "Kháng Histamin H1 thế hệ 2", "hint": "Không gây buồn ngủ, an toàn cho người lái xe và vận hành máy"},
-        "cetirizine": {"category": "Kháng Histamin H1 thế hệ 2", "hint": "Giảm triệu chứng ngứa, mề đay, dị ứng thời tiết"},
-        "loratadine": {"category": "Kháng Histamin H1 thế hệ 2", "hint": "Tác dụng kéo dài 24h, ít qua hàng rào máu não"},
+        "fexofenadine": {"category": CATEGORY_ANTIHISTAMINE, "hint": "Không gây buồn ngủ, an toàn cho người lái xe và vận hành máy"},
+        "cetirizine": {"category": CATEGORY_ANTIHISTAMINE, "hint": "Giảm triệu chứng ngứa, mề đay, dị ứng thời tiết"},
+        "loratadine": {"category": CATEGORY_ANTIHISTAMINE, "hint": "Tác dụng kéo dài 24h, ít qua hàng rào máu não"},
     }
+
+
+def _get_patient_context_items(db: Session, profile: PatientProfile | None) -> tuple[list[str], list[str]]:
+    if not profile:
+        return [], []
+    allergies = (
+        db.query(AllergyRecord)
+        .filter(AllergyRecord.patient_profile_id == profile.id)
+        .all()
+    )
+    patient_allergies = [a.substance.strip() for a in allergies if a.substance.strip()]
+    med_records = (
+        db.query(MedicationRecord)
+        .filter(
+            MedicationRecord.patient_profile_id == profile.id,
+            MedicationRecord.status == "active",
+        )
+        .all()
+    )
+    patient_meds = [m.raw_name.strip() for m in med_records if m.raw_name.strip()]
+    return patient_allergies, patient_meds
+
+
+def _score_suggestion(item: dict, q: str) -> int:
+    name_l = item["name"].lower()
+    clean_l = item["clean_name"].lower()
+    ings_l = [ing.lower() for ing in item["ingredients"]]
+
+    if name_l == q or clean_l == q:
+        base = 0
+    elif name_l.startswith(q) or clean_l.startswith(q):
+        base = 1
+    elif any(ing.startswith(q) for ing in ings_l):
+        base = 2
+    elif q in name_l or q in clean_l or any(q in ing for ing in ings_l):
+        base = 3
+    elif q in item.get("category", "").lower():
+        base = 4
+    else:
+        return 999
+
+    if item["is_allergy"]:
+        return base - 10
+    if item["is_current"]:
+        return base - 5
+    return base
+
+
+def suggest_drugs(
+    db: Session,
+    query: str = "",
+    profile: PatientProfile | None = None,
+    limit: int = 15,
+) -> list[dict]:
+    """Gợi ý thuốc & hoạt chất thông minh theo Dược thư BYT & AI Gemini."""
+    q = query.strip().lower()
+    patient_allergies, patient_meds = _get_patient_context_items(db, profile)
+    clinical_meta = _get_clinical_meta()
+
+    rules = load_rules(db)
+    interaction_counts: dict[str, int] = {}
+    for r in rules:
+        if r.get("rule_type") == "drug_interaction":
+            c1 = (r.get("drug1_ingredient") or "").lower()
+            c2 = (r.get("drug2_ingredient") or "").lower()
+            if c1:
+                interaction_counts[c1] = interaction_counts.get(c1, 0) + 1
+            if c2:
+                interaction_counts[c2] = interaction_counts.get(c2, 0) + 1
 
     candidates: list[dict] = []
     seen_names: set[str] = set()
 
-    # Thu thập từ Tiền sử Dị ứng Bệnh nhân (Ưu tiên cảnh báo cao nhất)
     for alg in patient_allergies:
         if alg.lower() not in seen_names:
             seen_names.add(alg.lower())
@@ -447,7 +469,6 @@ def suggest_drugs(
                 "source": "Hồ sơ Tiền sử Dị ứng Bệnh nhân",
             })
 
-    # Thu thập từ Thuốc bệnh nhân đang dùng
     for pm in patient_meds:
         if pm.lower() not in seen_names:
             seen_names.add(pm.lower())
@@ -467,7 +488,7 @@ def suggest_drugs(
                 "source": "Đơn thuốc Bệnh nhân",
             })
 
-    # Thu thập từ Drugs DB
+    drugs = db.query(Drug).filter(Drug.in_scope == True).all()  # noqa: E712
     for d in drugs:
         d_name = d.name.strip()
         if d_name.lower() in seen_names:
@@ -480,10 +501,8 @@ def suggest_drugs(
         meta = clinical_meta.get(main_ing.lower()) or clinical_meta.get(d_name.lower()) or {}
         inter_count = sum(interaction_counts.get(ing.lower(), 0) for ing in ing_names) or interaction_counts.get(main_ing.lower(), 0)
 
-        # Kiểm tra dị ứng bệnh nhân
         is_allergy = any(alg.lower() in d_name.lower() or any(alg.lower() in ing.lower() for ing in ing_names) for alg in patient_allergies)
         is_current = any(pm.lower() in d_name.lower() or d_name.lower() in pm.lower() for pm in patient_meds)
-
 
         candidates.append({
             "name": d_name,
@@ -500,7 +519,6 @@ def suggest_drugs(
             "source": "Danh mục thuốc & Dược thư BYT",
         })
 
-    # Thu thập từ Rules & Interactions mà chưa có trong drugs
     for substance, count in interaction_counts.items():
         sub_name = substance.title()
         if sub_name.lower() in seen_names:
@@ -526,49 +544,25 @@ def suggest_drugs(
             "source": "633 Quy tắc Bộ Y tế",
         })
 
-    # 3. Lọc và xếp hạng (Scoring & Ranking)
     if not q:
-        def default_score(item: dict) -> tuple:
-            return (
-                0 if item["is_allergy"] else 1,
-                0 if item["is_current"] else 1,
-                -item["interactions_count"],
-                item["name"],
-            )
-        candidates.sort(key=default_score)
+        candidates.sort(key=lambda item: (
+            0 if item["is_allergy"] else 1,
+            0 if item["is_current"] else 1,
+            -item["interactions_count"],
+            item["name"],
+        ))
         return candidates[:limit]
 
-    # Có query tìm kiếm
     matched: list[dict] = []
     for item in candidates:
-        name_l = item["name"].lower()
-        clean_l = item["clean_name"].lower()
-        ings_l = [ing.lower() for ing in item["ingredients"]]
-
-        score = 999
-        if name_l == q or clean_l == q:
-            score = 0
-        elif name_l.startswith(q) or clean_l.startswith(q):
-            score = 1
-        elif any(ing.startswith(q) for ing in ings_l):
-            score = 2
-        elif q in name_l or q in clean_l or any(q in ing for ing in ings_l):
-            score = 3
-        elif any(q in item.get("category", "").lower() for _ in [1]):
-            score = 4
-
+        score = _score_suggestion(item, q)
         if score < 999:
-            priority_score = score
-            if item["is_allergy"]:
-                priority_score -= 10
-            elif item["is_current"]:
-                priority_score -= 5
-
             item_copy = dict(item)
-            item_copy["match_score"] = priority_score
+            item_copy["match_score"] = score
             matched.append(item_copy)
 
     matched.sort(key=lambda x: (x["match_score"], -x["interactions_count"], len(x["name"])))
     return matched[:limit]
+
 
 

@@ -38,6 +38,31 @@ interface DrugSuggestion {
   source: string;
 }
 
+function getCurrentQueryToken(fullText: string): string {
+  const trimmed = fullText;
+  const lastSep = Math.max(
+    trimmed.lastIndexOf(","),
+    trimmed.lastIndexOf("+"),
+    trimmed.lastIndexOf(";")
+  );
+  if (lastSep >= 0) {
+    return trimmed.substring(lastSep + 1).trim();
+  }
+  return trimmed.trim();
+}
+
+function getSuggestionIcon(s: DrugSuggestion): string {
+  if (s.is_allergy) return "🚫";
+  if (s.is_current) return "💊";
+  return "🏷️";
+}
+
+function getAlertIcon(ruleType: string): string {
+  if (ruleType === "drug_allergy") return "🚫";
+  if (ruleType === "duplicate_ingredient") return "🔁";
+  return "⚡";
+}
+
 const TYPE_LABEL: Record<string, string> = {
   drug_drug: "Thuốc–thuốc",
   duplicate_ingredient: "Trùng hoạt chất",
@@ -101,22 +126,10 @@ export default function DrugInteractionsPage() {
       .catch(() => {});
   }, []);
 
-  function getCurrentQueryToken(fullText: string): string {
-    const trimmed = fullText;
-    const lastSep = Math.max(
-      trimmed.lastIndexOf(","),
-      trimmed.lastIndexOf("+"),
-      trimmed.lastIndexOf(";")
-    );
-    if (lastSep >= 0) {
-      return trimmed.substring(lastSep + 1).trim();
-    }
-    return trimmed.trim();
-  }
-
   async function fetchDrugSuggestions(token: string) {
     try {
-      const url = `/v1/safety-checks/suggest-drugs?q=${encodeURIComponent(token)}${selectedPatientId ? `&profile_id=${selectedPatientId}` : ""}`;
+      const profileParam = selectedPatientId ? `&profile_id=${selectedPatientId}` : "";
+      const url = `/v1/safety-checks/suggest-drugs?q=${encodeURIComponent(token)}${profileParam}`;
       const list = await api<DrugSuggestion[]>(url);
       setMedsafeSuggestions(list);
       setShowSuggestions(list.length > 0);
@@ -131,7 +144,7 @@ export default function DrugInteractionsPage() {
     const token = getCurrentQueryToken(val);
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     searchTimerRef.current = setTimeout(() => {
-      fetchDrugSuggestions(token);
+      void fetchDrugSuggestions(token);
     }, 100);
   }
 
@@ -142,22 +155,19 @@ export default function DrugInteractionsPage() {
       trimmed.lastIndexOf("+"),
       trimmed.lastIndexOf(";")
     );
-    let next = "";
     const cleanName = s.clean_name || s.name;
-    if (lastSep >= 0) {
-      next = trimmed.substring(0, lastSep + 1) + " " + cleanName + ", ";
-    } else {
-      next = cleanName + ", ";
-    }
+    const next = lastSep >= 0
+      ? trimmed.substring(0, lastSep + 1) + " " + cleanName + ", "
+      : cleanName + ", ";
     setMedsafeInput(next);
     setShowSuggestions(false);
   }
 
   function handleMedsafeKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (showSuggestions && medsafeSuggestions.length > 0) {
-      if (e.key === "Tab") {
+      if (e.key === "Tab" || (e.key === "Enter" && activeSuggestionIdx >= 0)) {
         e.preventDefault();
-        const chosen = medsafeSuggestions[activeSuggestionIdx >= 0 && activeSuggestionIdx < medsafeSuggestions.length ? activeSuggestionIdx : 0];
+        const chosen = medsafeSuggestions[activeSuggestionIdx] || medsafeSuggestions[0];
         if (chosen) handleSelectSuggestion(chosen);
         return;
       }
@@ -170,13 +180,6 @@ export default function DrugInteractionsPage() {
         e.preventDefault();
         setActiveSuggestionIdx((prev) => (prev - 1 + medsafeSuggestions.length) % medsafeSuggestions.length);
         return;
-      }
-      if (e.key === "Enter") {
-        if (activeSuggestionIdx >= 0 && activeSuggestionIdx < medsafeSuggestions.length) {
-          e.preventDefault();
-          handleSelectSuggestion(medsafeSuggestions[activeSuggestionIdx]);
-          return;
-        }
       }
       if (e.key === "Escape") {
         setShowSuggestions(false);
@@ -273,7 +276,7 @@ export default function DrugInteractionsPage() {
       r.code.toLowerCase().includes(q) ||
       r.title.toLowerCase().includes(q) ||
       r.message.toLowerCase().includes(q) ||
-      (r.source_title && r.source_title.toLowerCase().includes(q));
+      Boolean(r.source_title?.toLowerCase().includes(q));
 
     const matchType = typeFilter === "all" || r.rule_type === typeFilter;
     const matchSeverity = severityFilter === "all" || r.severity === severityFilter;
@@ -424,6 +427,8 @@ export default function DrugInteractionsPage() {
                   const isHighlighted = idx === activeSuggestionIdx;
                   return (
                     <div
+                      role="button"
+                      tabIndex={0}
                       key={`${s.name}-${idx}`}
                       style={{
                         padding: "9px 14px",
@@ -438,11 +443,17 @@ export default function DrugInteractionsPage() {
                       }}
                       onMouseEnter={() => setActiveSuggestionIdx(idx)}
                       onClick={() => handleSelectSuggestion(s)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleSelectSuggestion(s);
+                        }
+                      }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                           <span style={{ fontWeight: 700, fontSize: "0.9rem", color: s.is_allergy ? "#be123c" : "#0f172a" }}>
-                            {s.is_allergy ? "🚫" : s.is_current ? "💊" : "🏷️"} {s.name}
+                            {getSuggestionIcon(s)} {s.name}
                           </span>
                           {s.strength && (
                             <span style={{ fontSize: "0.75rem", color: "#64748b", background: "#f1f5f9", padding: "1px 6px", borderRadius: 4 }}>
@@ -595,7 +606,7 @@ export default function DrugInteractionsPage() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ fontSize: 20 }}>
-                          {a.rule_type === "drug_allergy" ? "🚫" : a.rule_type === "duplicate_ingredient" ? "🔁" : "⚡"}
+                          {getAlertIcon(a.rule_type)}
                         </span>
                         <strong style={{ fontSize: "0.95rem", color: a.severity === "high" ? "#9f1239" : "#854d0e" }}>
                           [{a.rule_code}] {a.message}
