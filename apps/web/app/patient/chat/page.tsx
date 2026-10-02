@@ -21,23 +21,34 @@ interface SessionInfo {
   last_message: string;
 }
 
+function getBubbleClass(m: Msg): string {
+  if (m.role === "patient") return "bubble bubble-me";
+  if (m.emergency) return "bubble bubble-emergency";
+  if (m.handoff) return "bubble bubble-handoff";
+  return "bubble bubble-bot";
+}
+
 /** Render nhẹ **đậm** + xuống dòng cho nội dung trả lời của AI. */
-function RichText({ text }: { text: string }) {
+function RichText({ text }: Readonly<{ text: string }>) {
   const lines = text.split("\n");
   return (
     <>
-      {lines.map((line, i) => (
-        <span key={i}>
-          {line.split(/(\*\*[^*]+\*\*)/g).map((part, j) =>
-            part.startsWith("**") && part.endsWith("**") ? (
-              <strong key={j}>{part.slice(2, -2)}</strong>
-            ) : (
-              <span key={j}>{part}</span>
-            )
-          )}
-          {i < lines.length - 1 && <br />}
-        </span>
-      ))}
+      {lines.map((line, i) => {
+        const lineKey = `line-${i}-${line.slice(0, 10)}`;
+        return (
+          <span key={lineKey}>
+            {line.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
+              const isBold = part.startsWith("**") && part.endsWith("**");
+              const partKey = `part-${i}-${j}-${part.slice(0, 8)}`;
+              if (isBold) {
+                return <strong key={partKey}>{part.slice(2, -2)}</strong>;
+              }
+              return <span key={partKey}>{part}</span>;
+            })}
+            {i < lines.length - 1 && <br />}
+          </span>
+        );
+      })}
     </>
   );
 }
@@ -178,10 +189,10 @@ export default function PatientChat() {
     window.speechSynthesis.cancel();
     // Loại bỏ các ký tự markdown trước khi đọc
     const cleanText = text
-      .replace(/\*\*/g, "")
-      .replace(/#/g, "")
-      .replace(/- /g, " ")
-      .replace(/👉|🔬|⚠️|📋|💊|🚨|🤖/g, "");
+      .replaceAll("**", "")
+      .replaceAll("#", "")
+      .replaceAll("- ", " ")
+      .replaceAll(/👉|🔬|⚠️|📋|💊|🚨|🤖/g, "");
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = "vi-VN";
@@ -257,10 +268,11 @@ export default function PatientChat() {
             <p className="muted" style={{ fontSize: 14 }}>Chưa có hội thoại nào.</p>
           )}
           {sessions.map((s) => (
-            <div
+            <button
+              type="button"
               className="list-row"
               key={s.session_id}
-              style={{ cursor: "pointer" }}
+              style={{ width: "100%", textAlign: "left", background: "none", border: "none", font: "inherit", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}
               onClick={() => openSession(s.session_id)}
             >
               <div className="list-main">
@@ -270,77 +282,72 @@ export default function PatientChat() {
                 </div>
               </div>
               <span className="badge badge-info">Xem</span>
-            </div>
+            </button>
           ))}
         </div>
       )}
 
       <div className="card" style={{ maxHeight: "52vh", overflowY: "auto" }}>
-        {messages.map((m, i) => (
-          <div key={i}>
-            {m.at && i > 0 && (
-              <div style={{ textAlign: "center", fontSize: 12, opacity: 0.5, margin: "4px 0" }}>
-                {formatTime(m.at)}
-              </div>
-            )}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: m.role === "patient" ? "flex-end" : "flex-start",
-                marginBottom: 12,
-              }}
-            >
+        {messages.map((m, i) => {
+          const msgKey = `msg-${i}-${m.at || m.role}-${m.content.slice(0, 15)}`;
+          return (
+            <div key={msgKey}>
+              {m.at && i > 0 && (
+                <div style={{ textAlign: "center", fontSize: 12, opacity: 0.5, margin: "4px 0" }}>
+                  {formatTime(m.at)}
+                </div>
+              )}
               <div
-                className={
-                  m.role === "patient"
-                    ? "bubble bubble-me"
-                    : m.emergency
-                    ? "bubble bubble-emergency"
-                    : m.handoff
-                    ? "bubble bubble-handoff"
-                    : "bubble bubble-bot"
-                }
-                style={{ maxWidth: "85%", position: "relative" }}
+                style={{
+                  display: "flex",
+                  justifyContent: m.role === "patient" ? "flex-end" : "flex-start",
+                  marginBottom: 12,
+                }}
               >
-                {m.role !== "patient" && (
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--brand-700, #075985)" }}>
-                      🤖 Trợ lý AI AllerCare
+                <div
+                  className={getBubbleClass(m)}
+                  style={{ maxWidth: "85%", position: "relative" }}
+                >
+                  {m.role !== "patient" && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--brand-700, #075985)" }}>
+                        🤖 Trợ lý AI AllerCare
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => speakMessage(m.content, i)}
+                        style={{
+                          background: speakingIndex === i ? "var(--brand-500, #0284C7)" : "rgba(2,132,199,0.1)",
+                          color: speakingIndex === i ? "#FFF" : "var(--brand-700, #075985)",
+                          border: "none",
+                          borderRadius: 20,
+                          padding: "2px 8px",
+                          fontSize: 11,
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                        title="Đọc câu trả lời bằng giọng nói"
+                      >
+                        {speakingIndex === i ? "⏹ Dừng đọc" : "🔊 Nghe đọc"}
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => speakMessage(m.content, i)}
-                      style={{
-                        background: speakingIndex === i ? "var(--brand-500, #0284C7)" : "rgba(2,132,199,0.1)",
-                        color: speakingIndex === i ? "#FFF" : "var(--brand-700, #075985)",
-                        border: "none",
-                        borderRadius: 20,
-                        padding: "2px 8px",
-                        fontSize: 11,
-                        cursor: "pointer",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
-                      title="Đọc câu trả lời bằng giọng nói"
-                    >
-                      {speakingIndex === i ? "⏹ Dừng đọc" : "🔊 Nghe đọc"}
-                    </button>
-                  </div>
-                )}
-                <RichText text={m.content} />
-                {m.sources && m.sources.length > 0 && (
-                  <div style={{ fontSize: 11, marginTop: 8, padding: "6px 8px", background: "rgba(0,0,0,0.03)", borderRadius: 6, borderLeft: "2px solid var(--brand-500, #0284C7)" }}>
-                    📚 <strong>Nguồn căn cứ:</strong>{" "}
-                    {m.sources
-                      .map((s) => `${s.title}${s.version ? ` (${s.version})` : ""}`)
-                      .join("; ")}
-                  </div>
-                )}
+                  )}
+                  <RichText text={m.content} />
+                  {m.sources && m.sources.length > 0 && (
+                    <div style={{ fontSize: 11, marginTop: 8, padding: "6px 8px", background: "rgba(0,0,0,0.03)", borderRadius: 6, borderLeft: "2px solid var(--brand-500, #0284C7)" }}>
+                      📚 <strong>Nguồn căn cứ:</strong>{" "}
+                      {m.sources
+                        .map((s) => s.title + (s.version ? ` (${s.version})` : ""))
+                        .join("; ")}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {loading && <p className="muted">🤖 Trợ lý AI đang tra cứu tri thức y khoa & soạn câu trả lời…</p>}
         <div ref={bottomRef} />
       </div>
@@ -387,7 +394,7 @@ export default function PatientChat() {
         >
           {isListening ? "🔴 Dừng" : "🎙️ Nói"}
         </button>
-        <button className="btn btn-primary" disabled={loading || !input.trim()}>
+        <button type="submit" className="btn btn-primary" disabled={loading || !input.trim()}>
           Gửi
         </button>
       </form>

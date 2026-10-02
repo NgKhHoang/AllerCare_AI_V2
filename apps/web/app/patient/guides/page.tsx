@@ -93,8 +93,8 @@ export default function GuidesPage() {
               <div className="alertbox alertbox-danger" style={{ marginBottom: 10 }}>
                 <div className="alertbox-title">🚨 Dấu hiệu cần dừng thuốc / cấp cứu</div>
                 <ul style={{ margin: "4px 0 0", paddingLeft: 20, fontSize: 14 }}>
-                  {c.warning_signs.map((w, i) => (
-                    <li key={i}>{w}</li>
+                  {c.warning_signs.map((w) => (
+                    <li key={w}>{w}</li>
                   ))}
                 </ul>
               </div>
@@ -104,8 +104,8 @@ export default function GuidesPage() {
               <div style={{ fontSize: 14, marginBottom: 10 }}>
                 <strong>Lưu ý khi dùng:</strong>
                 <ul style={{ margin: "4px 0 0", paddingLeft: 20 }}>
-                  {c.warnings.map((w, i) => (
-                    <li key={i}>{w}</li>
+                  {c.warnings.map((w) => (
+                    <li key={w}>{w}</li>
                   ))}
                 </ul>
               </div>
@@ -118,25 +118,11 @@ export default function GuidesPage() {
               Nguồn: {c.source_label} · Ngày gửi: {new Date(g.created_at).toLocaleDateString("vi-VN")}
             </div>
 
-            {state === "understood" ? (
-              <SuccessBox text="Bạn đã xác nhận hiểu cách sử dụng thuốc này." />
-            ) : state === "not_understood" ? (
-              <SuccessBox text="Đã chuyển câu hỏi của bạn cho bác sĩ/điều dưỡng. Bạn sẽ được liên hệ giải thích lại." />
-            ) : (
-              <>
-                <div className="label" style={{ marginBottom: 6 }}>
-                  Bạn đã hiểu cách sử dụng thuốc này chưa?
-                </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button className="btn btn-primary" onClick={() => respond(g.id, "understood")}>
-                    ✓ Tôi đã hiểu cách sử dụng thuốc
-                  </button>
-                  <button className="btn btn-secondary" onClick={() => respond(g.id, "not_understood")}>
-                    ✕ Tôi chưa hiểu — cần giải thích lại
-                  </button>
-                </div>
-              </>
-            )}
+            <GuideFeedback
+              state={state}
+              guideId={g.id}
+              onRespond={respond}
+            />
           </div>
         );
       })}
@@ -153,5 +139,47 @@ export default function GuidesPage() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+function GuideFeedback({
+  state,
+  guideId,
+  onRespond,
+}: Readonly<{
+  state?: string;
+  guideId: string;
+  onRespond: (guideId: string, value: "understood" | "not_understood") => void;
+}>) {
+  if (state === "understood") {
+    return <SuccessBox text="Bạn đã xác nhận hiểu cách sử dụng thuốc này." />;
+  }
+  if (state === "not_understood") {
+    return (
+      <SuccessBox text="Đã chuyển câu hỏi của bạn cho bác sĩ/điều dưỡng. Bạn sẽ được liên hệ giải thích lại." />
+    );
+  }
+  return (
+    <>
+      <div className="label" style={{ marginBottom: 6 }}>
+        Bạn đã hiểu cách sử dụng thuốc này chưa?
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => onRespond(guideId, "understood")}
+        >
+          ✓ Tôi đã hiểu cách sử dụng thuốc
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => onRespond(guideId, "not_understood")}
+        >
+          ✕ Tôi chưa hiểu — cần giải thích lại
+        </button>
+      </div>
+    </>
   );
 }

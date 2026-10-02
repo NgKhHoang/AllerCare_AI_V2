@@ -1137,92 +1137,24 @@ export default function DoctorPortal() {
         <div className="doctor-patient-two-column-layout">
           <div className="doctor-patient-main-col">
             {/* THÔNG TIN LÂM SÀNG & CHỈ SỐ SINH HIỆU BỆNH NHÂN */}
-            <div className="vitals-card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, borderBottom: "1px solid #f1f5f9", paddingBottom: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 24 }}>🩺</span>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: "1.08rem", color: "#0f172a", fontWeight: 800 }}>
-                    Thông tin Lâm sàng & Chỉ số Sinh hiệu
-                  </h3>
-                  <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                    Bệnh nhân: <strong>{selected.full_name}</strong> • Giới tính: <strong>{clinicalInfo?.gender || selected.gender || "—"}</strong> • Ngày sinh / Tuổi: <strong>{clinicalInfo?.dob || selected.dob || "—"}</strong>
-                  </span>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                {selected.unseen_updates > 0 && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={handleMarkAllSeen}
-                    style={{ fontSize: "0.84rem", fontWeight: 700, borderColor: "#22c55e", color: "#16a34a", background: "#f0fdf4" }}
-                    title="Đánh dấu đã xem toàn bộ cập nhật mới từ bệnh nhân này"
-                  >
-                    ✓ Đã xem toàn bộ ({selected.unseen_updates} biến động mới)
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => {
-                    setClinicalForm({
-                      full_name: clinicalInfo?.full_name || selected.full_name || "",
-                      dob: clinicalInfo?.dob || selected.dob || "",
-                      gender: clinicalInfo?.gender || selected.gender || "Nam",
-                      weight: clinicalInfo?.weight || "",
-                      heart_rate: clinicalInfo?.heart_rate || "",
-                      blood_pressure: clinicalInfo?.blood_pressure || "",
-                      spo2: clinicalInfo?.spo2 || "",
-                      clinical_note: clinicalInfo?.clinical_note || "",
-                    });
-                    setShowClinicalModal(true);
-                  }}
-                  style={{ fontSize: "0.84rem", fontWeight: 700, borderColor: "#0284c7", color: "#0284c7" }}
-                >
-                  ✏️ Nhập / Sửa thông tin lâm sàng & sinh hiệu
-                </button>
-              </div>
-            </div>
-
-            {/* Lưới các chỉ số sinh hiệu (Vitals) */}
-            <div className="vitals-grid">
-              <div className="vital-box">
-                <span className="vital-lbl">⚖️ Cân nặng</span>
-                <span className="vital-val" style={{ color: clinicalInfo?.weight ? "#0284c7" : "#94a3b8" }}>
-                  {clinicalInfo?.weight ? `${clinicalInfo.weight} kg` : "— Chưa nhập"}
-                </span>
-              </div>
-
-              <div className="vital-box">
-                <span className="vital-lbl">❤️ Nhịp tim / Mạch</span>
-                <span className="vital-val" style={{ color: clinicalInfo?.heart_rate ? "#dc2626" : "#94a3b8" }}>
-                  {clinicalInfo?.heart_rate ? `${clinicalInfo.heart_rate} bpm` : "— Chưa nhập"}
-                </span>
-              </div>
-
-              <div className="vital-box">
-                <span className="vital-lbl">🩸 Huyết áp (HA)</span>
-                <span className="vital-val" style={{ color: clinicalInfo?.blood_pressure ? "#ea580c" : "#94a3b8" }}>
-                  {clinicalInfo?.blood_pressure ? `${clinicalInfo.blood_pressure} mmHg` : "— Chưa nhập"}
-                </span>
-              </div>
-
-              <div className="vital-box">
-                <span className="vital-lbl">🫁 SpO2 (Oxy máu)</span>
-                <span className="vital-val" style={{ color: clinicalInfo?.spo2 ? "#16a34a" : "#94a3b8" }}>
-                  {clinicalInfo?.spo2 ? `${clinicalInfo.spo2}%` : "— Chưa nhập"}
-                </span>
-              </div>
-            </div>
-
-            {clinicalInfo?.clinical_note && (
-              <div style={{ marginTop: 10, padding: "8px 12px", background: "#f8fafc", borderRadius: 8, fontSize: "0.82rem", color: "#475569" }}>
-                <strong>📋 Ghi chú lâm sàng ban đầu:</strong> {clinicalInfo.clinical_note}
-              </div>
-            )}
-          </div>
+            <DoctorPatientVitalsBanner
+              selected={selected}
+              clinicalInfo={clinicalInfo}
+              onMarkAllSeen={handleMarkAllSeen}
+              onEditClinical={() => {
+                setClinicalForm({
+                  full_name: clinicalInfo?.full_name || selected.full_name || "",
+                  dob: clinicalInfo?.dob || selected.dob || "",
+                  gender: clinicalInfo?.gender || selected.gender || "Nam",
+                  weight: clinicalInfo?.weight || "",
+                  heart_rate: clinicalInfo?.heart_rate || "",
+                  blood_pressure: clinicalInfo?.blood_pressure || "",
+                  spo2: clinicalInfo?.spo2 || "",
+                  clinical_note: clinicalInfo?.clinical_note || "",
+                });
+                setShowClinicalModal(true);
+              }}
+            />
 
           {/* Modal Nhập/Chỉnh sửa thông tin lâm sàng & sinh hiệu */}
           <ClinicalInfoModal
@@ -1330,113 +1262,44 @@ export default function DoctorPortal() {
           />
 
           {/* DANH SÁCH THUỐC ĐANG ĐIỀU TRỊ */}
-          <div className="card" style={{ marginBottom: 18 }}>
-            <div className="card-title" style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span className="t-ico">💊</span>
-                <span>Danh mục thuốc đang điều trị ({meds.length})</span>
-              </div>
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => setShowPrescribeModal(!showPrescribeModal)}
-                style={{ fontSize: 12.5 }}
-              >
-                {showPrescribeModal ? "✕ Đóng form" : "+ 🩺 Kê đơn thuốc mới"}
-              </button>
-            </div>
-
-            {/* Form Kê đơn thuốc mới của Bác sĩ */}
-            <PrescribeModal
-              show={showPrescribeModal}
-              prescribeName={prescribeName}
-              prescribeDose={prescribeDose}
-              setPrescribeDose={setPrescribeDose}
-              prescribeFreq={prescribeFreq}
-              setPrescribeFreq={setPrescribeFreq}
-              prescribeRoute={prescribeRoute}
-              setPrescribeRoute={setPrescribeRoute}
-              prescribeTiming={prescribeTiming}
-              setPrescribeTiming={setPrescribeTiming}
-              prescribeInstructions={prescribeInstructions}
-              setPrescribeInstructions={setPrescribeInstructions}
-              prescribeConditionName={prescribeConditionName}
-              setPrescribeConditionName={setPrescribeConditionName}
-              patientConditions={patientConditions}
-              prescribeSuggestions={prescribeSuggestions}
-              showPrescribeSuggestions={showPrescribeSuggestions}
-              prescribeSafetyCheck={prescribeSafetyCheck}
-              prescribing={prescribing}
-              onNameInput={handlePrescribeNameInput}
-              onSelectSuggestion={selectPrescribeDrug}
-              onApplyPreset={(p) => {
-                setPrescribeName(p.name);
-                setPrescribeDose(p.dose);
-                setPrescribeFreq(p.freq);
-                setPrescribeTiming(p.timing);
-                if (p.route) setPrescribeRoute(p.route);
-              }}
-              onSubmit={handlePrescribe}
-              onClose={() => setShowPrescribeModal(false)}
-            />
-
-            {meds.length === 0 && <EmptyState icon="💊" text="Chưa có thuốc nào trong danh mục." />}
-            
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {meds.map((m) => (
-                <div className="list-row" key={m.id} style={{ alignItems: "center", padding: "12px 16px" }}>
-                  <div className="list-main">
-                    <div className="list-title" style={{ fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span>💊 {m.raw_name}</span>
-                      <span className="badge badge-neutral" style={{ fontSize: 11, fontWeight: 600 }}>
-                        {m.is_planned ? "Dự kiến (Thử nghiệm)" : "Đang điều trị"}
-                      </span>
-                    </div>
-                    <div className="list-sub" style={{ marginTop: 2 }}>
-                      {m.frequency ? `Liều & Tần suất: ${m.frequency}` : "Theo chỉ định của Bác sĩ"}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-                    <VerifiedBadge verification={m.verification} />
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => verifyMed(m.id, m.verification !== "verified")}
-                      style={{ whiteSpace: "nowrap" }}
-                    >
-                      {m.verification === "verified" ? "Bỏ xác minh" : "Xác minh"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      style={{ color: "#e11d48", borderColor: "#fecdd3", backgroundColor: "#fff1f2", whiteSpace: "nowrap" }}
-                      onClick={() => deleteMed(m.id, m.raw_name)}
-                      title="Xóa thuốc"
-                    >
-                      🗑️ Xóa
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <form onSubmit={addPlannedMed} className="mt16" style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 14 }}>
-              <div className="field">
-                <label htmlFor="simulate-med" className="label" style={{ fontSize: 12.5, fontWeight: 600 }}>Thử nghiệm thuốc dự kiến (Simulate MedSafe)</label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input
-                    id="simulate-med"
-                    className="input"
-                    placeholder="VD: Amoxicillin 500mg (để thử tương tác trước khi kê)"
-                    value={newDrug}
-                    onChange={(e) => setNewDrug(e.target.value)}
-                  />
-                  <button className="btn btn-secondary btn-sm" type="submit" style={{ whiteSpace: "nowrap" }}>
-                    + Thử nghiệm
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
+          <DoctorPatientMedsCard
+            meds={meds}
+            showPrescribeModal={showPrescribeModal}
+            setShowPrescribeModal={setShowPrescribeModal}
+            prescribeName={prescribeName}
+            prescribeDose={prescribeDose}
+            setPrescribeDose={setPrescribeDose}
+            prescribeFreq={prescribeFreq}
+            setPrescribeFreq={setPrescribeFreq}
+            prescribeRoute={prescribeRoute}
+            setPrescribeRoute={setPrescribeRoute}
+            prescribeTiming={prescribeTiming}
+            setPrescribeTiming={setPrescribeTiming}
+            prescribeInstructions={prescribeInstructions}
+            setPrescribeInstructions={setPrescribeInstructions}
+            prescribeConditionName={prescribeConditionName}
+            setPrescribeConditionName={setPrescribeConditionName}
+            patientConditions={patientConditions}
+            prescribeSuggestions={prescribeSuggestions}
+            showPrescribeSuggestions={showPrescribeSuggestions}
+            prescribeSafetyCheck={prescribeSafetyCheck}
+            prescribing={prescribing}
+            onPrescribeNameInput={handlePrescribeNameInput}
+            onSelectPrescribeDrug={selectPrescribeDrug}
+            onApplyPreset={(p) => {
+              setPrescribeName(p.name);
+              setPrescribeDose(p.dose);
+              setPrescribeFreq(p.freq);
+              setPrescribeTiming(p.timing);
+              if (p.route) setPrescribeRoute(p.route);
+            }}
+            onPrescribe={handlePrescribe}
+            onVerifyMed={verifyMed}
+            onDeleteMed={deleteMed}
+            newDrug={newDrug}
+            setNewDrug={setNewDrug}
+            onAddPlannedMed={addPlannedMed}
+          />
 
           {/* DỊ ỨNG & TIỀN SỬ PHẢN VỆ */}
           <div className="card" style={{ marginBottom: 18 }}>
@@ -3483,6 +3346,265 @@ function PatientObservationsSection({
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+interface DoctorPatientVitalsBannerProps {
+  selected: AssignedPatient;
+  clinicalInfo: ClinicalInfo | null;
+  onMarkAllSeen: () => void;
+  onEditClinical: () => void;
+}
+
+function DoctorPatientVitalsBanner(props: Readonly<DoctorPatientVitalsBannerProps>) {
+  const { selected, clinicalInfo, onMarkAllSeen, onEditClinical } = props;
+  return (
+    <div className="vitals-card">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, borderBottom: "1px solid #f1f5f9", paddingBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 24 }}>🩺</span>
+          <div>
+            <h3 style={{ margin: 0, fontSize: "1.08rem", color: "#0f172a", fontWeight: 800 }}>
+              Thông tin Lâm sàng & Chỉ số Sinh hiệu
+            </h3>
+            <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+              Bệnh nhân: <strong>{selected.full_name}</strong> • Giới tính: <strong>{clinicalInfo?.gender || selected.gender || "—"}</strong> • Ngày sinh / Tuổi: <strong>{clinicalInfo?.dob || selected.dob || "—"}</strong>
+            </span>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {selected.unseen_updates > 0 && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={onMarkAllSeen}
+              style={{ fontSize: "0.84rem", fontWeight: 700, borderColor: "#22c55e", color: "#16a34a", background: "#f0fdf4" }}
+              title="Đánh dấu đã xem toàn bộ cập nhật mới từ bệnh nhân này"
+            >
+              ✓ Đã xem toàn bộ ({selected.unseen_updates} biến động mới)
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={onEditClinical}
+            style={{ fontSize: "0.84rem", fontWeight: 700, borderColor: "#0284c7", color: "#0284c7" }}
+          >
+            ✏️ Nhập / Sửa thông tin lâm sàng & sinh hiệu
+          </button>
+        </div>
+      </div>
+
+      {/* Lưới các chỉ số sinh hiệu (Vitals) */}
+      <div className="vitals-grid">
+        <div className="vital-box">
+          <span className="vital-lbl">⚖️ Cân nặng</span>
+          <span className="vital-val" style={{ color: clinicalInfo?.weight ? "#0284c7" : "#94a3b8" }}>
+            {clinicalInfo?.weight ? `${clinicalInfo.weight} kg` : "— Chưa nhập"}
+          </span>
+        </div>
+
+        <div className="vital-box">
+          <span className="vital-lbl">❤️ Nhịp tim / Mạch</span>
+          <span className="vital-val" style={{ color: clinicalInfo?.heart_rate ? "#dc2626" : "#94a3b8" }}>
+            {clinicalInfo?.heart_rate ? `${clinicalInfo.heart_rate} bpm` : "— Chưa nhập"}
+          </span>
+        </div>
+
+        <div className="vital-box">
+          <span className="vital-lbl">🩸 Huyết áp (HA)</span>
+          <span className="vital-val" style={{ color: clinicalInfo?.blood_pressure ? "#ea580c" : "#94a3b8" }}>
+            {clinicalInfo?.blood_pressure ? `${clinicalInfo.blood_pressure} mmHg` : "— Chưa nhập"}
+          </span>
+        </div>
+
+        <div className="vital-box">
+          <span className="vital-lbl">🫁 SpO2 (Oxy máu)</span>
+          <span className="vital-val" style={{ color: clinicalInfo?.spo2 ? "#16a34a" : "#94a3b8" }}>
+            {clinicalInfo?.spo2 ? `${clinicalInfo.spo2}%` : "— Chưa nhập"}
+          </span>
+        </div>
+      </div>
+
+      {clinicalInfo?.clinical_note && (
+        <div style={{ marginTop: 10, padding: "8px 12px", background: "#f8fafc", borderRadius: 8, fontSize: "0.82rem", color: "#475569" }}>
+          <strong>📋 Ghi chú lâm sàng ban đầu:</strong> {clinicalInfo.clinical_note}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface DoctorPatientMedsCardProps {
+  meds: Medication[];
+  showPrescribeModal: boolean;
+  setShowPrescribeModal: React.Dispatch<React.SetStateAction<boolean>>;
+  prescribeName: string;
+  prescribeDose: string;
+  setPrescribeDose: React.Dispatch<React.SetStateAction<string>>;
+  prescribeFreq: string;
+  setPrescribeFreq: React.Dispatch<React.SetStateAction<string>>;
+  prescribeRoute: string;
+  setPrescribeRoute: React.Dispatch<React.SetStateAction<string>>;
+  prescribeTiming: string;
+  setPrescribeTiming: React.Dispatch<React.SetStateAction<string>>;
+  prescribeInstructions: string;
+  setPrescribeInstructions: React.Dispatch<React.SetStateAction<string>>;
+  prescribeConditionName: string;
+  setPrescribeConditionName: React.Dispatch<React.SetStateAction<string>>;
+  patientConditions: Array<{ id: string; name: string; status?: string }>;
+  prescribeSuggestions: DrugSuggestion[];
+  showPrescribeSuggestions: boolean;
+  prescribeSafetyCheck: { status: "idle" | "checking" | "safe" | "warning" | "danger"; message: string; interactions?: any[] };
+  prescribing: boolean;
+  onPrescribeNameInput: (v: string) => void;
+  onSelectPrescribeDrug: (drug: DrugSuggestion) => void;
+  onApplyPreset: (p: { name: string; dose: string; freq: string; timing: string; route?: string }) => void;
+  onPrescribe: (e: React.FormEvent) => void;
+  onVerifyMed: (id: string, next: boolean) => void;
+  onDeleteMed: (id: string, name: string) => void;
+  newDrug: string;
+  setNewDrug: React.Dispatch<React.SetStateAction<string>>;
+  onAddPlannedMed: (e: React.FormEvent) => void;
+}
+
+function DoctorPatientMedsCard(props: Readonly<DoctorPatientMedsCardProps>) {
+  const {
+    meds,
+    showPrescribeModal,
+    setShowPrescribeModal,
+    prescribeName,
+    prescribeDose,
+    setPrescribeDose,
+    prescribeFreq,
+    setPrescribeFreq,
+    prescribeRoute,
+    setPrescribeRoute,
+    prescribeTiming,
+    setPrescribeTiming,
+    prescribeInstructions,
+    setPrescribeInstructions,
+    prescribeConditionName,
+    setPrescribeConditionName,
+    patientConditions,
+    prescribeSuggestions,
+    showPrescribeSuggestions,
+    prescribeSafetyCheck,
+    prescribing,
+    onPrescribeNameInput,
+    onSelectPrescribeDrug,
+    onApplyPreset,
+    onPrescribe,
+    onVerifyMed,
+    onDeleteMed,
+    newDrug,
+    setNewDrug,
+    onAddPlannedMed,
+  } = props;
+
+  return (
+    <div className="card" style={{ marginBottom: 18 }}>
+      <div className="card-title" style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="t-ico">💊</span>
+          <span>Danh mục thuốc đang điều trị ({meds.length})</span>
+        </div>
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={() => setShowPrescribeModal(!showPrescribeModal)}
+          style={{ fontSize: 12.5 }}
+        >
+          {showPrescribeModal ? "✕ Đóng form" : "+ 🩺 Kê đơn thuốc mới"}
+        </button>
+      </div>
+
+      {/* Form Kê đơn thuốc mới của Bác sĩ */}
+      <PrescribeModal
+        show={showPrescribeModal}
+        prescribeName={prescribeName}
+        prescribeDose={prescribeDose}
+        setPrescribeDose={setPrescribeDose}
+        prescribeFreq={prescribeFreq}
+        setPrescribeFreq={setPrescribeFreq}
+        prescribeRoute={prescribeRoute}
+        setPrescribeRoute={setPrescribeRoute}
+        prescribeTiming={prescribeTiming}
+        setPrescribeTiming={setPrescribeTiming}
+        prescribeInstructions={prescribeInstructions}
+        setPrescribeInstructions={setPrescribeInstructions}
+        prescribeConditionName={prescribeConditionName}
+        setPrescribeConditionName={setPrescribeConditionName}
+        patientConditions={patientConditions}
+        prescribeSuggestions={prescribeSuggestions}
+        showPrescribeSuggestions={showPrescribeSuggestions}
+        prescribeSafetyCheck={prescribeSafetyCheck}
+        prescribing={prescribing}
+        onNameInput={onPrescribeNameInput}
+        onSelectSuggestion={onSelectPrescribeDrug}
+        onApplyPreset={onApplyPreset}
+        onSubmit={onPrescribe}
+        onClose={() => setShowPrescribeModal(false)}
+      />
+
+      {meds.length === 0 && <EmptyState icon="💊" text="Chưa có thuốc nào trong danh mục." />}
+      
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {meds.map((m) => (
+          <div className="list-row" key={m.id} style={{ alignItems: "center", padding: "12px 16px" }}>
+            <div className="list-main">
+              <div className="list-title" style={{ fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span>💊 {m.raw_name}</span>
+                <span className="badge badge-neutral" style={{ fontSize: 11, fontWeight: 600 }}>
+                  {m.is_planned ? "Dự kiến (Thử nghiệm)" : "Đang điều trị"}
+                </span>
+              </div>
+              <div className="list-sub" style={{ marginTop: 2 }}>
+                {m.frequency ? `Liều & Tần suất: ${m.frequency}` : "Theo chỉ định của Bác sĩ"}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+              <VerifiedBadge verification={m.verification} />
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => onVerifyMed(m.id, m.verification !== "verified")}
+                style={{ whiteSpace: "nowrap" }}
+              >
+                {m.verification === "verified" ? "Bỏ xác minh" : "Xác minh"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ color: "#e11d48", borderColor: "#fecdd3", backgroundColor: "#fff1f2", whiteSpace: "nowrap" }}
+                onClick={() => onDeleteMed(m.id, m.raw_name)}
+                title="Xóa thuốc"
+              >
+                🗑️ Xóa
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <form onSubmit={onAddPlannedMed} className="mt16" style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 14 }}>
+        <div className="field">
+          <label htmlFor="simulate-med" className="label" style={{ fontSize: 12.5, fontWeight: 600 }}>Thử nghiệm thuốc dự kiến (Simulate MedSafe)</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              id="simulate-med"
+              className="input"
+              placeholder="VD: Amoxicillin 500mg (để thử tương tác trước khi kê)"
+              value={newDrug}
+              onChange={(e) => setNewDrug(e.target.value)}
+            />
+            <button className="btn btn-secondary btn-sm" type="submit" style={{ whiteSpace: "nowrap" }}>
+              + Thử nghiệm
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
   );
 }

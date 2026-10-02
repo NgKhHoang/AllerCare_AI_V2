@@ -19,6 +19,12 @@ interface TriageResult {
   message?: string;
 }
 
+function getTriageBorderColor(level: string): string {
+  if (level === "red") return "4px solid var(--danger, #dc2626)";
+  if (level === "yellow") return "4px solid var(--warning, #d97706)";
+  return "4px solid var(--ok, #16a34a)";
+}
+
 export default function TriagePage() {
   const [message, setMessage] = useState("");
   const [result, setResult] = useState<TriageResult | null>(null);
@@ -124,10 +130,11 @@ export default function TriagePage() {
         </div>
 
         <div className="field" style={{ marginTop: 10 }}>
-          <label className="label" style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 8, display: "block" }}>
+          <label htmlFor="symptom-desc" className="label" style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 8, display: "block" }}>
             Mô tả triệu chứng hôm nay : <span style={{ color: "#dc2626" }}>*</span>
           </label>
           <textarea
+            id="symptom-desc"
             className="textarea"
             style={{
               width: "100%",
@@ -179,7 +186,7 @@ export default function TriagePage() {
 
         {error && <ErrorBox text={error} />}
 
-        <button className="btn btn-primary" disabled={loading} style={{ width: "100%", padding: "12px", fontSize: 15, fontWeight: 700 }}>
+        <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: "100%", padding: "12px", fontSize: 15, fontWeight: 700 }}>
           {loading ? "⏳ Đang phân luồng triệu chứng..." : "🚦 Gửi khai báo & Phân luồng AI"}
         </button>
 
@@ -192,12 +199,7 @@ export default function TriagePage() {
         <div
           className="card"
           style={{
-            borderLeft:
-              result.level === "red"
-                ? "4px solid var(--danger, #dc2626)"
-                : result.level === "yellow"
-                ? "4px solid var(--warning, #d97706)"
-                : "4px solid var(--ok, #16a34a)",
+            borderLeft: getTriageBorderColor(result.level),
           }}
         >
           <div className="card-title">
