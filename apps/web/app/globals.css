@@ -684,3 +684,129 @@ body {
   font-weight: 600;
   color: var(--text-secondary);
 }
+
+/* Vitals & Clinical Info Dashboard */
+.vitals-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-card);
+  padding: 16px 20px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+
+.vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.vital-box {
+  background: #f8fafc;
+  border: 1px solid #edf2f7;
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.vital-box:hover {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  transform: translateY(-1px);
+}
+
+.vital-box-warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.vital-box-danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.vital-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.vital-lbl {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Sticky Right-Side Note Panel (Cây Ghi Chú Bác Sĩ Bên Phải Màn Hình) */
+.disease-note-dock {
+  position: fixed;
+  top: 90px;
+  right: 20px;
+  width: 320px;
+  max-height: calc(100vh - 120px);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid #0284c7;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(2, 132, 199, 0.15), 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (max-width: 1360px) {
+  .disease-note-dock {
+    width: 290px;
+    right: 12px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .disease-note-dock {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 100%;
+    max-height: none;
+    margin-bottom: 20px;
+    z-index: 10;
+  }
+}
+
+.note-paper-area {
+  background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+  background-size: 100% 28px;
+  line-height: 28px;
+  font-size: 0.92rem;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 12px 14px;
+  resize: vertical;
+  min-height: 160px;
+  width: 100%;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.note-paper-area:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.note-paper-area::placeholder {
+  color: #94a3b8;
+  font-style: italic;
+}
+

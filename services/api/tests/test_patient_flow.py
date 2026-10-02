@@ -100,3 +100,37 @@ def test_patient_lists_own_data(client: TestClient):
     alg = client.get(f"/api/v1/patients/{pid}/allergies", headers=auth_header(p1))
     assert alg.status_code == 200
     assert any(a["substance"] == "Penicillin" for a in alg.json())
+
+
+def test_clinical_info_get_and_update(client: TestClient):
+    d1 = login(client, "doctor1", "doctor123")
+    p1 = login(client, "patient1", "patient123")
+    pid = client.get("/api/v1/patients/me/profile", headers=auth_header(p1)).json()["id"]
+
+    # 1) Bác sĩ cập nhật thông tin lâm sàng & sinh hiệu
+    payload = {
+        "full_name": "Lê Văn Cường",
+        "dob": "1990-01-01",
+        "gender": "Nam",
+        "weight": "68",
+        "heart_rate": "76",
+        "blood_pressure": "120/80",
+        "spo2": "99",
+        "clinical_note": "Bệnh nhân ổn định, không khó thở.",
+    }
+    r = client.put(f"/api/v1/patients/{pid}/clinical-info", json=payload, headers=auth_header(d1))
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["full_name"] == "Lê Văn Cường"
+    assert data["weight"] == "68"
+    assert data["heart_rate"] == "76"
+    assert data["blood_pressure"] == "120/80"
+    assert data["spo2"] == "99"
+
+    # 2) Bác sĩ hoặc bệnh nhân đọc lại thông tin lâm sàng
+    r_get = client.get(f"/api/v1/patients/{pid}/clinical-info", headers=auth_header(d1))
+    assert r_get.status_code == 200
+    assert r_get.json()["heart_rate"] == "76"
+    assert r_get.json()["blood_pressure"] == "120/80"
+
+

@@ -117,3 +117,27 @@ class ProfileOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
+class ClinicalInfoIn(BaseModel):
+    full_name: str | None = Field(default=None, max_length=160, description="Họ và tên")
+    dob: str | None = Field(default=None, max_length=20, description="Ngày sinh hoặc tuổi (YYYY-MM-DD)")
+    gender: str | None = Field(default=None, max_length=20, description="Giới tính")
+    weight: str | None = Field(default=None, max_length=40, description="Cân nặng (kg)")
+    heart_rate: str | None = Field(default=None, max_length=40, description="Nhịp tim / Mạch (bpm)")
+    blood_pressure: str | None = Field(default=None, max_length=40, description="Huyết áp (mmHg)")
+    spo2: str | None = Field(default=None, max_length=40, description="SpO2 (%)")
+    clinical_note: str | None = Field(default=None, max_length=1000, description="Ghi chú lâm sàng")
+
+
+class ClinicalInfoOut(BaseModel):
+    profile_id: str
+    full_name: str
+    dob: str | None = None
+    gender: str | None = None
+    weight: str | None = None
+    heart_rate: str | None = None
+    blood_pressure: str | None = None
+    spo2: str | None = None
+    clinical_note: str | None = None
+
+

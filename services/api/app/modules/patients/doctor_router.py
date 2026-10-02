@@ -297,7 +297,7 @@ def ai_summary(
         db.query(ClinicalObservation)
         .filter(ClinicalObservation.patient_profile_id == profile.id)
         .order_by(ClinicalObservation.occurred_at.desc())
-        .limit(10)
+        .limit(30)
         .all()
     )
     meds = (

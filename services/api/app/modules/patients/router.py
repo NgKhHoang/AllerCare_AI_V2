@@ -16,10 +16,13 @@ from app.modules.patients.models import (
     ClinicalObservation,
     MedicationRecord,
     PatientProfile,
+    User,
 )
 from app.modules.patients.schemas import (
     AllergyIn,
     AllergyOut,
+    ClinicalInfoIn,
+    ClinicalInfoOut,
     MedicationIn,
     MedicationOut,
     ObservationIn,
@@ -27,6 +30,7 @@ from app.modules.patients.schemas import (
     ProfileOut,
     TreatmentUpdateIn,
 )
+from app.modules.audit.models import new_id
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -38,10 +42,107 @@ def my_profile(
 ) -> ProfileOut:
     profile = db.query(PatientProfile).filter(PatientProfile.user_id == user.id).first()
     if profile is None:
-        from fastapi import HTTPException, status
-
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Chưa có hồ sơ người bệnh cho tài khoản này")
     return profile
+
+
+@router.get("/{profile_id}/clinical-info", response_model=ClinicalInfoOut, summary="Lấy thông tin lâm sàng và chỉ số sinh hiệu")
+def get_clinical_info(
+    profile_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ClinicalInfoOut:
+    from app.modules.auth.deps import get_patient_profile_for_access
+
+    profile = get_patient_profile_for_access(profile_id, user, db)
+    obs = (
+        db.query(ClinicalObservation)
+        .filter(ClinicalObservation.patient_profile_id == profile.id)
+        .order_by(ClinicalObservation.created_at.desc())
+        .all()
+    )
+
+    vitals_map: dict[str, str] = {}
+    for o in obs:
+        lbl = o.label.strip().lower()
+        if ("nhịp tim" in lbl or "mạch" in lbl or "heart_rate" in lbl or "pulse" in lbl) and "heart_rate" not in vitals_map:
+            vitals_map["heart_rate"] = o.value or ""
+        elif ("huyết áp" in lbl or "blood_pressure" in lbl or lbl == "ha") and "blood_pressure" not in vitals_map:
+            vitals_map["blood_pressure"] = o.value or ""
+        elif ("spo2" in lbl or "nồng độ oxy" in lbl or "oxy" in lbl) and "spo2" not in vitals_map:
+            vitals_map["spo2"] = o.value or ""
+        elif ("cân nặng" in lbl or "weight" in lbl) and "weight" not in vitals_map:
+            vitals_map["weight"] = o.value or ""
+
+    return ClinicalInfoOut(
+        profile_id=profile.id,
+        full_name=profile.full_name,
+        dob=profile.dob,
+        gender=profile.gender,
+        weight=vitals_map.get("weight"),
+        heart_rate=vitals_map.get("heart_rate"),
+        blood_pressure=vitals_map.get("blood_pressure"),
+        spo2=vitals_map.get("spo2"),
+        clinical_note=profile.admission_note,
+    )
+
+
+@router.put("/{profile_id}/clinical-info", response_model=ClinicalInfoOut, summary="Cập nhật thông tin lâm sàng và chỉ số sinh hiệu")
+def update_clinical_info(
+    profile_id: str,
+    data: ClinicalInfoIn,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ClinicalInfoOut:
+    from app.modules.auth.deps import get_patient_profile_for_access
+
+    profile = get_patient_profile_for_access(profile_id, user, db)
+
+    if data.full_name is not None and data.full_name.strip():
+        profile.full_name = data.full_name.strip()
+        account = db.get(User, profile.user_id)
+        if account:
+            account.full_name = profile.full_name
+
+    if data.dob is not None:
+        profile.dob = data.dob.strip() if data.dob else None
+    if data.gender is not None:
+        profile.gender = data.gender.strip() if data.gender else None
+    if data.clinical_note is not None:
+        profile.admission_note = data.clinical_note.strip() if data.clinical_note else None
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+
+    vitals_to_record = [
+        ("Nhịp tim", data.heart_rate, "bpm"),
+        ("Huyết áp", data.blood_pressure, "mmHg"),
+        ("SpO2", data.spo2, "%"),
+        ("Cân nặng", data.weight, "kg"),
+    ]
+
+    for label, val, unit in vitals_to_record:
+        if val is not None and str(val).strip():
+            clean_val = str(val).strip()
+            obs = ClinicalObservation(
+                id=new_id(),
+                patient_profile_id=profile.id,
+                kind="vital",
+                label=label,
+                value=clean_val,
+                unit=unit,
+                occurred_at=now_str,
+                status="seen",
+                verification="verified",
+                reported_by_user_id=user.id,
+            )
+            db.add(obs)
+
+    audit_log(db, user, "update_clinical_info", "patient_profile", profile.id)
+    db.commit()
+    db.refresh(profile)
+
+    return get_clinical_info(profile_id, user, db)
+
 
 
 @router.get("/{profile_id}", summary="Xem hồ sơ theo id (chính chủ hoặc bác sĩ được phân công)")

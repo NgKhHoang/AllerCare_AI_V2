@@ -895,6 +895,246 @@ function ConditionListView({
 }
 
 // ----------------------------------------------------------------------
+// SUB-COMPONENT: THANH GHI CHÚ BỆNH NHÂN THEO TỪNG LOẠI BỆNH (BÁC SĨ)
+// ----------------------------------------------------------------------
+function DiseaseNoteSidePanel({
+  conditions,
+  selectedConditionId,
+  onSelectCondition,
+  profileId,
+  onNoteUpdated,
+}: {
+  readonly conditions: DiseaseCondition[];
+  readonly selectedConditionId: string | null;
+  readonly onSelectCondition: (id: string) => void;
+  readonly profileId: string;
+  readonly onNoteUpdated: () => void;
+}) {
+  const currentCondition =
+    conditions.find((c) => c.id === selectedConditionId) || conditions[0];
+  const [noteText, setNoteText] = useState(currentCondition?.note || "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedStatus, setSavedStatus] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    setNoteText(currentCondition?.note || "");
+    setSavedStatus(null);
+  }, [currentCondition?.id, currentCondition?.note]);
+
+  async function handleSaveNote() {
+    if (!currentCondition) return;
+    try {
+      setIsSaving(true);
+      await api(`/v1/patients/${profileId}/treatment`, {
+        method: "PUT",
+        body: {
+          condition_id: currentCondition.id,
+          admission_note: noteText,
+        },
+      });
+      setSavedStatus("Đã lưu");
+      setTimeout(() => setSavedStatus(null), 3000);
+      onNoteUpdated();
+    } catch {
+      setSavedStatus("Lỗi lưu");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  if (!currentCondition) return null;
+
+  return (
+    <>
+      {/* Nút Toggle mở nhanh khi đang thu gọn */}
+      {isCollapsed && (
+        <button
+          type="button"
+          onClick={() => setIsCollapsed(false)}
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 20,
+            zIndex: 60,
+            background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
+            color: "#ffffff",
+            padding: "10px 16px",
+            borderRadius: 30,
+            border: "none",
+            boxShadow: "0 4px 16px rgba(2, 132, 199, 0.4)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontWeight: 700,
+            fontSize: "0.9rem",
+          }}
+        >
+          <span>📝 Mở ghi chú bệnh</span>
+          <span style={{ fontSize: "0.75rem", background: "rgba(255,255,255,0.2)", padding: "2px 6px", borderRadius: 10 }}>
+            {currentCondition.name.slice(0, 14)}...
+          </span>
+        </button>
+      )}
+
+      {!isCollapsed && (
+        <aside
+          className="disease-note-dock"
+          aria-label="Thanh ghi chú bệnh nhân theo loại bệnh"
+        >
+          {/* Header thanh ghi chú */}
+          <div
+            style={{
+              padding: "12px 14px",
+              background: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)",
+              borderBottom: "1px solid #bae6fd",
+              borderTopLeftRadius: 15,
+              borderTopRightRadius: 15,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: "1.2rem", color: "#dc2626" }}>📝</span>
+              <strong style={{ fontSize: "0.92rem", color: "#0369a1", fontWeight: 800 }}>
+                Ghi chú:
+              </strong>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsCollapsed(true)}
+              style={{
+                background: "transparent",
+                border: "none",
+                fontSize: "1rem",
+                cursor: "pointer",
+                color: "#64748b",
+                padding: "2px 6px",
+                borderRadius: 4,
+              }}
+              title="Thu nhỏ thanh ghi chú"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Selector loại bệnh đang ghi chú */}
+          <div style={{ padding: "10px 14px 6px", background: "#ffffff" }}>
+            <label
+              htmlFor="condition-note-select"
+              style={{
+                display: "block",
+                fontSize: "0.74rem",
+                fontWeight: 700,
+                color: "#64748b",
+                marginBottom: 4,
+                textTransform: "uppercase",
+              }}
+            >
+              Bệnh đang ghi chú:
+            </label>
+            {conditions.length > 1 ? (
+              <select
+                id="condition-note-select"
+                value={currentCondition.id}
+                onChange={(e) => onSelectCondition(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  color: "#0f172a",
+                  background: "#f8fafc",
+                }}
+              >
+                {conditions.map((c, i) => (
+                  <option key={c.id} value={c.id}>
+                    {i + 1}. {c.name} ({STATUS_CONFIG[c.status]?.label || "Đang điều trị"})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div
+                style={{
+                  fontSize: "0.84rem",
+                  fontWeight: 700,
+                  color: "#0284c7",
+                  background: "#f0f9ff",
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #e0f2fe",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+                title={currentCondition.name}
+              >
+                🩺 {currentCondition.name}
+              </div>
+            )}
+            <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: "#94a3b8", fontStyle: "italic" }}>
+              * Ghi chú riêng cho loại bệnh này (không dùng chung).
+            </p>
+          </div>
+
+          {/* Thân Textarea ghi chú */}
+          <div style={{ padding: "8px 14px", flex: 1, display: "flex", flexDirection: "column" }}>
+            <textarea
+              className="note-paper-area"
+              value={noteText}
+              onChange={(e) => {
+                setNoteText(e.target.value);
+                setSavedStatus(null);
+              }}
+              onBlur={handleSaveNote}
+              placeholder="Ghi chú về Bệnh Nhân..."
+              rows={6}
+            />
+          </div>
+
+          {/* Footer lưu & trạng thái */}
+          <div
+            style={{
+              padding: "10px 14px",
+              background: "#f8fafc",
+              borderTop: "1px solid #e2e8f0",
+              borderBottomLeftRadius: 15,
+              borderBottomRightRadius: 15,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <div style={{ fontSize: "0.78rem" }}>
+              {isSaving && <span style={{ color: "#0284c7" }}>⏳ Đang lưu...</span>}
+              {!isSaving && savedStatus && (
+                <span style={{ color: "#16a34a", fontWeight: 700 }}>✓ {savedStatus}</span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={handleSaveNote}
+              disabled={isSaving}
+              style={{ fontSize: "0.82rem", padding: "5px 14px" }}
+            >
+              {isSaving ? "Đang lưu..." : "💾 Lưu ghi chú"}
+            </button>
+          </div>
+        </aside>
+      )}
+    </>
+  );
+}
+
+// ----------------------------------------------------------------------
 // MAIN CONTROLLER COMPONENT: TREATMENT TIMELINE
 // ----------------------------------------------------------------------
 export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Props) {
@@ -1087,6 +1327,18 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
           adding={adding}
         />
       )}
+
+      {/* THANH GHI CHÚ BÁC SĨ BÊN PHẢI MÀN HÌNH (RIÊNG CHO TỪNG LOẠI BỆNH) */}
+      {isDoctor && data.conditions && data.conditions.length > 0 && (
+        <DiseaseNoteSidePanel
+          conditions={data.conditions}
+          selectedConditionId={selectedConditionId}
+          onSelectCondition={(id) => setSelectedConditionId(id)}
+          profileId={profileId}
+          onNoteUpdated={() => void loadTimeline(true)}
+        />
+      )}
     </>
   );
 }
+

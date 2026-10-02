@@ -20,6 +20,17 @@ interface AssignedPatient {
   gender: string | null;
   unseen_updates: number;
 }
+interface ClinicalInfo {
+  profile_id: string;
+  full_name: string;
+  dob: string | null;
+  gender: string | null;
+  weight: string | null;
+  heart_rate: string | null;
+  blood_pressure: string | null;
+  spo2: string | null;
+  clinical_note: string | null;
+}
 interface Medication {
   id: string;
   raw_name: string;
@@ -118,6 +129,21 @@ export default function DoctorPortal() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Thông tin lâm sàng & Chỉ số sinh hiệu của Bệnh nhân
+  const [clinicalInfo, setClinicalInfo] = useState<ClinicalInfo | null>(null);
+  const [showClinicalModal, setShowClinicalModal] = useState(false);
+  const [clinicalForm, setClinicalForm] = useState({
+    full_name: "",
+    dob: "",
+    gender: "Nam",
+    weight: "",
+    heart_rate: "",
+    blood_pressure: "",
+    spo2: "",
+    clinical_note: "",
+  });
+  const [savingClinical, setSavingClinical] = useState(false);
+
   // Kê đơn thuốc mới
   const [prescribeName, setPrescribeName] = useState("");
   const [prescribeDose, setPrescribeDose] = useState("1 viên/lần");
@@ -178,10 +204,28 @@ export default function DoctorPortal() {
       setSuspect(null);
       setReaction("");
       setPrevDrugs("");
+
+      // Tải thông tin lâm sàng & sinh hiệu
+      api<ClinicalInfo>(`/v1/patients/${p.profile_id}/clinical-info`)
+        .then((res) => {
+          setClinicalInfo(res);
+          setClinicalForm({
+            full_name: res.full_name || p.full_name || "",
+            dob: res.dob || p.dob || "",
+            gender: res.gender || p.gender || "Nam",
+            weight: res.weight || "",
+            heart_rate: res.heart_rate || "",
+            blood_pressure: res.blood_pressure || "",
+            spo2: res.spo2 || "",
+            clinical_note: res.clinical_note || "",
+          });
+        })
+        .catch(() => {});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Lỗi tải hồ sơ");
     }
   }, []);
+
 
   async function markSeen(obsId: string) {
     if (!selected) return;
@@ -365,6 +409,37 @@ export default function DoctorPortal() {
     }
   }
 
+  async function handleSaveClinicalInfo(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selected) return;
+    try {
+      setSavingClinical(true);
+      setError("");
+      const updated = await api<ClinicalInfo>(`/v1/patients/${selected.profile_id}/clinical-info`, {
+        method: "PUT",
+        body: clinicalForm,
+      });
+      setClinicalInfo(updated);
+      setSelected((prev) =>
+        prev
+          ? {
+              ...prev,
+              full_name: updated.full_name,
+              dob: updated.dob,
+              gender: updated.gender,
+            }
+          : null
+      );
+      setShowClinicalModal(false);
+      setSuccess("Cập nhật thông tin lâm sàng và chỉ số sinh hiệu thành công!");
+      api<AssignedPatient[]>("/v1/patients/assigned").then(setPatients).catch(() => {});
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể cập nhật thông tin lâm sàng");
+    } finally {
+      setSavingClinical(false);
+    }
+  }
+
   async function confirmSuspect() {
     if (!suspect) return;
     try {
@@ -376,6 +451,7 @@ export default function DoctorPortal() {
       setError(e instanceof Error ? e.message : "Không xác nhận được");
     }
   }
+
 
   async function loadAiSummary() {
     if (!selected) return;
@@ -530,6 +606,261 @@ export default function DoctorPortal() {
 
       {selected && (
         <>
+          {/* THÔNG TIN LÂM SÀNG & CHỈ SỐ SINH HIỆU BỆNH NHÂN */}
+          <div className="vitals-card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, borderBottom: "1px solid #f1f5f9", paddingBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 24 }}>🩺</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.08rem", color: "#0f172a", fontWeight: 800 }}>
+                    Thông tin Lâm sàng & Chỉ số Sinh hiệu
+                  </h3>
+                  <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                    Bệnh nhân: <strong>{selected.full_name}</strong> • Giới tính: <strong>{clinicalInfo?.gender || selected.gender || "—"}</strong> • Ngày sinh / Tuổi: <strong>{clinicalInfo?.dob || selected.dob || "—"}</strong>
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  setClinicalForm({
+                    full_name: clinicalInfo?.full_name || selected.full_name || "",
+                    dob: clinicalInfo?.dob || selected.dob || "",
+                    gender: clinicalInfo?.gender || selected.gender || "Nam",
+                    weight: clinicalInfo?.weight || "",
+                    heart_rate: clinicalInfo?.heart_rate || "",
+                    blood_pressure: clinicalInfo?.blood_pressure || "",
+                    spo2: clinicalInfo?.spo2 || "",
+                    clinical_note: clinicalInfo?.clinical_note || "",
+                  });
+                  setShowClinicalModal(true);
+                }}
+                style={{ fontSize: "0.84rem", fontWeight: 700, borderColor: "#0284c7", color: "#0284c7" }}
+              >
+                ✏️ Nhập / Sửa thông tin lâm sàng & sinh hiệu
+              </button>
+            </div>
+
+            {/* Lưới các chỉ số sinh hiệu (Vitals) */}
+            <div className="vitals-grid">
+              <div className="vital-box">
+                <span className="vital-lbl">⚖️ Cân nặng</span>
+                <span className="vital-val" style={{ color: clinicalInfo?.weight ? "#0284c7" : "#94a3b8" }}>
+                  {clinicalInfo?.weight ? `${clinicalInfo.weight} kg` : "— Chưa nhập"}
+                </span>
+              </div>
+
+              <div className="vital-box">
+                <span className="vital-lbl">❤️ Nhịp tim / Mạch</span>
+                <span className="vital-val" style={{ color: clinicalInfo?.heart_rate ? "#dc2626" : "#94a3b8" }}>
+                  {clinicalInfo?.heart_rate ? `${clinicalInfo.heart_rate} bpm` : "— Chưa nhập"}
+                </span>
+              </div>
+
+              <div className="vital-box">
+                <span className="vital-lbl">🩸 Huyết áp (HA)</span>
+                <span className="vital-val" style={{ color: clinicalInfo?.blood_pressure ? "#ea580c" : "#94a3b8" }}>
+                  {clinicalInfo?.blood_pressure ? `${clinicalInfo.blood_pressure} mmHg` : "— Chưa nhập"}
+                </span>
+              </div>
+
+              <div className="vital-box">
+                <span className="vital-lbl">🫁 SpO2 (Oxy máu)</span>
+                <span className="vital-val" style={{ color: clinicalInfo?.spo2 ? "#16a34a" : "#94a3b8" }}>
+                  {clinicalInfo?.spo2 ? `${clinicalInfo.spo2}%` : "— Chưa nhập"}
+                </span>
+              </div>
+            </div>
+
+            {clinicalInfo?.clinical_note && (
+              <div style={{ marginTop: 10, padding: "8px 12px", background: "#f8fafc", borderRadius: 8, fontSize: "0.82rem", color: "#475569" }}>
+                <strong>📋 Ghi chú lâm sàng ban đầu:</strong> {clinicalInfo.clinical_note}
+              </div>
+            )}
+          </div>
+
+          {/* Modal Nhập/Chỉnh sửa thông tin lâm sàng & sinh hiệu */}
+          {showClinicalModal && (
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(15, 23, 42, 0.6)",
+                backdropFilter: "blur(4px)",
+                zIndex: 100,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 16,
+              }}
+              onClick={() => setShowClinicalModal(false)}
+            >
+              <div
+                style={{
+                  background: "#ffffff",
+                  borderRadius: 16,
+                  padding: 24,
+                  maxWidth: 540,
+                  width: "100%",
+                  boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
+                  maxHeight: "90vh",
+                  overflowY: "auto",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#0f172a", fontWeight: 800 }}>
+                    🩺 Nhập thông tin lâm sàng & Chỉ số sinh hiệu
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowClinicalModal(false)}
+                    style={{ background: "transparent", border: "none", fontSize: "1.2rem", cursor: "pointer", color: "#64748b" }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveClinicalInfo}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                    <div style={{ gridColumn: "span 2" }}>
+                      <label htmlFor="clin-name" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                        Họ và tên bệnh nhân
+                      </label>
+                      <input
+                        id="clin-name"
+                        type="text"
+                        className="input"
+                        value={clinicalForm.full_name}
+                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, full_name: e.target.value }))}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="clin-dob" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                        Ngày sinh / Tuổi (YYYY-MM-DD)
+                      </label>
+                      <input
+                        id="clin-dob"
+                        type="text"
+                        className="input"
+                        value={clinicalForm.dob}
+                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, dob: e.target.value }))}
+                        placeholder="VD: 1990-05-15 hoặc 35 tuổi"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="clin-gender" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                        Giới tính
+                      </label>
+                      <select
+                        id="clin-gender"
+                        className="input"
+                        value={clinicalForm.gender}
+                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, gender: e.target.value }))}
+                      >
+                        <option value="Nam">Nam</option>
+                        <option value="Nữ">Nữ</option>
+                        <option value="Khác">Khác</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label htmlFor="clin-weight" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                        ⚖️ Cân nặng (kg)
+                      </label>
+                      <input
+                        id="clin-weight"
+                        type="text"
+                        className="input"
+                        value={clinicalForm.weight}
+                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, weight: e.target.value }))}
+                        placeholder="VD: 65"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="clin-hr" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                        ❤️ Nhịp tim / Mạch (bpm)
+                      </label>
+                      <input
+                        id="clin-hr"
+                        type="text"
+                        className="input"
+                        value={clinicalForm.heart_rate}
+                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, heart_rate: e.target.value }))}
+                        placeholder="VD: 78"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="clin-bp" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                        🩸 Huyết áp (mmHg)
+                      </label>
+                      <input
+                        id="clin-bp"
+                        type="text"
+                        className="input"
+                        value={clinicalForm.blood_pressure}
+                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, blood_pressure: e.target.value }))}
+                        placeholder="VD: 120/80"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="clin-spo2" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                        🫁 SpO2 (%)
+                      </label>
+                      <input
+                        id="clin-spo2"
+                        type="text"
+                        className="input"
+                        value={clinicalForm.spo2}
+                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, spo2: e.target.value }))}
+                        placeholder="VD: 98"
+                      />
+                    </div>
+
+                    <div style={{ gridColumn: "span 2" }}>
+                      <label htmlFor="clin-note" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                        📋 Ghi chú lâm sàng / Tình trạng ban đầu
+                      </label>
+                      <textarea
+                        id="clin-note"
+                        className="input"
+                        rows={3}
+                        value={clinicalForm.clinical_note}
+                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, clinical_note: e.target.value }))}
+                        placeholder="VD: Bệnh nhân tỉnh táo, tiếp xúc tốt, có ban đỏ rải rác vùng ngực và cánh tay..."
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setShowClinicalModal(false)}
+                      disabled={savingClinical}
+                    >
+                      Hủy
+                    </button>
+                    <button type="submit" className="btn btn-primary" disabled={savingClinical}>
+                      {savingClinical ? "Đang lưu..." : "💾 Lưu thông tin lâm sàng"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
           <div className="stat-row">
             <div className="stat">
               <div
@@ -554,6 +885,7 @@ export default function DoctorPortal() {
                 <div className="s-label">Thuốc đang dùng</div>
               </div>
             </div>
+
 
             <div className="stat">
               <div
