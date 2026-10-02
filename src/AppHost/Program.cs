@@ -20,7 +20,7 @@ var livekit = builder.AddContainer("allercare-livekit", "allercare/livekit:local
     .WithLifetime(ContainerLifetime.Persistent);
 
 // 3. FastAPI Backend API with Google Gemini AI Integration
-var api = builder.AddDockerfile("allercare-api", "../../services/api")
+var api = builder.AddContainer("allercare-api", "allercare-api:local")
     .WithHttpEndpoint(port: 8000, targetPort: 8000, name: "api")
     .WithExternalHttpEndpoints()
     .WithReference(allercareDb)
