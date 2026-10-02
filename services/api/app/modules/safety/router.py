@@ -32,7 +32,7 @@ def create_check(
 @router.post("/quick-check", summary="Kiểm tra tương tác nhanh giữa 2/3 loại chất/thuốc và tiền sử bệnh")
 def quick_check(
     data: QuickCheckIn,
-    user: CurrentUser = Depends(require_roles("doctor", "pharmacist", "nurse")),
+    user: CurrentUser = Depends(require_roles("doctor", "pharmacist", "nurse", "patient", "admin", "caregiver", "leader")),
     db: Session = Depends(get_db),
 ) -> dict:
     profile = None
