@@ -1114,323 +1114,23 @@ export default function DoctorPortal() {
       {success && <SuccessBox text={success} />}
 
       {!selected && (
-        <div className="doctor-dashboard-grid">
-          {/* CỘT BÊN TRÁI: LỊCH HẸN ĐÃ XÁC NHẬN & VÀO PHÒNG VIDEO + CHỜ DUYỆT */}
-          <div className="doctor-dashboard-card">
-            <div className="doctor-dashboard-card-header">
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 22 }}>🎥</span>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: "1.05rem", color: "#0f172a", fontWeight: 800 }}>
-                    Lịch hẹn đã xác nhận — vào phòng video
-                  </h3>
-                  <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                    {appointments.filter((a) => a.status === "confirmed").length} đã xác nhận · {appointments.filter((a) => a.status === "requested").length} chờ duyệt
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="collapse-toggle-btn"
-                onClick={() => setShowAppointments((v) => !v)}
-              >
-                {showAppointments ? "▲ Ẩn nội dung" : "▼ Mở nội dung"}
-              </button>
-            </div>
-
-            {showAppointments && (
-              <div className="doctor-dashboard-card-body" style={{ padding: 16 }}>
-                {/* Thanh tìm kiếm lịch hẹn */}
-                <div className="dashboard-search-bar">
-                  <span className="dashboard-search-icon">🔍</span>
-                  <input
-                    type="text"
-                    className="dashboard-search-input"
-                    value={appointmentSearch}
-                    onChange={(e) => setAppointmentSearch(e.target.value)}
-                    placeholder="Tìm kiếm lịch hẹn (theo ngày giờ, lý do khám)..."
-                  />
-                  {appointmentSearch && (
-                    <button
-                      type="button"
-                      className="dashboard-search-clear"
-                      onClick={() => setAppointmentSearch("")}
-                      title="Xóa tìm kiếm"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-
-                {appointmentSearch && (
-                  <div style={{ fontSize: "0.78rem", color: "#64748b", marginBottom: 10, paddingLeft: 2 }}>
-                    Tìm thấy <strong>{filteredAppointments.length}</strong> / {appointments.length} lịch hẹn
-                  </div>
-                )}
-
-                {/* Lịch hẹn chờ xác nhận */}
-                {filteredAppointments.some((a) => a.status === "requested") && (
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: "0.8rem", fontWeight: 800, color: "#d97706", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                      <span>⏳ Chờ xác nhận ({filteredAppointments.filter((a) => a.status === "requested").length})</span>
-                    </div>
-                    {filteredAppointments
-                      .filter((a) => a.status === "requested")
-                      .map((a) => (
-                        <div
-                          className="list-row"
-                          key={a.id}
-                          style={{
-                            borderRadius: 10,
-                            marginBottom: 8,
-                            background: "#fffbeb",
-                            border: "1px solid #fef3c7",
-                            padding: "10px 12px",
-                          }}
-                        >
-                          <div className="list-main">
-                            <div className="list-title" style={{ fontWeight: 700, fontSize: "0.92rem" }}>
-                              {a.scheduled_at}
-                            </div>
-                            <div className="list-sub" style={{ fontSize: "0.8rem" }}>
-                              {a.reason ?? "Tái khám định kỳ"}
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <button className="btn btn-primary btn-sm" onClick={() => confirmAppointment(a.id)}>
-                              Xác nhận
-                            </button>
-                            <button className="btn btn-secondary btn-sm" onClick={() => router.push(`/video/${a.id}`)}>
-                              🎥 Vào phòng
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-
-                {/* Lịch hẹn đã xác nhận */}
-                {filteredAppointments.some((a) => a.status === "confirmed") && (
-                  <div>
-                    <div style={{ fontSize: "0.8rem", fontWeight: 800, color: "#0284c7", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                      <span>✅ Đã sẵn sàng ({filteredAppointments.filter((a) => a.status === "confirmed").length})</span>
-                    </div>
-                    {filteredAppointments
-                      .filter((a) => a.status === "confirmed")
-                      .map((a) => (
-                        <div
-                          className="list-row"
-                          key={a.id}
-                          style={{
-                            borderRadius: 10,
-                            marginBottom: 8,
-                            background: "#f0f9ff",
-                            border: "1.5px solid #bae6fd",
-                            padding: "12px 14px",
-                          }}
-                        >
-                          <div className="list-main">
-                            <div className="list-title" style={{ fontWeight: 800, fontSize: "0.95rem", color: "#0369a1" }}>
-                              {a.scheduled_at}
-                            </div>
-                            <div className="list-sub" style={{ fontSize: "0.82rem", color: "#475569" }}>
-                              {a.reason ?? "Tái khám định kỳ"}
-                            </div>
-                          </div>
-                          <button
-                            className="btn btn-primary btn-sm"
-                            style={{ fontWeight: 700, padding: "6px 14px" }}
-                            onClick={() => router.push(`/video/${a.id}`)}
-                          >
-                            🎥 Vào phòng
-                          </button>
-                        </div>
-                      ))}
-                  </div>
-                )}
-
-                {filteredAppointments.length === 0 && (
-                  <EmptyState
-                    icon={appointmentSearch ? "🔍" : "📅"}
-                    text={appointmentSearch ? `Không tìm thấy lịch hẹn nào khớp với "${appointmentSearch}"` : "Hiện không có lịch hẹn trực tuyến nào."}
-                  />
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* CỘT BÊN CÁNH PHẢI: CÁC CA BỆNH NHÂN */}
-          <div className="doctor-dashboard-card">
-            <div className="doctor-dashboard-card-header">
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 22 }}>👥</span>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: "1.05rem", color: "#0f172a", fontWeight: 800 }}>
-                    Các ca bệnh nhân
-                  </h3>
-                  <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                    Tổng cộng {patients.length} bệnh nhân được phân công
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="collapse-toggle-btn"
-                onClick={() => setShowPatients((v) => !v)}
-              >
-                {showPatients ? "▲ Ẩn nội dung" : "▼ Mở nội dung"}
-              </button>
-            </div>
-
-            {showPatients && (
-              <div className="doctor-dashboard-card-body" style={{ padding: 16 }}>
-                {/* Thanh tìm kiếm bệnh nhân */}
-                <div className="dashboard-search-bar">
-                  <span className="dashboard-search-icon">🔍</span>
-                  <input
-                    type="text"
-                    className="dashboard-search-input"
-                    value={patientSearch}
-                    onChange={(e) => setPatientSearch(e.target.value)}
-                    placeholder="Tìm kiếm bệnh nhân (theo họ tên, ngày sinh, giới tính)..."
-                  />
-                  {patientSearch && (
-                    <button
-                      type="button"
-                      className="dashboard-search-clear"
-                      onClick={() => setPatientSearch("")}
-                      title="Xóa tìm kiếm"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-
-                {patientSearch && (
-                  <div style={{ fontSize: "0.78rem", color: "#64748b", marginBottom: 10, paddingLeft: 2 }}>
-                    Tìm thấy <strong>{filteredPatients.length}</strong> / {patients.length} bệnh nhân
-                  </div>
-                )}
-
-                {filteredPatients.length === 0 && (
-                  <EmptyState
-                    icon={patientSearch ? "🔍" : "👥"}
-                    text={patientSearch ? `Không tìm thấy bệnh nhân nào khớp với "${patientSearch}"` : "Chưa có ca nào được phân công."}
-                  />
-                )}
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {filteredPatients.map((p) => (
-                    <button
-                      type="button"
-                      className={`list-row ${p.unseen_updates > 0 ? "pulse-red-alert" : ""}`}
-                      key={p.profile_id}
-                      style={{
-                        width: "100%",
-                        textAlign: "left",
-                        font: "inherit",
-                        cursor: "pointer",
-                        borderRadius: 12,
-                        border: p.unseen_updates > 0 ? "1.5px solid #f87171" : "1px solid #e2e8f0",
-                        padding: "14px 18px",
-                        transition: "all 0.18s ease",
-                        background: p.unseen_updates > 0 ? "linear-gradient(135deg, #fff5f5 0%, #ffffff 100%)" : "#ffffff",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: 12,
-                      }}
-                      onClick={() => void openPatient(p)}
-                    >
-                      <div className="list-main" style={{ flex: 1 }}>
-                        <div className="list-title" style={{ fontWeight: 800, fontSize: "0.98rem", color: "#0f172a", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                          <span>{p.full_name}</span>
-                          {p.unseen_updates > 0 ? (
-                            <span
-                              className={`badge badge-danger ${p.has_critical ? "pulse-badge-danger" : ""}`}
-                              style={{
-                                fontSize: "0.78rem",
-                                fontWeight: 800,
-                                padding: "2px 8px",
-                                borderRadius: 9999,
-                                background: p.has_critical ? "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)" : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-                                color: "#ffffff",
-                                boxShadow: "0 2px 6px rgba(220, 38, 38, 0.25)",
-                              }}
-                              title={`${p.unseen_updates} cập nhật mới chưa xem`}
-                            >
-                              {p.has_critical ? "🚨" : "🔔"} +{p.unseen_updates} mới
-                            </span>
-                          ) : (
-                            <span
-                              className="badge badge-neutral"
-                              style={{ fontSize: "0.72rem", padding: "1px 6px", color: "#64748b", background: "#f1f5f9" }}
-                            >
-                              0 mới
-                            </span>
-                          )}
-                        </div>
-                        <div className="list-sub" style={{ fontSize: "0.82rem", color: "#64748b", marginTop: 3 }}>
-                          {p.gender ?? "—"} · {p.dob ?? "—"}
-                        </div>
-                      </div>
-
-                      {/* CỘT THÔNG BÁO SỐ LƯỢNG BIẾN ĐỘNG / CẬP NHẬT MỚI */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        {p.unseen_updates > 0 ? (
-                          <div style={{ textAlign: "right" }}>
-                            <span
-                              className={`badge badge-danger ${p.has_critical ? "pulse-badge-danger" : ""}`}
-                              style={{
-                                fontSize: "0.82rem",
-                                fontWeight: 800,
-                                padding: "4px 10px",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 5,
-                              }}
-                            >
-                              <span>{p.has_critical ? "🚨" : "🔔"}</span>
-                              <span>{p.unseen_updates} cập nhật mới</span>
-                            </span>
-                          </div>
-                        ) : (
-                          <span
-                            style={{
-                              fontSize: "0.78rem",
-                              color: "#94a3b8",
-                              padding: "4px 8px",
-                              borderRadius: 6,
-                              background: "#f8fafc",
-                            }}
-                          >
-                            0 cập nhật
-                          </span>
-                        )}
-
-                        <span
-                          style={{
-                            fontSize: "0.84rem",
-                            color: "#0284c7",
-                            fontWeight: 700,
-                            whiteSpace: "nowrap",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
-                        >
-                          Xem hồ sơ →
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <DoctorDashboardOverview
+          appointments={appointments}
+          filteredAppointments={filteredAppointments}
+          appointmentSearch={appointmentSearch}
+          setAppointmentSearch={setAppointmentSearch}
+          showAppointments={showAppointments}
+          setShowAppointments={setShowAppointments}
+          confirmAppointment={confirmAppointment}
+          patients={patients}
+          filteredPatients={filteredPatients}
+          patientSearch={patientSearch}
+          setPatientSearch={setPatientSearch}
+          showPatients={showPatients}
+          setShowPatients={setShowPatients}
+          openPatient={openPatient}
+          onJoinVideo={(id) => router.push(`/video/${id}`)}
+        />
       )}
 
       {selected && (
@@ -1525,179 +1225,14 @@ export default function DoctorPortal() {
           </div>
 
           {/* Modal Nhập/Chỉnh sửa thông tin lâm sàng & sinh hiệu */}
-          {showClinicalModal && (
-            <div
-              style={{
-                position: "fixed",
-                inset: 0,
-                backgroundColor: "rgba(15, 23, 42, 0.6)",
-                backdropFilter: "blur(4px)",
-                zIndex: 100,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 16,
-              }}
-            >
-              <div
-                style={{
-                  background: "#ffffff",
-                  borderRadius: 16,
-                  padding: 24,
-                  maxWidth: 540,
-                  width: "100%",
-                  boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
-                  maxHeight: "90vh",
-                  overflowY: "auto",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                  <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#0f172a", fontWeight: 800 }}>
-                    🩺 Nhập thông tin lâm sàng & Chỉ số sinh hiệu
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setShowClinicalModal(false)}
-                    style={{ background: "transparent", border: "none", fontSize: "1.2rem", cursor: "pointer", color: "#64748b" }}
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <form onSubmit={handleSaveClinicalInfo}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                    <div style={{ gridColumn: "span 2" }}>
-                      <label htmlFor="clin-name" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
-                        Họ và tên bệnh nhân
-                      </label>
-                      <input
-                        id="clin-name"
-                        type="text"
-                        className="input"
-                        value={clinicalForm.full_name}
-                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, full_name: e.target.value }))}
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="clin-dob" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
-                        Ngày sinh / Tuổi (YYYY-MM-DD)
-                      </label>
-                      <input
-                        id="clin-dob"
-                        type="text"
-                        className="input"
-                        value={clinicalForm.dob}
-                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, dob: e.target.value }))}
-                        placeholder="VD: 1990-05-15 hoặc 35 tuổi"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="clin-gender" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
-                        Giới tính
-                      </label>
-                      <select
-                        id="clin-gender"
-                        className="input"
-                        value={clinicalForm.gender}
-                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, gender: e.target.value }))}
-                      >
-                        <option value="Nam">Nam</option>
-                        <option value="Nữ">Nữ</option>
-                        <option value="Khác">Khác</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label htmlFor="clin-weight" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
-                        ⚖️ Cân nặng (kg)
-                      </label>
-                      <input
-                        id="clin-weight"
-                        type="text"
-                        className="input"
-                        value={clinicalForm.weight}
-                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, weight: e.target.value }))}
-                        placeholder="VD: 65"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="clin-hr" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
-                        ❤️ Nhịp tim / Mạch (bpm)
-                      </label>
-                      <input
-                        id="clin-hr"
-                        type="text"
-                        className="input"
-                        value={clinicalForm.heart_rate}
-                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, heart_rate: e.target.value }))}
-                        placeholder="VD: 78"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="clin-bp" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
-                        🩸 Huyết áp (mmHg)
-                      </label>
-                      <input
-                        id="clin-bp"
-                        type="text"
-                        className="input"
-                        value={clinicalForm.blood_pressure}
-                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, blood_pressure: e.target.value }))}
-                        placeholder="VD: 120/80"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="clin-spo2" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
-                        🫁 SpO2 (%)
-                      </label>
-                      <input
-                        id="clin-spo2"
-                        type="text"
-                        className="input"
-                        value={clinicalForm.spo2}
-                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, spo2: e.target.value }))}
-                        placeholder="VD: 98"
-                      />
-                    </div>
-
-                    <div style={{ gridColumn: "span 2" }}>
-                      <label htmlFor="clin-note" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
-                        📋 Ghi chú lâm sàng / Tình trạng ban đầu
-                      </label>
-                      <textarea
-                        id="clin-note"
-                        className="input"
-                        rows={3}
-                        value={clinicalForm.clinical_note}
-                        onChange={(e) => setClinicalForm((prev) => ({ ...prev, clinical_note: e.target.value }))}
-                        placeholder="VD: Bệnh nhân tỉnh táo, tiếp xúc tốt, có ban đỏ rải rác vùng ngực và cánh tay..."
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => setShowClinicalModal(false)}
-                      disabled={savingClinical}
-                    >
-                      Hủy
-                    </button>
-                    <button type="submit" className="btn btn-primary" disabled={savingClinical}>
-                      {savingClinical ? "Đang lưu..." : "💾 Lưu thông tin lâm sàng"}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
+          <ClinicalInfoModal
+            show={showClinicalModal}
+            clinicalForm={clinicalForm}
+            setClinicalForm={setClinicalForm}
+            savingClinical={savingClinical}
+            onSave={handleSaveClinicalInfo}
+            onClose={() => setShowClinicalModal(false)}
+          />
 
           <div className="stat-row">
             <div className="stat">
@@ -2831,14 +2366,14 @@ function AiSummaryModal({
   summaryLoading,
   onRefresh,
   onClose,
-}: {
+}: Readonly<{
   show: boolean;
   selectedPatientName: string;
   aiSummary: AiSummary | null;
   summaryLoading: boolean;
   onRefresh: () => void;
   onClose: () => void;
-}) {
+}>) {
   if (!show) return null;
   return (
     <div
@@ -3089,10 +2624,10 @@ function AiSummaryModal({
 function ImagePreviewModal({
   imageUrl,
   onClose,
-}: {
+}: Readonly<{
   imageUrl: string | null;
   onClose: () => void;
-}) {
+}>) {
   if (!imageUrl) return null;
   return (
     <div
@@ -3155,6 +2690,569 @@ function ImagePreviewModal({
             }}
           />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function DoctorDashboardOverview({
+  appointments,
+  filteredAppointments,
+  appointmentSearch,
+  setAppointmentSearch,
+  showAppointments,
+  setShowAppointments,
+  confirmAppointment,
+  patients,
+  filteredPatients,
+  patientSearch,
+  setPatientSearch,
+  showPatients,
+  setShowPatients,
+  openPatient,
+  onJoinVideo,
+}: Readonly<{
+  appointments: Appointment[];
+  filteredAppointments: Appointment[];
+  appointmentSearch: string;
+  setAppointmentSearch: (s: string) => void;
+  showAppointments: boolean;
+  setShowAppointments: React.Dispatch<React.SetStateAction<boolean>>;
+  confirmAppointment: (id: string) => void;
+  patients: AssignedPatient[];
+  filteredPatients: AssignedPatient[];
+  patientSearch: string;
+  setPatientSearch: (s: string) => void;
+  showPatients: boolean;
+  setShowPatients: React.Dispatch<React.SetStateAction<boolean>>;
+  openPatient: (p: AssignedPatient) => void;
+  onJoinVideo: (id: string) => void;
+}>) {
+  return (
+    <div className="doctor-dashboard-grid">
+      {/* CỘT BÊN TRÁI: LỊCH HẸN ĐÃ XÁC NHẬN & VÀO PHÒNG VIDEO + CHỜ DUYỆT */}
+      <div className="doctor-dashboard-card">
+        <div className="doctor-dashboard-card-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 22 }}>🎥</span>
+            <div>
+              <h3 style={{ margin: 0, fontSize: "1.05rem", color: "#0f172a", fontWeight: 800 }}>
+                Lịch hẹn đã xác nhận — vào phòng video
+              </h3>
+              <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                {appointments.filter((a) => a.status === "confirmed").length} đã xác nhận · {appointments.filter((a) => a.status === "requested").length} chờ duyệt
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="collapse-toggle-btn"
+            onClick={() => setShowAppointments((v) => !v)}
+          >
+            {showAppointments ? "▲ Ẩn nội dung" : "▼ Mở nội dung"}
+          </button>
+        </div>
+
+        {showAppointments && (
+          <div className="doctor-dashboard-card-body" style={{ padding: 16 }}>
+            {/* Thanh tìm kiếm lịch hẹn */}
+            <div className="dashboard-search-bar">
+              <span className="dashboard-search-icon">🔍</span>
+              <input
+                type="text"
+                className="dashboard-search-input"
+                value={appointmentSearch}
+                onChange={(e) => setAppointmentSearch(e.target.value)}
+                placeholder="Tìm kiếm lịch hẹn (theo ngày giờ, lý do khám)..."
+              />
+              {appointmentSearch && (
+                <button
+                  type="button"
+                  className="dashboard-search-clear"
+                  onClick={() => setAppointmentSearch("")}
+                  title="Xóa tìm kiếm"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {appointmentSearch && (
+              <div style={{ fontSize: "0.78rem", color: "#64748b", marginBottom: 10, paddingLeft: 2 }}>
+                Tìm thấy <strong>{filteredAppointments.length}</strong> / {appointments.length} lịch hẹn
+              </div>
+            )}
+
+            {/* Lịch hẹn chờ xác nhận */}
+            {filteredAppointments.some((a) => a.status === "requested") && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: "0.8rem", fontWeight: 800, color: "#d97706", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>⏳ Chờ xác nhận ({filteredAppointments.filter((a) => a.status === "requested").length})</span>
+                </div>
+                {filteredAppointments
+                  .filter((a) => a.status === "requested")
+                  .map((a) => (
+                    <div
+                      className="list-row"
+                      key={a.id}
+                      style={{
+                        borderRadius: 10,
+                        marginBottom: 8,
+                        background: "#fffbeb",
+                        border: "1px solid #fef3c7",
+                        padding: "10px 12px",
+                      }}
+                    >
+                      <div className="list-main">
+                        <div className="list-title" style={{ fontWeight: 700, fontSize: "0.92rem" }}>
+                          {a.scheduled_at}
+                        </div>
+                        <div className="list-sub" style={{ fontSize: "0.8rem" }}>
+                          {a.reason ?? "Tái khám định kỳ"}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button className="btn btn-primary btn-sm" onClick={() => confirmAppointment(a.id)}>
+                          Xác nhận
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => onJoinVideo(a.id)}>
+                          🎥 Vào phòng
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            {/* Lịch hẹn đã xác nhận */}
+            {filteredAppointments.some((a) => a.status === "confirmed") && (
+              <div>
+                <div style={{ fontSize: "0.8rem", fontWeight: 800, color: "#0284c7", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>✅ Đã sẵn sàng ({filteredAppointments.filter((a) => a.status === "confirmed").length})</span>
+                </div>
+                {filteredAppointments
+                  .filter((a) => a.status === "confirmed")
+                  .map((a) => (
+                    <div
+                      className="list-row"
+                      key={a.id}
+                      style={{
+                        borderRadius: 10,
+                        marginBottom: 8,
+                        background: "#f0f9ff",
+                        border: "1.5px solid #bae6fd",
+                        padding: "12px 14px",
+                      }}
+                    >
+                      <div className="list-main">
+                        <div className="list-title" style={{ fontWeight: 800, fontSize: "0.95rem", color: "#0369a1" }}>
+                          {a.scheduled_at}
+                        </div>
+                        <div className="list-sub" style={{ fontSize: "0.82rem", color: "#475569" }}>
+                          {a.reason ?? "Tái khám định kỳ"}
+                        </div>
+                      </div>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        style={{ fontWeight: 700, padding: "6px 14px" }}
+                        onClick={() => onJoinVideo(a.id)}
+                      >
+                        🎥 Vào phòng
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            {filteredAppointments.length === 0 && (
+              <EmptyState
+                icon={appointmentSearch ? "🔍" : "📅"}
+                text={appointmentSearch ? `Không tìm thấy lịch hẹn nào khớp với "${appointmentSearch}"` : "Hiện không có lịch hẹn trực tuyến nào."}
+              />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* CỘT BÊN CÁNH PHẢI: CÁC CA BỆNH NHÂN */}
+      <div className="doctor-dashboard-card">
+        <div className="doctor-dashboard-card-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 22 }}>👥</span>
+            <div>
+              <h3 style={{ margin: 0, fontSize: "1.05rem", color: "#0f172a", fontWeight: 800 }}>
+                Các ca bệnh nhân
+              </h3>
+              <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                Tổng cộng {patients.length} bệnh nhân được phân công
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="collapse-toggle-btn"
+            onClick={() => setShowPatients((v) => !v)}
+          >
+            {showPatients ? "▲ Ẩn nội dung" : "▼ Mở nội dung"}
+          </button>
+        </div>
+
+        {showPatients && (
+          <div className="doctor-dashboard-card-body" style={{ padding: 16 }}>
+            {/* Thanh tìm kiếm bệnh nhân */}
+            <div className="dashboard-search-bar">
+              <span className="dashboard-search-icon">🔍</span>
+              <input
+                type="text"
+                className="dashboard-search-input"
+                value={patientSearch}
+                onChange={(e) => setPatientSearch(e.target.value)}
+                placeholder="Tìm kiếm bệnh nhân (theo họ tên, ngày sinh, giới tính)..."
+              />
+              {patientSearch && (
+                <button
+                  type="button"
+                  className="dashboard-search-clear"
+                  onClick={() => setPatientSearch("")}
+                  title="Xóa tìm kiếm"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {patientSearch && (
+              <div style={{ fontSize: "0.78rem", color: "#64748b", marginBottom: 10, paddingLeft: 2 }}>
+                Tìm thấy <strong>{filteredPatients.length}</strong> / {patients.length} bệnh nhân
+              </div>
+            )}
+
+            {filteredPatients.length === 0 && (
+              <EmptyState
+                icon={patientSearch ? "🔍" : "👥"}
+                text={patientSearch ? `Không tìm thấy bệnh nhân nào khớp với "${patientSearch}"` : "Chưa có ca nào được phân công."}
+              />
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {filteredPatients.map((p) => (
+                <button
+                  type="button"
+                  className={`list-row ${p.unseen_updates > 0 ? "pulse-red-alert" : ""}`}
+                  key={p.profile_id}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    font: "inherit",
+                    cursor: "pointer",
+                    borderRadius: 12,
+                    border: p.unseen_updates > 0 ? "1.5px solid #f87171" : "1px solid #e2e8f0",
+                    padding: "14px 18px",
+                    transition: "all 0.18s ease",
+                    background: p.unseen_updates > 0 ? "linear-gradient(135deg, #fff5f5 0%, #ffffff 100%)" : "#ffffff",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 12,
+                  }}
+                  onClick={() => void openPatient(p)}
+                >
+                  <div className="list-main" style={{ flex: 1 }}>
+                    <div className="list-title" style={{ fontWeight: 800, fontSize: "0.98rem", color: "#0f172a", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span>{p.full_name}</span>
+                      {p.unseen_updates > 0 ? (
+                        <span
+                          className={`badge badge-danger ${p.has_critical ? "pulse-badge-danger" : ""}`}
+                          style={{
+                            fontSize: "0.78rem",
+                            fontWeight: 800,
+                            padding: "2px 8px",
+                            borderRadius: 9999,
+                            background: p.has_critical ? "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)" : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                            color: "#ffffff",
+                            boxShadow: "0 2px 6px rgba(220, 38, 38, 0.25)",
+                          }}
+                          title={`${p.unseen_updates} cập nhật mới chưa xem`}
+                        >
+                          {p.has_critical ? "🚨" : "🔔"} +{p.unseen_updates} mới
+                        </span>
+                      ) : (
+                        <span
+                          className="badge badge-neutral"
+                          style={{ fontSize: "0.72rem", padding: "1px 6px", color: "#64748b", background: "#f1f5f9" }}
+                        >
+                          0 mới
+                        </span>
+                      )}
+                    </div>
+                    <div className="list-sub" style={{ fontSize: "0.82rem", color: "#64748b", marginTop: 3 }}>
+                      {p.gender ?? "—"} · {p.dob ?? "—"}
+                    </div>
+                  </div>
+
+                  {/* CỘT THÔNG BÁO SỐ LƯỢNG BIẾN ĐỘNG / CẬP NHẬT MỚI */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    {p.unseen_updates > 0 ? (
+                      <div style={{ textAlign: "right" }}>
+                        <span
+                          className={`badge badge-danger ${p.has_critical ? "pulse-badge-danger" : ""}`}
+                          style={{
+                            fontSize: "0.82rem",
+                            fontWeight: 800,
+                            padding: "4px 10px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                          }}
+                        >
+                          <span>{p.has_critical ? "🚨" : "🔔"}</span>
+                          <span>{p.unseen_updates} cập nhật mới</span>
+                        </span>
+                      </div>
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: "0.78rem",
+                          color: "#94a3b8",
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          background: "#f8fafc",
+                        }}
+                      >
+                        0 cập nhật
+                      </span>
+                    )}
+
+                    <span
+                      style={{
+                        fontSize: "0.84rem",
+                        color: "#0284c7",
+                        fontWeight: 700,
+                        whiteSpace: "nowrap",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      Xem hồ sơ →
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ClinicalInfoModal({
+  show,
+  clinicalForm,
+  setClinicalForm,
+  savingClinical,
+  onSave,
+  onClose,
+}: Readonly<{
+  show: boolean;
+  clinicalForm: {
+    full_name: string;
+    dob: string;
+    gender: string;
+    weight: string;
+    heart_rate: string;
+    blood_pressure: string;
+    spo2: string;
+    clinical_note: string;
+  };
+  setClinicalForm: React.Dispatch<React.SetStateAction<{
+    full_name: string;
+    dob: string;
+    gender: string;
+    weight: string;
+    heart_rate: string;
+    blood_pressure: string;
+    spo2: string;
+    clinical_note: string;
+  }>>;
+  savingClinical: boolean;
+  onSave: (e: React.FormEvent) => void;
+  onClose: () => void;
+}>) {
+  if (!show) return null;
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(15, 23, 42, 0.6)",
+        backdropFilter: "blur(4px)",
+        zIndex: 100,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          background: "#ffffff",
+          borderRadius: 16,
+          padding: 24,
+          maxWidth: 540,
+          width: "100%",
+          boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
+          maxHeight: "90vh",
+          overflowY: "auto",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#0f172a", fontWeight: 800 }}>
+            🩺 Nhập thông tin lâm sàng & Chỉ số sinh hiệu
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ background: "transparent", border: "none", fontSize: "1.2rem", cursor: "pointer", color: "#64748b" }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <form onSubmit={onSave}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div style={{ gridColumn: "span 2" }}>
+              <label htmlFor="clin-name" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                Họ và tên bệnh nhân
+              </label>
+              <input
+                id="clin-name"
+                type="text"
+                className="input"
+                value={clinicalForm.full_name}
+                onChange={(e) => setClinicalForm((prev) => ({ ...prev, full_name: e.target.value }))}
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="clin-dob" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                Ngày sinh / Tuổi (YYYY-MM-DD)
+              </label>
+              <input
+                id="clin-dob"
+                type="text"
+                className="input"
+                value={clinicalForm.dob}
+                onChange={(e) => setClinicalForm((prev) => ({ ...prev, dob: e.target.value }))}
+                placeholder="VD: 1990-05-15 hoặc 35 tuổi"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="clin-gender" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                Giới tính
+              </label>
+              <select
+                id="clin-gender"
+                className="input"
+                value={clinicalForm.gender}
+                onChange={(e) => setClinicalForm((prev) => ({ ...prev, gender: e.target.value }))}
+              >
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+                <option value="Khác">Khác</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="clin-weight" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                ⚖️ Cân nặng (kg)
+              </label>
+              <input
+                id="clin-weight"
+                type="text"
+                className="input"
+                value={clinicalForm.weight}
+                onChange={(e) => setClinicalForm((prev) => ({ ...prev, weight: e.target.value }))}
+                placeholder="VD: 65"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="clin-hr" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                ❤️ Nhịp tim / Mạch (bpm)
+              </label>
+              <input
+                id="clin-hr"
+                type="text"
+                className="input"
+                value={clinicalForm.heart_rate}
+                onChange={(e) => setClinicalForm((prev) => ({ ...prev, heart_rate: e.target.value }))}
+                placeholder="VD: 78"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="clin-bp" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                🩸 Huyết áp (mmHg)
+              </label>
+              <input
+                id="clin-bp"
+                type="text"
+                className="input"
+                value={clinicalForm.blood_pressure}
+                onChange={(e) => setClinicalForm((prev) => ({ ...prev, blood_pressure: e.target.value }))}
+                placeholder="VD: 120/80"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="clin-spo2" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                🫁 SpO2 (%)
+              </label>
+              <input
+                id="clin-spo2"
+                type="text"
+                className="input"
+                value={clinicalForm.spo2}
+                onChange={(e) => setClinicalForm((prev) => ({ ...prev, spo2: e.target.value }))}
+                placeholder="VD: 98"
+              />
+            </div>
+
+            <div style={{ gridColumn: "span 2" }}>
+              <label htmlFor="clin-note" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                📋 Ghi chú lâm sàng / Tình trạng ban đầu
+              </label>
+              <textarea
+                id="clin-note"
+                className="input"
+                rows={3}
+                value={clinicalForm.clinical_note}
+                onChange={(e) => setClinicalForm((prev) => ({ ...prev, clinical_note: e.target.value }))}
+                placeholder="VD: Bệnh nhân tỉnh táo, tiếp xúc tốt, có ban đỏ rải rác vùng ngực và cánh tay..."
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={onClose}
+              disabled={savingClinical}
+            >
+              Hủy
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={savingClinical}>
+              {savingClinical ? "Đang lưu..." : "💾 Lưu thông tin lâm sàng"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
