@@ -88,7 +88,8 @@ body {
 }
 
 .container.container-wide {
-  max-width: 1260px;
+  max-width: 1420px;
+  padding: 0 24px 120px;
 }
 
 /* Header Glassmorphism */
@@ -116,7 +117,8 @@ body {
 }
 
 .app-header.app-header-wide .app-header-inner {
-  max-width: 1260px;
+  max-width: 1420px;
+  padding: 0 4px;
 }
 
 .brand-link {
@@ -898,5 +900,69 @@ body {
   color: #0284c7;
   border-color: #7dd3fc;
 }
+
+/* Dashboard Live Search Bar */
+.dashboard-search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.dashboard-search-input {
+  width: 100%;
+  padding: 9px 36px 9px 36px;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 0.88rem;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.dashboard-search-input:focus {
+  background: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
+}
+
+.dashboard-search-input::placeholder {
+  color: #94a3b8;
+  font-size: 0.84rem;
+}
+
+.dashboard-search-icon {
+  position: absolute;
+  left: 12px;
+  color: #94a3b8;
+  font-size: 0.95rem;
+  pointer-events: none;
+}
+
+.dashboard-search-clear {
+  position: absolute;
+  right: 10px;
+  background: #e2e8f0;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s;
+}
+
+.dashboard-search-clear:hover {
+  background: #cbd5e1;
+  color: #0f172a;
+}
+
 
 

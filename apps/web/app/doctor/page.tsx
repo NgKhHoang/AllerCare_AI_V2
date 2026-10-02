@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, getToken, getUser } from "../../lib/api";
 import {
@@ -440,6 +440,32 @@ export default function DoctorPortal() {
   // Collapse / Expand toggle state cho 2 cột tổng quan (Lịch hẹn bên trái, Ca bệnh nhân bên phải)
   const [showAppointments, setShowAppointments] = useState(true);
   const [showPatients, setShowPatients] = useState(true);
+
+  // Live Search Filter cho 2 cột
+  const [appointmentSearch, setAppointmentSearch] = useState("");
+  const [patientSearch, setPatientSearch] = useState("");
+
+  const filteredAppointments = useMemo(() => {
+    const q = appointmentSearch.trim().toLowerCase();
+    if (!q) return appointments;
+    return appointments.filter(
+      (a) =>
+        (a.scheduled_at && a.scheduled_at.toLowerCase().includes(q)) ||
+        (a.reason && a.reason.toLowerCase().includes(q)) ||
+        (a.status && a.status.toLowerCase().includes(q))
+    );
+  }, [appointments, appointmentSearch]);
+
+  const filteredPatients = useMemo(() => {
+    const q = patientSearch.trim().toLowerCase();
+    if (!q) return patients;
+    return patients.filter(
+      (p) =>
+        (p.full_name && p.full_name.toLowerCase().includes(q)) ||
+        (p.dob && p.dob.toLowerCase().includes(q)) ||
+        (p.gender && p.gender.toLowerCase().includes(q))
+    );
+  }, [patients, patientSearch]);
 
   useEffect(() => {
     const user = getUser();
@@ -968,10 +994,10 @@ export default function DoctorPortal() {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 22 }}>🎥</span>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: "1.02rem", color: "#0f172a", fontWeight: 800 }}>
+                  <h3 style={{ margin: 0, fontSize: "1.05rem", color: "#0f172a", fontWeight: 800 }}>
                     Lịch hẹn đã xác nhận — vào phòng video
                   </h3>
-                  <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                  <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
                     {appointments.filter((a) => a.status === "confirmed").length} đã xác nhận · {appointments.filter((a) => a.status === "requested").length} chờ duyệt
                   </span>
                 </div>
@@ -991,13 +1017,41 @@ export default function DoctorPortal() {
 
             {showAppointments && (
               <div className="doctor-dashboard-card-body" style={{ padding: 16 }}>
+                {/* Thanh tìm kiếm lịch hẹn */}
+                <div className="dashboard-search-bar">
+                  <span className="dashboard-search-icon">🔍</span>
+                  <input
+                    type="text"
+                    className="dashboard-search-input"
+                    value={appointmentSearch}
+                    onChange={(e) => setAppointmentSearch(e.target.value)}
+                    placeholder="Tìm kiếm lịch hẹn (theo ngày giờ, lý do khám)..."
+                  />
+                  {appointmentSearch && (
+                    <button
+                      type="button"
+                      className="dashboard-search-clear"
+                      onClick={() => setAppointmentSearch("")}
+                      title="Xóa tìm kiếm"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {appointmentSearch && (
+                  <div style={{ fontSize: "0.78rem", color: "#64748b", marginBottom: 10, paddingLeft: 2 }}>
+                    Tìm thấy <strong>{filteredAppointments.length}</strong> / {appointments.length} lịch hẹn
+                  </div>
+                )}
+
                 {/* Lịch hẹn chờ xác nhận */}
-                {appointments.filter((a) => a.status === "requested").length > 0 && (
+                {filteredAppointments.filter((a) => a.status === "requested").length > 0 && (
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: "0.8rem", fontWeight: 800, color: "#d97706", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                      <span>⏳ Chờ xác nhận ({appointments.filter((a) => a.status === "requested").length})</span>
+                      <span>⏳ Chờ xác nhận ({filteredAppointments.filter((a) => a.status === "requested").length})</span>
                     </div>
-                    {appointments
+                    {filteredAppointments
                       .filter((a) => a.status === "requested")
                       .map((a) => (
                         <div
@@ -1033,12 +1087,12 @@ export default function DoctorPortal() {
                 )}
 
                 {/* Lịch hẹn đã xác nhận */}
-                {appointments.filter((a) => a.status === "confirmed").length > 0 && (
+                {filteredAppointments.filter((a) => a.status === "confirmed").length > 0 && (
                   <div>
                     <div style={{ fontSize: "0.8rem", fontWeight: 800, color: "#0284c7", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                      <span>✅ Đã sẵn sàng ({appointments.filter((a) => a.status === "confirmed").length})</span>
+                      <span>✅ Đã sẵn sàng ({filteredAppointments.filter((a) => a.status === "confirmed").length})</span>
                     </div>
-                    {appointments
+                    {filteredAppointments
                       .filter((a) => a.status === "confirmed")
                       .map((a) => (
                         <div
@@ -1072,8 +1126,11 @@ export default function DoctorPortal() {
                   </div>
                 )}
 
-                {appointments.length === 0 && (
-                  <EmptyState icon="📅" text="Hiện không có lịch hẹn trực tuyến nào." />
+                {filteredAppointments.length === 0 && (
+                  <EmptyState
+                    icon={appointmentSearch ? "🔍" : "📅"}
+                    text={appointmentSearch ? `Không tìm thấy lịch hẹn nào khớp với "${appointmentSearch}"` : "Hiện không có lịch hẹn trực tuyến nào."}
+                  />
                 )}
               </div>
             )}
@@ -1088,10 +1145,10 @@ export default function DoctorPortal() {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 22 }}>👥</span>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: "1.02rem", color: "#0f172a", fontWeight: 800 }}>
+                  <h3 style={{ margin: 0, fontSize: "1.05rem", color: "#0f172a", fontWeight: 800 }}>
                     Các ca bệnh nhân
                   </h3>
-                  <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                  <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
                     Tổng cộng {patients.length} bệnh nhân được phân công
                   </span>
                 </div>
@@ -1111,9 +1168,43 @@ export default function DoctorPortal() {
 
             {showPatients && (
               <div className="doctor-dashboard-card-body" style={{ padding: 16 }}>
-                {patients.length === 0 && <EmptyState icon="👥" text="Chưa có ca nào được phân công." />}
+                {/* Thanh tìm kiếm bệnh nhân */}
+                <div className="dashboard-search-bar">
+                  <span className="dashboard-search-icon">🔍</span>
+                  <input
+                    type="text"
+                    className="dashboard-search-input"
+                    value={patientSearch}
+                    onChange={(e) => setPatientSearch(e.target.value)}
+                    placeholder="Tìm kiếm bệnh nhân (theo họ tên, ngày sinh, giới tính)..."
+                  />
+                  {patientSearch && (
+                    <button
+                      type="button"
+                      className="dashboard-search-clear"
+                      onClick={() => setPatientSearch("")}
+                      title="Xóa tìm kiếm"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {patientSearch && (
+                  <div style={{ fontSize: "0.78rem", color: "#64748b", marginBottom: 10, paddingLeft: 2 }}>
+                    Tìm thấy <strong>{filteredPatients.length}</strong> / {patients.length} bệnh nhân
+                  </div>
+                )}
+
+                {filteredPatients.length === 0 && (
+                  <EmptyState
+                    icon={patientSearch ? "🔍" : "👥"}
+                    text={patientSearch ? `Không tìm thấy bệnh nhân nào khớp với "${patientSearch}"` : "Chưa có ca nào được phân công."}
+                  />
+                )}
+
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {patients.map((p) => (
+                  {filteredPatients.map((p) => (
                     <div
                       className="list-row"
                       key={p.profile_id}
