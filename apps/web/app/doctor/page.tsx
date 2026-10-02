@@ -635,30 +635,64 @@ export default function DoctorPortal() {
       return;
     }
     try {
-      setPrescribeSafetyCheck({ status: "checking", message: "AI Gemini đang phân tích tương tác thuốc & tiền sử dị ứng..." });
-      const res = await api<any>("/v1/safety-checks/quick-check", {
+      setPrescribeSafetyCheck({ status: "checking", message: "AI Safety Guardrails đang phân tích tương tác thuốc & tiền sử bệnh lý..." });
+      const res = await api<{
+        status: string;
+        status_label?: string;
+        alerts?: Array<{
+          rule_code: string;
+          rule_type: string;
+          severity: string;
+          message: string;
+          source?: string;
+          detail?: string;
+        }>;
+        interactions?: Array<{ drug1: string; drug2: string; mechanism?: string; description?: string }>;
+      }>("/v1/safety-checks/quick-check", {
         method: "POST",
         body: {
           drugs: [drugName.trim()],
           profile_id: selected.profile_id,
         },
       });
-      if (res.status === "danger" || res.status === "critical") {
-        setPrescribeSafetyCheck({
-          status: "danger",
-          message: `🔴 CẢNH BÁO NGUY HIỂM / CHỐNG CHỈ ĐỊNH: ${res.summary || "Có tương tác đối kháng nghiêm trọng hoặc trùng tiền sử dị ứng"}`,
-          interactions: res.interactions || [],
-        });
-      } else if (res.status === "warning" || (res.interactions && res.interactions.length > 0)) {
-        setPrescribeSafetyCheck({
-          status: "warning",
-          message: `🟡 THẬN TRỌNG: ${res.summary || "Cần lưu ý theo dõi hoặc giãn cách thời điểm dùng"}`,
-          interactions: res.interactions || [],
-        });
+
+      const alerts = res.alerts || [];
+      const hasHighAlert = alerts.some((a) => a.severity === "high");
+
+      if (alerts.length > 0 || (res.interactions && res.interactions.length > 0)) {
+        const mappedInteractions = alerts.length > 0
+          ? alerts.map((a) => ({
+              drug1: a.rule_code,
+              drug2:
+                a.rule_type === "drug_drug"
+                  ? "Tương tác Thuốc — Thuốc"
+                  : a.rule_type === "drug_allergy"
+                  ? "Chống chỉ định Dị ứng"
+                  : a.rule_type === "drug_condition"
+                  ? "Chống chỉ định Bệnh lý nền"
+                  : "Trùng lặp hoạt chất",
+              description: a.message,
+            }))
+          : res.interactions || [];
+
+        if (hasHighAlert || res.status === "danger") {
+          setPrescribeSafetyCheck({
+            status: "danger",
+            message: `🔴 CẢNH BÁO NGUY HIỂM / CHỐNG CHỈ ĐỊNH: Phát hiện ${mappedInteractions.length} cảnh báo an toàn thuốc!`,
+            interactions: mappedInteractions,
+          });
+        } else {
+          setPrescribeSafetyCheck({
+            status: "warning",
+            message: `🟡 THẬN TRỌNG: Phát hiện ${mappedInteractions.length} tương tác cần lưu ý theo dõi hoặc chỉnh liều!`,
+            interactions: mappedInteractions,
+          });
+        }
       } else {
         setPrescribeSafetyCheck({
           status: "safe",
-          message: "🟢 AN TOÀN: Không phát hiện tương tác đối kháng với thuốc hiện tại và bệnh lý người bệnh.",
+          message: "🟢 AN TOÀN: Không phát hiện tương tác đối kháng với thuốc hiện tại và lịch sử bệnh lý của người bệnh.",
+          interactions: [],
         });
       }
     } catch {
