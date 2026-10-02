@@ -356,6 +356,19 @@ function DoctorPatientSideNotePanel({
   );
 }
 
+function getRuleTypeLabel(ruleType: string): string {
+  switch (ruleType) {
+    case "drug_drug":
+      return "Tương tác Thuốc — Thuốc";
+    case "drug_allergy":
+      return "Chống chỉ định Dị ứng";
+    case "drug_condition":
+      return "Chống chỉ định Bệnh lý nền";
+    default:
+      return "Trùng lặp hoạt chất";
+  }
+}
+
 function getCurrentQueryToken(fullText: string): string {
   const trimmed = fullText;
   const lastSep = Math.max(
@@ -380,15 +393,10 @@ export default function DoctorPortal() {
   const [newDrug, setNewDrug] = useState("");
   const [reviewNote, setReviewNote] = useState("");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [reaction, setReaction] = useState("");
-  const [prevDrugs, setPrevDrugs] = useState("");
-  const [suspect, setSuspect] = useState<SuspectRankingResult | null>(null);
-  const [, setGuides] = useState<Guide[]>([]);
   const [aiSummary, setAiSummary] = useState<AiSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [, setLoading] = useState(false);
 
   // Thông tin lâm sàng & Chỉ số sinh hiệu của Bệnh nhân
   const [clinicalInfo, setClinicalInfo] = useState<ClinicalInfo | null>(null);
@@ -441,7 +449,6 @@ export default function DoctorPortal() {
   const [medsafeSuggestions, setMedsafeSuggestions] = useState<DrugSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(0);
-  const [, setLoadingSuggestions] = useState(false);
   const [quickCheckResult, setQuickCheckResult] = useState<{
     status: string;
     status_label: string;
@@ -526,11 +533,7 @@ export default function DoctorPortal() {
       setMeds(await api<Medication[]>(`/v1/patients/${p.profile_id}/medications`));
       setAllergies(await api<Allergy[]>(`/v1/patients/${p.profile_id}/allergies`));
       setObs(await api<Observation[]>(`/v1/patients/${p.profile_id}/observations`));
-      setGuides(await api<Guide[]>(`/v1/guides/profile/${p.profile_id}`));
       setAiSummary(null);
-      setSuspect(null);
-      setReaction("");
-      setPrevDrugs("");
 
       // Tải thông tin lâm sàng & sinh hiệu
       api<ClinicalInfo>(`/v1/patients/${p.profile_id}/clinical-info`)
@@ -676,14 +679,7 @@ export default function DoctorPortal() {
         const mappedInteractions = alerts.length > 0
           ? alerts.map((a) => ({
               drug1: a.rule_code,
-              drug2:
-                a.rule_type === "drug_drug"
-                  ? "Tương tác Thuốc — Thuốc"
-                  : a.rule_type === "drug_allergy"
-                  ? "Chống chỉ định Dị ứng"
-                  : a.rule_type === "drug_condition"
-                  ? "Chống chỉ định Bệnh lý nền"
-                  : "Trùng lặp hoạt chất",
+              drug2: getRuleTypeLabel(a.rule_type),
               description: a.message,
             }))
           : res.interactions || [];
@@ -888,7 +884,6 @@ export default function DoctorPortal() {
 
   async function fetchDrugSuggestions(token: string) {
     try {
-      setLoadingSuggestions(true);
       const profileParam = selected ? `&profile_id=${selected.profile_id}` : "";
       const url = `/v1/safety-checks/suggest-drugs?q=${encodeURIComponent(token)}${profileParam}`;
       const list = await api<DrugSuggestion[]>(url);
@@ -897,8 +892,6 @@ export default function DoctorPortal() {
       setActiveSuggestionIdx(0);
     } catch {
       setMedsafeSuggestions([]);
-    } finally {
-      setLoadingSuggestions(false);
     }
   }
 
@@ -978,30 +971,6 @@ export default function DoctorPortal() {
   }
 
 
-  async function runSuspectRanking() {
-    if (!selected || !reaction.trim()) return;
-    setLoading(true);
-    setError("");
-    try {
-      const r = await api<SuspectRankingResult>("/v1/triage/suspect-ranking", {
-        method: "POST",
-        body: {
-          profile_id: selected.profile_id,
-          reaction_description: reaction.trim(),
-          previous_episode_drugs: prevDrugs
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean),
-        },
-      });
-      setSuspect(r);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Không xếp hạng được");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function handleSaveClinicalInfo(e: React.FormEvent) {
     e.preventDefault();
     if (!selected) return;
@@ -1033,19 +1002,6 @@ export default function DoctorPortal() {
     }
   }
 
-  async function confirmSuspect() {
-    if (!suspect) return;
-    try {
-      await api(`/v1/triage/suspect-ranking/${suspect.id}/confirm`, { method: "POST" });
-      setSuccess("Đã xác nhận tác nhân nghi ngờ → tự ghi hồ sơ dị ứng (chưa xác minh).");
-      setSuspect(null);
-      if (selected) await openPatient(selected);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Không xác nhận được");
-    }
-  }
-
-
   async function loadAiSummary() {
     if (!selected) return;
     setSummaryLoading(true);
@@ -1063,28 +1019,6 @@ export default function DoctorPortal() {
     setShowAiModal(true);
     if (!aiSummary && !summaryLoading) {
       void loadAiSummary();
-    }
-  }
-
-  async function draftGuide(medId: string) {
-    setError("");
-    try {
-      const g = await api<Guide>(`/v1/guides/draft/${medId}`, { method: "POST" });
-      setGuides((prev) => [g, ...prev.filter((x) => x.id !== g.id)]);
-      setSuccess("AI đã soạn bản nháp hướng dẫn — hãy xem và duyệt để gửi người bệnh.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Không soạn được hướng dẫn");
-    }
-  }
-
-  async function approveGuide(guideId: string) {
-    setError("");
-    try {
-      const g = await api<Guide>(`/v1/guides/${guideId}/approve`, { method: "POST" });
-      setGuides((prev) => prev.map((x) => (x.id === g.id ? g : x)));
-      setSuccess("Đã duyệt và gửi hướng dẫn cho người bệnh + người nhà.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Không duyệt được");
     }
   }
 
@@ -1953,7 +1887,7 @@ export default function DoctorPortal() {
                       {prescribeSafetyCheck.interactions && prescribeSafetyCheck.interactions.length > 0 && (
                         <ul style={{ margin: "6px 0 0 18px", fontSize: "0.82rem", lineHeight: 1.5 }}>
                           {prescribeSafetyCheck.interactions.map((it: any, idx: number) => (
-                            <li key={idx}>
+                            <li key={`interaction-${it.drug1}-${it.drug2}-${idx}`}>
                               <strong>{it.drug1} + {it.drug2}:</strong> {it.mechanism || it.description || "Có tương tác đối kháng"}
                             </li>
                           ))}
@@ -2956,7 +2890,7 @@ export default function DoctorPortal() {
                           </div>
                           {aiSummary.highlights.map((h, i) => (
                             <div
-                              key={i}
+                              key={`ai-highlight-${h.slice(0, 24)}-${i}`}
                               className={
                                 h.startsWith("🚨") || h.startsWith("⚠")
                                   ? "alertbox alertbox-danger"
@@ -2986,7 +2920,7 @@ export default function DoctorPortal() {
                               💊 Thuốc theo nguồn
                             </div>
                             {aiSummary.medications_by_source.map((l, i) => (
-                              <div key={i} style={{ fontSize: 12.5, color: "#14532d", marginBottom: 4 }}>
+                              <div key={`ai-med-${l.slice(0, 20)}-${i}`} style={{ fontSize: 12.5, color: "#14532d", marginBottom: 4 }}>
                                 • {l}
                               </div>
                             ))}
@@ -3006,7 +2940,7 @@ export default function DoctorPortal() {
                               🩺 Triệu chứng gần đây
                             </div>
                             {aiSummary.symptoms.slice(0, 5).map((l, i) => (
-                              <div key={i} style={{ fontSize: 12.5, color: "#0c4a6e", marginBottom: 4 }}>
+                              <div key={`ai-sym-${l.slice(0, 20)}-${i}`} style={{ fontSize: 12.5, color: "#0c4a6e", marginBottom: 4 }}>
                                 • {l}
                               </div>
                             ))}
@@ -3028,7 +2962,7 @@ export default function DoctorPortal() {
                             ⚖️ Phân luồng gần nhất:
                           </div>
                           {aiSummary.triage_recent.map((l, i) => (
-                            <div key={i} style={{ fontSize: 12.5, color: "#581c87" }}>
+                            <div key={`ai-triage-${l.slice(0, 20)}-${i}`} style={{ fontSize: 12.5, color: "#581c87" }}>
                               • {l}
                             </div>
                           ))}
