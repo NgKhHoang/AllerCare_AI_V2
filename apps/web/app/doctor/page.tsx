@@ -203,8 +203,7 @@ function DoctorPatientSideNotePanel({
     <div
       className="disease-note-dock"
       style={{
-        position: "sticky",
-        top: 80,
+        width: "100%",
         background: "#ffffff",
         border: "1.5px solid #0284c7",
         borderRadius: 16,
