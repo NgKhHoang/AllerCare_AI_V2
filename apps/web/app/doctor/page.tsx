@@ -936,6 +936,7 @@ export default function DoctorPortal() {
   return (
     <AppShell
       role="doctor"
+      wide={Boolean(selected)}
       icon={selected ? "🩺" : "👥"}
       title={selected ? selected.full_name : "Danh sách ca"}
       subtitle={

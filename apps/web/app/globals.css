@@ -84,6 +84,11 @@ body {
   max-width: 860px;
   margin: 0 auto;
   padding: 0 20px 120px;
+  transition: max-width 0.2s ease;
+}
+
+.container.container-wide {
+  max-width: 1260px;
 }
 
 /* Header Glassmorphism */
@@ -107,6 +112,11 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  transition: max-width 0.2s ease;
+}
+
+.app-header.app-header-wide .app-header-inner {
+  max-width: 1260px;
 }
 
 .brand-link {
@@ -745,38 +755,46 @@ body {
   letter-spacing: 0.3px;
 }
 
-/* Full-Page Layout: Main Patient Content + Fixed Right-Side Note Sidebar */
+/* Balanced Two-Column Layout: Main Patient Content + Sticky Right Note Sidebar */
 .doctor-patient-two-column-layout {
-  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
   width: 100%;
 }
 
 .doctor-patient-main-col {
-  width: 100%;
+  flex: 1 1 0%;
+  min-width: 0;
 }
 
 .doctor-patient-note-sidebar {
-  position: fixed;
-  top: 85px;
-  right: max(16px, calc((100vw - 1460px) / 2));
   width: 350px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 85px;
   max-height: calc(100vh - 105px);
-  z-index: 80;
+  z-index: 50;
   display: flex;
   flex-direction: column;
 }
 
-@media (min-width: 1560px) {
+@media (max-width: 1120px) {
   .doctor-patient-note-sidebar {
-    right: max(24px, calc((100vw - 1520px) / 2));
-    width: 370px;
+    width: 310px;
   }
 }
 
-@media (max-width: 1340px) {
+@media (max-width: 960px) {
+  .doctor-patient-two-column-layout {
+    flex-direction: column;
+    gap: 16px;
+  }
+
   .doctor-patient-note-sidebar {
-    right: 14px;
-    width: 320px;
+    width: 100%;
+    position: static;
+    max-height: none;
   }
 }
 

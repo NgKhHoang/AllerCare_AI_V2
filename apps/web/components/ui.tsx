@@ -179,12 +179,14 @@ export function AppShell({
   title,
   subtitle,
   icon,
+  wide = false,
 }: Readonly<{
   children: React.ReactNode;
   role: "patient" | "doctor" | "nurse" | "leader" | "admin";
   title?: string;
   subtitle?: string;
   icon?: string;
+  wide?: boolean;
 }>) {
   const [user, setUser] = useState<{ full_name?: string; role: string } | null>(null);
   const [path, setPath] = useState("");
@@ -229,7 +231,7 @@ export function AppShell({
 
   return (
     <>
-      <header className="app-header">
+      <header className={`app-header ${wide ? "app-header-wide" : ""}`}>
         <div className="app-header-inner">
           <Link href={role === "patient" ? "/patient" : `/${role}`} className="brand-link">
             <div className="brand-shield">🛡️</div>
@@ -310,7 +312,7 @@ export function AppShell({
         </div>
       </header>
 
-      <div className="container">
+      <div className={`container ${wide ? "container-wide" : ""}`}>
         {(title || icon) && (
           <div className="page-hero">
             <div>
