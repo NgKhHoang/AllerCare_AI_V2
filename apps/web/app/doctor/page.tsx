@@ -123,6 +123,237 @@ interface DrugSuggestion {
   source: string;
 }
 
+interface SideNoteCondition {
+  id: string;
+  name: string;
+  status?: string;
+  note?: string;
+}
+
+function DoctorPatientSideNotePanel({
+  profileId,
+  patientName,
+}: {
+  readonly profileId: string;
+  readonly patientName: string;
+}) {
+  const [conditions, setConditions] = useState<SideNoteCondition[]>([]);
+  const [selectedConditionId, setSelectedConditionId] = useState<string>("primary");
+  const [noteText, setNoteText] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedStatus, setSavedStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profileId) return;
+    api<{
+      conditions?: SideNoteCondition[];
+      admission_note?: string;
+      diagnosis?: string;
+    }>(`/v1/patients/${profileId}/timeline`)
+      .then((res) => {
+        const conds = res.conditions || [];
+        if (conds.length === 0 && res.diagnosis) {
+          conds.push({
+            id: "primary",
+            name: res.diagnosis,
+            note: res.admission_note || "",
+          });
+        }
+        setConditions(conds);
+        if (conds.length > 0) {
+          setSelectedConditionId(conds[0].id);
+          setNoteText(conds[0].note || "");
+        }
+      })
+      .catch(() => {});
+  }, [profileId]);
+
+  function handleSelectCondition(id: string) {
+    setSelectedConditionId(id);
+    const target = conditions.find((c) => c.id === id);
+    setNoteText(target?.note || "");
+    setSavedStatus(null);
+  }
+
+  async function handleSaveNote() {
+    try {
+      setIsSaving(true);
+      await api(`/v1/patients/${profileId}/treatment`, {
+        method: "PUT",
+        body: {
+          condition_id: selectedConditionId,
+          admission_note: noteText,
+        },
+      });
+      setConditions((prev) =>
+        prev.map((c) => (c.id === selectedConditionId ? { ...c, note: noteText } : c))
+      );
+      setSavedStatus("Đã lưu");
+      setTimeout(() => setSavedStatus(null), 3000);
+    } catch {
+      setSavedStatus("Lỗi lưu");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const currentCond = conditions.find((c) => c.id === selectedConditionId) || conditions[0];
+
+  return (
+    <div
+      className="disease-note-dock"
+      style={{
+        position: "sticky",
+        top: 80,
+        background: "#ffffff",
+        border: "1.5px solid #0284c7",
+        borderRadius: 16,
+        boxShadow: "0 8px 30px rgba(2, 132, 199, 0.12)",
+        overflow: "hidden",
+      }}
+    >
+      {/* Header đỏ nổi bật theo đúng bản vẽ */}
+      <div
+        style={{
+          padding: "14px 18px",
+          background: "linear-gradient(135deg, #fff1f2 0%, #fef2f2 100%)",
+          borderBottom: "1.5px solid #fecdd3",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: "1.4rem" }}>✍️</span>
+          <strong style={{ fontSize: "1.25rem", color: "#dc2626", fontWeight: 900, letterSpacing: "-0.01em" }}>
+            Ghi chú:
+          </strong>
+        </div>
+        <span className="badge badge-danger" style={{ fontSize: "0.72rem", fontWeight: 700 }}>
+          Riêng từng bệnh
+        </span>
+      </div>
+
+      {/* Chọn loại bệnh */}
+      <div style={{ padding: "12px 16px 8px", background: "#ffffff" }}>
+        <label
+          htmlFor="side-condition-select"
+          style={{
+            display: "block",
+            fontSize: "0.76rem",
+            fontWeight: 800,
+            color: "#475569",
+            marginBottom: 5,
+            textTransform: "uppercase",
+            letterSpacing: "0.4px",
+          }}
+        >
+          🩺 BỆNH ĐANG GHI CHÚ:
+        </label>
+        {conditions.length > 1 ? (
+          <select
+            id="side-condition-select"
+            value={selectedConditionId}
+            onChange={(e) => handleSelectCondition(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "8px 10px",
+              borderRadius: 8,
+              border: "1.5px solid #7dd3fc",
+              fontSize: "0.86rem",
+              fontWeight: 700,
+              color: "#0369a1",
+              background: "#f0f9ff",
+            }}
+          >
+            {conditions.map((c, i) => (
+              <option key={c.id} value={c.id}>
+                {i + 1}. {c.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div
+            style={{
+              fontSize: "0.88rem",
+              fontWeight: 800,
+              color: "#0369a1",
+              background: "#f0f9ff",
+              padding: "8px 12px",
+              borderRadius: 8,
+              border: "1.5px solid #bae6fd",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={currentCond?.name || patientName}
+          >
+            🩺 {currentCond?.name || "Bệnh lý chung"}
+          </div>
+        )}
+        <p style={{ margin: "6px 0 0", fontSize: "0.74rem", color: "#64748b", fontStyle: "italic" }}>
+          * Thanh ghi chú này thuộc loại bệnh riêng, mỗi loại bệnh Bệnh Nhân có thanh ghi chú riêng để Bác Sĩ nhập, Thanh Ghi chú không dùng chung cho tất cả loại bệnh.
+        </p>
+      </div>
+
+      {/* Textarea ghi chú */}
+      <div style={{ padding: "8px 16px", display: "flex", flexDirection: "column" }}>
+        <textarea
+          className="note-paper-area"
+          value={noteText}
+          onChange={(e) => {
+            setNoteText(e.target.value);
+            setSavedStatus(null);
+          }}
+          onBlur={handleSaveNote}
+          placeholder="Ghi chú về Bệnh Nhân..."
+          rows={14}
+          style={{
+            width: "100%",
+            minHeight: "260px",
+            fontSize: "0.92rem",
+            lineHeight: "26px",
+            padding: "12px 14px",
+            borderRadius: 10,
+            border: "1px solid #cbd5e1",
+            fontFamily: "inherit",
+          }}
+        />
+      </div>
+
+      {/* Footer lưu */}
+      <div
+        style={{
+          padding: "10px 16px",
+          background: "#f8fafc",
+          borderTop: "1px solid #e2e8f0",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        <div style={{ fontSize: "0.78rem" }}>
+          {isSaving && <span style={{ color: "#0284c7" }}>⏳ Đang lưu...</span>}
+          {!isSaving && savedStatus && (
+            <span style={{ color: "#16a34a", fontWeight: 700 }}>✓ {savedStatus}</span>
+          )}
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={handleSaveNote}
+          disabled={isSaving}
+          style={{ fontSize: "0.85rem", padding: "6px 16px", fontWeight: 700 }}
+        >
+          {isSaving ? "Đang lưu..." : "💾 Lưu ghi chú"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function DoctorPortal() {
   const router = useRouter();
   const [patients, setPatients] = useState<AssignedPatient[]>([]);
@@ -795,9 +1026,10 @@ export default function DoctorPortal() {
       )}
 
       {selected && (
-        <>
-          {/* THÔNG TIN LÂM SÀNG & CHỈ SỐ SINH HIỆU BỆNH NHÂN */}
-          <div className="vitals-card">
+        <div className="doctor-patient-two-column-layout">
+          <div className="doctor-patient-main-col">
+            {/* THÔNG TIN LÂM SÀNG & CHỈ SỐ SINH HIỆU BỆNH NHÂN */}
+            <div className="vitals-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, borderBottom: "1px solid #f1f5f9", paddingBottom: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 24 }}>🩺</span>
@@ -2381,8 +2613,17 @@ export default function DoctorPortal() {
               </div>
             </div>
           )}
-        </>
-      )}
+        </div>
+
+        {/* THANH GHI CHÚ BÁC SĨ CỐ ĐỊNH BÊN PHẢI MÀN HÌNH (RIÊNG TỪNG LOẠI BỆNH) */}
+        <aside className="doctor-patient-note-sidebar">
+          <DoctorPatientSideNotePanel
+            profileId={selected.profile_id}
+            patientName={selected.full_name}
+          />
+        </aside>
+      </div>
+    )}
     </AppShell>
   );
 }

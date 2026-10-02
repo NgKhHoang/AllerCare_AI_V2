@@ -1287,61 +1287,44 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
       {error && <ErrorBox text={error} />}
       {success && <SuccessBox text={success} />}
 
-      <div className={isDoctor && data.conditions && data.conditions.length > 0 ? "timeline-two-column-layout" : ""}>
-        <div className="timeline-left-column">
-          {selectedConditionId && activeCondition ? (
-            <ConditionDetailView
-              data={data}
-              activeCondition={activeCondition}
-              isDoctor={isDoctor}
-              isEditing={isEditing}
-              setIsEditing={setIsEditing}
-              onBack={() => {
-                setSelectedConditionId(null);
-                setIsEditing(false);
-                setError("");
-                setSuccess("");
-              }}
-              onStartEdit={startEditCondition}
-              editForm={editForm}
-              setEditForm={setEditForm}
-              onSaveCondition={handleSaveCondition}
-              saving={saving}
-              takenMeds={takenMeds}
-              onToggleMed={toggleMedTaken}
-            />
-          ) : (
-            <ConditionListView
-              data={data}
-              isDoctor={isDoctor}
-              isAdding={isAdding}
-              setIsAdding={(v) => {
-                setIsAdding(v);
-                setError("");
-                setSuccess("");
-              }}
-              onSelectCondition={(id) => setSelectedConditionId(id)}
-              addForm={addForm}
-              setAddForm={setAddForm}
-              onAddCondition={handleAddCondition}
-              adding={adding}
-            />
-          )}
-        </div>
-
-        {/* THANH GHI CHÚ BÁC SĨ BÊN PHẢI MÀN HÌNH (RIÊNG CHO TỪNG LOẠI BỆNH) */}
-        {isDoctor && data.conditions && data.conditions.length > 0 && (
-          <aside className="timeline-right-column">
-            <DiseaseNoteSidePanel
-              conditions={data.conditions}
-              selectedConditionId={selectedConditionId}
-              onSelectCondition={(id) => setSelectedConditionId(id)}
-              profileId={profileId}
-              onNoteUpdated={() => void loadTimeline(true)}
-            />
-          </aside>
-        )}
-      </div>
+      {selectedConditionId && activeCondition ? (
+        <ConditionDetailView
+          data={data}
+          activeCondition={activeCondition}
+          isDoctor={isDoctor}
+          isEditing={isEditing}
+          setIsEditing={setIsEditing}
+          onBack={() => {
+            setSelectedConditionId(null);
+            setIsEditing(false);
+            setError("");
+            setSuccess("");
+          }}
+          onStartEdit={startEditCondition}
+          editForm={editForm}
+          setEditForm={setEditForm}
+          onSaveCondition={handleSaveCondition}
+          saving={saving}
+          takenMeds={takenMeds}
+          onToggleMed={toggleMedTaken}
+        />
+      ) : (
+        <ConditionListView
+          data={data}
+          isDoctor={isDoctor}
+          isAdding={isAdding}
+          setIsAdding={(v) => {
+            setIsAdding(v);
+            setError("");
+            setSuccess("");
+          }}
+          onSelectCondition={(id) => setSelectedConditionId(id)}
+          addForm={addForm}
+          setAddForm={setAddForm}
+          onAddCondition={handleAddCondition}
+          adding={adding}
+        />
+      )}
     </>
   );
 }
