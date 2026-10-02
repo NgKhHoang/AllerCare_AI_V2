@@ -164,3 +164,26 @@ def test_quick_check_multiple_substances_and_patient_context(client: TestClient)
     assert res2["status"] == "has_alerts"
     assert any(a["rule_type"] == "drug_allergy" or "dị ứng" in a["message"].lower() for a in res2["alerts"])
 
+
+def test_suggest_drugs_endpoint(client: TestClient):
+    """Kiểm tra gợi ý thuốc thông minh cho bác sĩ (autocomplete theo Dược thư & AI)."""
+    d1 = login(client, "doctor1", "doctor123")
+    p1 = login(client, "patient1", "patient123")
+    pid = _profile_id(client, p1)
+
+    # 1. Gợi ý theo query tiền tố "warf"
+    r = client.get("/api/v1/safety-checks/suggest-drugs?q=warf", headers=auth_header(d1))
+    assert r.status_code == 200
+    items = r.json()
+    assert len(items) > 0
+    assert any("warfarin" in i["name"].lower() for i in items)
+
+    # 2. Gợi ý có ngữ cảnh bệnh nhân (patient1 dị ứng Penicillin)
+    r_ctx = client.get(f"/api/v1/safety-checks/suggest-drugs?q=penic&profile_id={pid}", headers=auth_header(d1))
+    assert r_ctx.status_code == 200
+    ctx_items = r_ctx.json()
+    assert len(ctx_items) > 0
+    # Phải có cờ dị ứng
+    assert any(i.get("is_allergy") for i in ctx_items)
+
+

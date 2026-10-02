@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, getToken, getUser } from "../../lib/api";
 import {
@@ -108,6 +108,21 @@ interface AiSummary {
   disclaimer: string;
 }
 
+interface DrugSuggestion {
+  name: string;
+  clean_name: string;
+  strength: string;
+  form: string;
+  type: string;
+  ingredients: string[];
+  category: string;
+  ai_hint: string;
+  interactions_count: number;
+  is_allergy: boolean;
+  is_current: boolean;
+  source: string;
+}
+
 export default function DoctorPortal() {
   const router = useRouter();
   const [patients, setPatients] = useState<AssignedPatient[]>([]);
@@ -168,6 +183,10 @@ export default function DoctorPortal() {
   // Interactive MedSafe Drug Interaction Checker (Nhập 2/3 loại chất & kiểm tra tiền sử bệnh)
   const [medsafeInput, setMedsafeInput] = useState("");
   const [medsafeChecking, setMedsafeChecking] = useState(false);
+  const [medsafeSuggestions, setMedsafeSuggestions] = useState<DrugSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(0);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [quickCheckResult, setQuickCheckResult] = useState<{
     status: string;
     status_label: string;
@@ -446,6 +465,102 @@ export default function DoctorPortal() {
       setError(e instanceof Error ? e.message : "Kiểm tra tương tác thất bại");
     } finally {
       setMedsafeChecking(false);
+    }
+  }
+
+  // Gợi ý thuốc thông minh theo Dược thư & AI Gemini (Hỗ trợ phím Tab hoàn tất tự động)
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  function getCurrentQueryToken(fullText: string): string {
+    const trimmed = fullText;
+    const lastSep = Math.max(
+      trimmed.lastIndexOf(","),
+      trimmed.lastIndexOf("+"),
+      trimmed.lastIndexOf(";")
+    );
+    if (lastSep >= 0) {
+      return trimmed.substring(lastSep + 1).trim();
+    }
+    return trimmed.trim();
+  }
+
+  async function fetchDrugSuggestions(token: string) {
+    try {
+      setLoadingSuggestions(true);
+      const url = `/v1/safety-checks/suggest-drugs?q=${encodeURIComponent(token)}${selected ? `&profile_id=${selected.profile_id}` : ""}`;
+      const list = await api<DrugSuggestion[]>(url);
+      setMedsafeSuggestions(list);
+      setShowSuggestions(list.length > 0);
+      setActiveSuggestionIdx(0);
+    } catch {
+      setMedsafeSuggestions([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }
+
+  function handleMedsafeChange(val: string) {
+    setMedsafeInput(val);
+    const token = getCurrentQueryToken(val);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      fetchDrugSuggestions(token);
+    }, 100);
+  }
+
+  function handleSelectSuggestion(s: DrugSuggestion) {
+    const trimmed = medsafeInput;
+    const lastSep = Math.max(
+      trimmed.lastIndexOf(","),
+      trimmed.lastIndexOf("+"),
+      trimmed.lastIndexOf(";")
+    );
+    let next = "";
+    const cleanName = s.clean_name || s.name;
+    if (lastSep >= 0) {
+      next = trimmed.substring(0, lastSep + 1) + " " + cleanName + ", ";
+    } else {
+      next = cleanName + ", ";
+    }
+    setMedsafeInput(next);
+    setShowSuggestions(false);
+  }
+
+  function handleMedsafeKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (showSuggestions && medsafeSuggestions.length > 0) {
+      if (e.key === "Tab") {
+        e.preventDefault();
+        const chosen = medsafeSuggestions[activeSuggestionIdx >= 0 && activeSuggestionIdx < medsafeSuggestions.length ? activeSuggestionIdx : 0];
+        if (chosen) handleSelectSuggestion(chosen);
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveSuggestionIdx((prev) => (prev + 1) % medsafeSuggestions.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveSuggestionIdx((prev) => (prev - 1 + medsafeSuggestions.length) % medsafeSuggestions.length);
+        return;
+      }
+      if (e.key === "Enter") {
+        if (activeSuggestionIdx >= 0 && activeSuggestionIdx < medsafeSuggestions.length) {
+          e.preventDefault();
+          handleSelectSuggestion(medsafeSuggestions[activeSuggestionIdx]);
+          return;
+        }
+      }
+      if (e.key === "Escape") {
+        setShowSuggestions(false);
+        return;
+      }
+    }
+
+    if (e.key === "Enter") {
+      e.preventDefault();
+      setShowSuggestions(false);
+      void runInteractiveMedSafeCheck();
     }
   }
 
@@ -1422,36 +1537,165 @@ export default function DoctorPortal() {
               </span>
             </div>
 
-            {/* KHUNG NHẬP 2/3 LOẠI CHẤT/THUỐC ĐỂ TEST PHẢN ỨNG */}
+            {/* KHUNG NHẬP 2/3 LOẠI CHẤT/THUỐC ĐỂ TEST PHẢN ỨNG CÓ AUTOCOMPLETE & PHÍM TAB */}
             <div style={{ background: "#ffffff", padding: "16px 18px", borderRadius: 14, border: "1px solid #bae6fd", marginTop: 12, marginBottom: 14, boxShadow: "0 2px 8px rgba(2, 132, 199, 0.06)" }}>
-              <label htmlFor="medsafe-substances" style={{ display: "block", fontWeight: 700, fontSize: "0.88rem", color: "#0f172a", marginBottom: 6 }}>
-                🧪 Nhập 2, 3 hoặc nhiều loại chất/thuốc cần kiểm tra phản ứng:
-              </label>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-                <input
-                  id="medsafe-substances"
-                  type="text"
-                  className="input"
-                  style={{ flex: 1, minWidth: 260, fontSize: "0.92rem", padding: "10px 14px", borderColor: "#0284c7" }}
-                  placeholder="VD: Warfarin, Aspirin hoặc Cefaclor, Augmentin, Paracetamol..."
-                  value={medsafeInput}
-                  onChange={(e) => setMedsafeInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 6 }}>
+                <label htmlFor="medsafe-substances" style={{ fontWeight: 700, fontSize: "0.88rem", color: "#0f172a" }}>
+                  🧪 Nhập 2, 3 hoặc nhiều loại chất/thuốc (ngăn cách bởi dấu phẩy):
+                </label>
+                <span style={{ fontSize: "0.78rem", color: "#0284c7", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+                  <span>💡 Gõ tên thuốc rồi nhấn</span>
+                  <kbd style={{ background: "#e0f2fe", border: "1px solid #7dd3fc", borderRadius: 4, padding: "1px 6px", fontSize: "0.75rem", fontWeight: 700, color: "#0369a1" }}>Tab ↹</kbd>
+                  <span>để tự động điền nhanh theo Dược thư & AI</span>
+                </span>
+              </div>
+
+              <div style={{ position: "relative", marginBottom: 8 }}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <input
+                    id="medsafe-substances"
+                    type="text"
+                    className="input"
+                    style={{ flex: 1, minWidth: 260, fontSize: "0.92rem", padding: "10px 14px", borderColor: "#0284c7", borderRadius: 8 }}
+                    placeholder="VD: Warfarin, Aspirin hoặc Cefaclor, Augmentin, Paracetamol..."
+                    value={medsafeInput}
+                    onChange={(e) => handleMedsafeChange(e.target.value)}
+                    onKeyDown={handleMedsafeKeyDown}
+                    onFocus={() => {
+                      fetchDrugSuggestions(getCurrentQueryToken(medsafeInput));
+                    }}
+                    autoComplete="off"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ padding: "10px 20px", fontWeight: 700, fontSize: "0.92rem", display: "flex", alignItems: "center", gap: 6 }}
+                    onClick={() => {
+                      setShowSuggestions(false);
                       void runInteractiveMedSafeCheck();
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  style={{ padding: "10px 20px", fontWeight: 700, fontSize: "0.92rem", display: "flex", alignItems: "center", gap: 6 }}
-                  onClick={() => runInteractiveMedSafeCheck()}
-                  disabled={medsafeChecking}
-                >
-                  {medsafeChecking ? "⏳ Đang đối soát…" : "⚡ Kiểm tra Phản ứng & An toàn"}
-                </button>
+                    }}
+                    disabled={medsafeChecking}
+                  >
+                    {medsafeChecking ? "⏳ Đang đối soát…" : "⚡ Kiểm tra Phản ứng & An toàn"}
+                  </button>
+                </div>
+
+                {/* DANH SÁCH GỢI Ý THUỐC THÔNG MINH (DROPDOWN AUTOCOMPLETE) */}
+                {showSuggestions && medsafeSuggestions.length > 0 && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 4px)",
+                      left: 0,
+                      right: 0,
+                      background: "#ffffff",
+                      border: "1.5px solid #38bdf8",
+                      borderRadius: 12,
+                      boxShadow: "0 12px 30px rgba(2, 132, 199, 0.18), 0 4px 12px rgba(0,0,0,0.08)",
+                      zIndex: 100,
+                      maxHeight: 330,
+                      overflowY: "auto",
+                      padding: "6px 0",
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: "6px 14px 8px",
+                        background: "#f0f9ff",
+                        borderBottom: "1px solid #e0f2fe",
+                        fontSize: "0.76rem",
+                        color: "#0369a1",
+                        fontWeight: 700,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span>🤖 GỢI Ý DƯỢC THƯ BỘ Y TẾ & AI GEMINI ({medsafeSuggestions.length} kết quả)</span>
+                      <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 500 }}>
+                        Dùng <kbd style={{ background: "#fff", padding: "1px 4px", borderRadius: 3, border: "1px solid #cbd5e1" }}>↑</kbd> <kbd style={{ background: "#fff", padding: "1px 4px", borderRadius: 3, border: "1px solid #cbd5e1" }}>↓</kbd> để di chuyển, <kbd style={{ background: "#0284c7", color: "#fff", padding: "1px 5px", borderRadius: 3, fontWeight: 700 }}>Tab ↹</kbd> hoặc <kbd style={{ background: "#fff", padding: "1px 4px", borderRadius: 3, border: "1px solid #cbd5e1" }}>Enter</kbd> để chọn
+                      </span>
+                    </div>
+
+                    {medsafeSuggestions.map((s, idx) => {
+                      const isHighlighted = idx === activeSuggestionIdx;
+                      return (
+                        <div
+                          key={`${s.name}-${idx}`}
+                          style={{
+                            padding: "9px 14px",
+                            cursor: "pointer",
+                            background: isHighlighted ? "#e0f2fe" : "transparent",
+                            borderLeft: isHighlighted ? "4px solid #0284c7" : "4px solid transparent",
+                            transition: "all 0.15s ease",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: 12,
+                          }}
+                          onMouseEnter={() => setActiveSuggestionIdx(idx)}
+                          onClick={() => handleSelectSuggestion(s)}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                              <span style={{ fontWeight: 700, fontSize: "0.9rem", color: s.is_allergy ? "#be123c" : "#0f172a" }}>
+                                {s.is_allergy ? "🚫" : s.is_current ? "💊" : "🏷️"} {s.name}
+                              </span>
+                              {s.strength && (
+                                <span style={{ fontSize: "0.75rem", color: "#64748b", background: "#f1f5f9", padding: "1px 6px", borderRadius: 4 }}>
+                                  {s.strength}
+                                </span>
+                              )}
+                              {s.is_allergy && (
+                                <span className="badge badge-danger" style={{ fontSize: "0.7rem", fontWeight: 700, background: "#ffe4e6", color: "#be123c", border: "1px solid #fecdd3" }}>
+                                  ⚠️ Tiền sử Dị ứng của BN
+                                </span>
+                              )}
+                              {s.is_current && (
+                                <span className="badge badge-info" style={{ fontSize: "0.7rem", fontWeight: 700 }}>
+                                  💊 Thuốc BN đang dùng
+                                </span>
+                              )}
+                              {s.interactions_count > 0 && !s.is_allergy && (
+                                <span className="badge badge-warning" style={{ fontSize: "0.7rem", fontWeight: 600 }}>
+                                  ⚡ {s.interactions_count} tương tác BYT
+                                </span>
+                              )}
+                              <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 500 }}>
+                                • {s.category}
+                              </span>
+                            </div>
+
+                            {s.ai_hint && (
+                              <div style={{ fontSize: "0.76rem", color: s.is_allergy ? "#e11d48" : "#0369a1", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                💡 <em>{s.ai_hint}</em>
+                              </div>
+                            )}
+                          </div>
+
+                          <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                            <span
+                              style={{
+                                background: isHighlighted ? "#0284c7" : "#f1f5f9",
+                                color: isHighlighted ? "#ffffff" : "#64748b",
+                                border: isHighlighted ? "1px solid #0284c7" : "1px solid #cbd5e1",
+                                borderRadius: 4,
+                                padding: "2px 7px",
+                                fontSize: "0.72rem",
+                                fontWeight: 700,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 3,
+                              }}
+                            >
+                              Tab ↹
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Các nút mẫu nhanh & nạp thuốc bệnh nhân */}

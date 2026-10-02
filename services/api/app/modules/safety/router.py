@@ -10,7 +10,7 @@ from app.modules.auth.deps import CurrentUser, audit_log, require_roles
 from app.modules.patients.models import PatientProfile
 from app.modules.safety.check_models import Alert, Review, SafetyCheck
 from app.modules.safety.schemas import QuickCheckIn, ReviewIn, SafetyCheckIn, SafetyCheckOut
-from app.modules.safety.service import run_quick_check, run_safety_check
+from app.modules.safety.service import run_quick_check, run_safety_check, suggest_drugs
 from app.modules.auth.deps import get_assigned_patient_profile
 
 router = APIRouter(prefix="/safety-checks", tags=["safety"])
@@ -46,6 +46,23 @@ def quick_check(
     audit_log(db, user, "quick_safety_check", "safety_check", data.profile_id or "adhoc", f"status={res['status']}")
     db.commit()
     return res
+
+
+@router.get("/suggest-drugs", summary="Gợi ý thuốc và hoạt chất thông minh dựa trên Dược thư Bộ Y Tế & AI Gemini")
+def suggest_drugs_endpoint(
+    q: str = "",
+    profile_id: str | None = None,
+    user: CurrentUser = Depends(require_roles("doctor", "pharmacist", "nurse", "patient")),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    profile = None
+    if profile_id:
+        try:
+            profile = get_assigned_patient_profile(profile_id, user, db)
+        except Exception:
+            profile = db.get(PatientProfile, profile_id)
+    return suggest_drugs(db, q, profile)
+
 
 
 
