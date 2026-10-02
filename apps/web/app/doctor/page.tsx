@@ -970,38 +970,42 @@ export default function DoctorPortal() {
     setShowSuggestions(false);
   }
 
-  function handleMedsafeKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (showSuggestions && medsafeSuggestions.length > 0) {
-      if (e.key === "Tab") {
+  function handleMedsafeSuggestionNav(key: string, e: React.KeyboardEvent<HTMLInputElement>): boolean {
+    if (!showSuggestions || medsafeSuggestions.length === 0) return false;
+    const len = medsafeSuggestions.length;
+    const validIdx = activeSuggestionIdx >= 0 && activeSuggestionIdx < len ? activeSuggestionIdx : 0;
+
+    switch (key) {
+      case "Tab":
         e.preventDefault();
-        const chosen = medsafeSuggestions[activeSuggestionIdx >= 0 && activeSuggestionIdx < medsafeSuggestions.length ? activeSuggestionIdx : 0];
-        if (chosen) handleSelectSuggestion(chosen);
-        return;
-      }
-      if (e.key === "ArrowDown") {
+        handleSelectSuggestion(medsafeSuggestions[validIdx]);
+        return true;
+      case "ArrowDown":
         e.preventDefault();
-        setActiveSuggestionIdx((prev) => (prev + 1) % medsafeSuggestions.length);
-        return;
-      }
-      if (e.key === "ArrowUp") {
+        setActiveSuggestionIdx((prev) => (prev + 1) % len);
+        return true;
+      case "ArrowUp":
         e.preventDefault();
-        setActiveSuggestionIdx((prev) => (prev - 1 + medsafeSuggestions.length) % medsafeSuggestions.length);
-        return;
-      }
-      if (e.key === "Enter") {
-        if (activeSuggestionIdx >= 0 && activeSuggestionIdx < medsafeSuggestions.length) {
+        setActiveSuggestionIdx((prev) => (prev - 1 + len) % len);
+        return true;
+      case "Enter":
+        if (activeSuggestionIdx >= 0 && activeSuggestionIdx < len) {
           e.preventDefault();
           handleSelectSuggestion(medsafeSuggestions[activeSuggestionIdx]);
-          return;
+          return true;
         }
-      }
-      if (e.key === "Escape") {
+        return false;
+      case "Escape":
         setShowSuggestions(false);
-        return;
-      }
+        return true;
+      default:
+        return false;
     }
+  }
 
-    if (e.key === "Enter") {
+  function handleMedsafeKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    const handled = handleMedsafeSuggestionNav(e.key, e);
+    if (!handled && e.key === "Enter") {
       e.preventDefault();
       setShowSuggestions(false);
       void runInteractiveMedSafeCheck();
@@ -2791,314 +2795,20 @@ export default function DoctorPortal() {
           </div>
 
           {/* AI Summary Popup Modal (Assistive Overlay) */}
-          {showAiModal && (
-            <div
-              style={{
-                position: "fixed",
-                inset: 0,
-                backgroundColor: "rgba(15, 23, 42, 0.55)",
-                backdropFilter: "blur(4px)",
-                zIndex: 1050,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 16,
-              }}
-            >
-              <div
-                style={{
-                  backgroundColor: "#ffffff",
-                  borderRadius: 20,
-                  maxWidth: 680,
-                  width: "100%",
-                  maxHeight: "88vh",
-                  display: "flex",
-                  flexDirection: "column",
-                  overflow: "hidden",
-                  boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-                  border: "1px solid rgba(226, 232, 240, 0.8)",
-                }}
-              >
-                {/* Modal Header */}
-                <div
-                  style={{
-                    padding: "16px 20px",
-                    borderBottom: "1px solid #e2e8f0",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    background: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: "50%",
-                        backgroundColor: "#0284c7",
-                        color: "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 20,
-                        boxShadow: "0 4px 10px rgba(2, 132, 199, 0.3)",
-                      }}
-                    >
-                      🤖
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 16, color: "#0f172a" }}>
-                        AI Tóm tắt diễn biến ca bệnh
-                      </div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>
-                        Bệnh nhân: <strong>{selected.full_name}</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={loadAiSummary}
-                      disabled={summaryLoading}
-                      style={{ fontSize: 12 }}
-                    >
-                      🔄 {summaryLoading ? "Đang tổng hợp…" : "Làm mới"}
-                    </button>
-                    <button
-                      onClick={() => setShowAiModal(false)}
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: "50%",
-                        border: "none",
-                        backgroundColor: "rgba(0, 0, 0, 0.06)",
-                        cursor: "pointer",
-                        fontSize: 16,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#475569",
-                      }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-
-                {/* Modal Content */}
-                <div style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
-                  {summaryLoading && !aiSummary && (
-                    <div style={{ textAlign: "center", padding: "40px 0" }}>
-                      <div style={{ fontSize: 36, marginBottom: 12 }}>🤖</div>
-                      <div style={{ fontWeight: 600, color: "#0284c7", fontSize: 15 }}>
-                        AI đang tổng hợp dữ liệu lâm sàng & diễn biến…
-                      </div>
-                      <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>
-                        Đang phân tích triệu chứng, nguồn thuốc và tiền sử dị ứng
-                      </div>
-                    </div>
-                  )}
-
-                  {aiSummary && (
-                    <div>
-                      <div
-                        style={{
-                          backgroundColor: "#f8fafc",
-                          border: "1px solid #e2e8f0",
-                          borderRadius: 12,
-                          padding: 14,
-                          marginBottom: 14,
-                        }}
-                      >
-                        <div style={{ fontWeight: 700, fontSize: 14, color: "#0369a1", marginBottom: 6 }}>
-                          📝 Tóm tắt nhanh:
-                        </div>
-                        <div style={{ fontSize: 14, lineHeight: 1.6, color: "#1e293b" }}>
-                          {aiSummary.summary}
-                        </div>
-                      </div>
-
-                      {aiSummary.highlights.length > 0 && (
-                        <div style={{ marginBottom: 14 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: "#475569", marginBottom: 6 }}>
-                            🚨 Điểm lưu ý & Cảnh báo:
-                          </div>
-                          {aiSummary.highlights.map((h, i) => (
-                            <div
-                              key={`ai-highlight-${h.slice(0, 24)}-${i}`}
-                              className={getHighlightAlertClass(h)}
-                              style={{ marginTop: 6, fontSize: 13, padding: "8px 12px" }}
-                            >
-                              {h}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="grid-2" style={{ gap: 12, marginBottom: 14 }}>
-                        {aiSummary.medications_by_source.length > 0 && (
-                          <div
-                            style={{
-                              backgroundColor: "#f0fdf4",
-                              border: "1px solid #bbf7d0",
-                              borderRadius: 10,
-                              padding: 12,
-                            }}
-                          >
-                            <div style={{ fontWeight: 600, fontSize: 13, color: "#166534", marginBottom: 6 }}>
-                              💊 Thuốc theo nguồn
-                            </div>
-                            {aiSummary.medications_by_source.map((l, i) => (
-                              <div key={`ai-med-${l.slice(0, 20)}-${i}`} style={{ fontSize: 12.5, color: "#14532d", marginBottom: 4 }}>
-                                • {l}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {aiSummary.symptoms.length > 0 && (
-                          <div
-                            style={{
-                              backgroundColor: "#f0f9ff",
-                              border: "1px solid #bae6fd",
-                              borderRadius: 10,
-                              padding: 12,
-                            }}
-                          >
-                            <div style={{ fontWeight: 600, fontSize: 13, color: "#0369a1", marginBottom: 6 }}>
-                              🩺 Triệu chứng gần đây
-                            </div>
-                            {aiSummary.symptoms.slice(0, 5).map((l, i) => (
-                              <div key={`ai-sym-${l.slice(0, 20)}-${i}`} style={{ fontSize: 12.5, color: "#0c4a6e", marginBottom: 4 }}>
-                                • {l}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {aiSummary.triage_recent.length > 0 && (
-                        <div
-                          style={{
-                            backgroundColor: "#faf5ff",
-                            border: "1px solid #e9d5ff",
-                            borderRadius: 10,
-                            padding: 12,
-                            marginBottom: 12,
-                          }}
-                        >
-                          <div style={{ fontWeight: 600, fontSize: 13, color: "#6b21a8", marginBottom: 4 }}>
-                            ⚖️ Phân luồng gần nhất:
-                          </div>
-                          {aiSummary.triage_recent.map((l, i) => (
-                            <div key={`ai-triage-${l.slice(0, 20)}-${i}`} style={{ fontSize: 12.5, color: "#581c87" }}>
-                              • {l}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "#94a3b8",
-                          borderTop: "1px solid #f1f5f9",
-                          paddingTop: 10,
-                          marginTop: 10,
-                          fontStyle: "italic",
-                        }}
-                      >
-                        ℹ️ {aiSummary.disclaimer}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Modal Footer */}
-                <div
-                  style={{
-                    padding: "12px 20px",
-                    borderTop: "1px solid #e2e8f0",
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    backgroundColor: "#f8fafc",
-                  }}
-                >
-                  <button className="btn btn-secondary btn-sm" onClick={() => setShowAiModal(false)}>
-                    Đóng
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          <AiSummaryModal
+            show={showAiModal}
+            selectedPatientName={selected.full_name}
+            aiSummary={aiSummary}
+            summaryLoading={summaryLoading}
+            onRefresh={() => void loadAiSummary()}
+            onClose={() => setShowAiModal(false)}
+          />
 
           {/* POPUP MODAL PHÓNG TO ẢNH TỔN THƯƠNG CHO BÁC SĨ */}
-          {previewModalUrl && (
-            <div
-              style={{
-                position: "fixed",
-                inset: 0,
-                zIndex: 9999,
-                backgroundColor: "rgba(15, 23, 42, 0.82)",
-                backdropFilter: "blur(6px)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 20,
-              }}
-            >
-              <div
-                style={{
-                  position: "relative",
-                  maxWidth: "90vw",
-                  maxHeight: "90vh",
-                  backgroundColor: "#fff",
-                  borderRadius: 16,
-                  overflow: "hidden",
-                  boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.3)",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "12px 18px",
-                    borderBottom: "1px solid #e2e8f0",
-                    backgroundColor: "#f8fafc",
-                  }}
-                >
-                  <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>
-                    📷 Ảnh chụp tổn thương da của người bệnh
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    style={{ padding: "3px 10px", fontSize: 13 }}
-                    onClick={() => setPreviewModalUrl(null)}
-                  >
-                    ✕ Đóng
-                  </button>
-                </div>
-                <div style={{ padding: 12, overflow: "auto", display: "flex", justifyContent: "center", alignItems: "center" }}>
-                  <img
-                    src={previewModalUrl}
-                    alt="Ảnh tổn thương phóng to"
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "75vh",
-                      objectFit: "contain",
-                      borderRadius: 8,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          <ImagePreviewModal
+            imageUrl={previewModalUrl}
+            onClose={() => setPreviewModalUrl(null)}
+          />
         </div>
 
         {/* THANH GHI CHÚ BÁC SĨ CỐ ĐỊNH BÊN PHẢI MÀN HÌNH (RIÊNG TỪNG LOẠI BỆNH) */}
@@ -3111,5 +2821,341 @@ export default function DoctorPortal() {
       </div>
     )}
     </AppShell>
+  );
+}
+
+function AiSummaryModal({
+  show,
+  selectedPatientName,
+  aiSummary,
+  summaryLoading,
+  onRefresh,
+  onClose,
+}: {
+  show: boolean;
+  selectedPatientName: string;
+  aiSummary: AiSummary | null;
+  summaryLoading: boolean;
+  onRefresh: () => void;
+  onClose: () => void;
+}) {
+  if (!show) return null;
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(15, 23, 42, 0.55)",
+        backdropFilter: "blur(4px)",
+        zIndex: 1050,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: 20,
+          maxWidth: 680,
+          width: "100%",
+          maxHeight: "88vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          border: "1px solid rgba(226, 232, 240, 0.8)",
+        }}
+      >
+        {/* Modal Header */}
+        <div
+          style={{
+            padding: "16px 20px",
+            borderBottom: "1px solid #e2e8f0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: "50%",
+                backgroundColor: "#0284c7",
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 20,
+                boxShadow: "0 4px 10px rgba(2, 132, 199, 0.3)",
+              }}
+            >
+              🤖
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: "#0f172a" }}>
+                AI Tóm tắt diễn biến ca bệnh
+              </div>
+              <div style={{ fontSize: 12, color: "#64748b" }}>
+                Bệnh nhân: <strong>{selectedPatientName}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={onRefresh}
+              disabled={summaryLoading}
+              style={{ fontSize: 12 }}
+            >
+              🔄 {summaryLoading ? "Đang tổng hợp…" : "Làm mới"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                border: "none",
+                backgroundColor: "rgba(0, 0, 0, 0.06)",
+                cursor: "pointer",
+                fontSize: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#475569",
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Modal Content */}
+        <div style={{ padding: "20px", overflowY: "auto", flex: 1 }}>
+          {summaryLoading && !aiSummary && (
+            <div style={{ textAlign: "center", padding: "40px 0" }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>🤖</div>
+              <div style={{ fontWeight: 600, color: "#0284c7", fontSize: 15 }}>
+                AI đang tổng hợp dữ liệu lâm sàng & diễn biến…
+              </div>
+              <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>
+                Đang phân tích triệu chứng, nguồn thuốc và tiền sử dị ứng
+              </div>
+            </div>
+          )}
+
+          {aiSummary && (
+            <div>
+              <div
+                style={{
+                  backgroundColor: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  padding: 14,
+                  marginBottom: 14,
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#0369a1", marginBottom: 6 }}>
+                  📝 Tóm tắt nhanh:
+                </div>
+                <div style={{ fontSize: 14, lineHeight: 1.6, color: "#1e293b" }}>
+                  {aiSummary.summary}
+                </div>
+              </div>
+
+              {aiSummary.highlights.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: "#475569", marginBottom: 6 }}>
+                    🚨 Điểm lưu ý & Cảnh báo:
+                  </div>
+                  {aiSummary.highlights.map((h, i) => (
+                    <div
+                      key={`ai-highlight-${h.slice(0, 24)}-${i}`}
+                      className={getHighlightAlertClass(h)}
+                      style={{ marginTop: 6, fontSize: 13, padding: "8px 12px" }}
+                    >
+                      {h}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid-2" style={{ gap: 12, marginBottom: 14 }}>
+                {aiSummary.medications_by_source.length > 0 && (
+                  <div
+                    style={{
+                      backgroundColor: "#f0fdf4",
+                      border: "1px solid #bbf7d0",
+                      borderRadius: 10,
+                      padding: 12,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "#166534", marginBottom: 6 }}>
+                      💊 Thuốc theo nguồn
+                    </div>
+                    {aiSummary.medications_by_source.map((l, i) => (
+                      <div key={`ai-med-${l.slice(0, 20)}-${i}`} style={{ fontSize: 12.5, color: "#14532d", marginBottom: 4 }}>
+                        • {l}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {aiSummary.symptoms.length > 0 && (
+                  <div
+                    style={{
+                      backgroundColor: "#f0f9ff",
+                      border: "1px solid #bae6fd",
+                      borderRadius: 10,
+                      padding: 12,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "#0369a1", marginBottom: 6 }}>
+                      🩺 Triệu chứng gần đây
+                    </div>
+                    {aiSummary.symptoms.slice(0, 5).map((l, i) => (
+                      <div key={`ai-sym-${l.slice(0, 20)}-${i}`} style={{ fontSize: 12.5, color: "#0c4a6e", marginBottom: 4 }}>
+                        • {l}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {aiSummary.triage_recent.length > 0 && (
+                <div
+                  style={{
+                    backgroundColor: "#faf5ff",
+                    border: "1px solid #e9d5ff",
+                    borderRadius: 10,
+                    padding: 12,
+                    marginBottom: 12,
+                  }}
+                >
+                  <div style={{ fontWeight: 600, fontSize: 13, color: "#6b21a8", marginBottom: 4 }}>
+                    ⚖️ Phân luồng gần nhất:
+                  </div>
+                  {aiSummary.triage_recent.map((l, i) => (
+                    <div key={`ai-triage-${l.slice(0, 20)}-${i}`} style={{ fontSize: 12.5, color: "#581c87" }}>
+                      • {l}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#94a3b8",
+                  borderTop: "1px solid #f1f5f9",
+                  paddingTop: 10,
+                  marginTop: 10,
+                  fontStyle: "italic",
+                }}
+              >
+                ℹ️ {aiSummary.disclaimer}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        <div
+          style={{
+            padding: "12px 20px",
+            borderTop: "1px solid #e2e8f0",
+            display: "flex",
+            justifyContent: "flex-end",
+            backgroundColor: "#f8fafc",
+          }}
+        >
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onClose}>
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ImagePreviewModal({
+  imageUrl,
+  onClose,
+}: {
+  imageUrl: string | null;
+  onClose: () => void;
+}) {
+  if (!imageUrl) return null;
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        backgroundColor: "rgba(15, 23, 42, 0.82)",
+        backdropFilter: "blur(6px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          maxWidth: "90vw",
+          maxHeight: "90vh",
+          backgroundColor: "#fff",
+          borderRadius: 16,
+          overflow: "hidden",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.3)",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "12px 18px",
+            borderBottom: "1px solid #e2e8f0",
+            backgroundColor: "#f8fafc",
+          }}
+        >
+          <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>
+            📷 Ảnh chụp tổn thương da của người bệnh
+          </span>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            style={{ padding: "3px 10px", fontSize: 13 }}
+            onClick={onClose}
+          >
+            ✕ Đóng
+          </button>
+        </div>
+        <div style={{ padding: 12, overflow: "auto", display: "flex", justifyContent: "center", alignItems: "center" }}>
+          <img
+            src={imageUrl}
+            alt="Ảnh tổn thương phóng to"
+            style={{
+              maxWidth: "100%",
+              maxHeight: "75vh",
+              objectFit: "contain",
+              borderRadius: 8,
+            }}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
