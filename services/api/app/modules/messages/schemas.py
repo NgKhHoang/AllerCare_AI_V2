@@ -53,3 +53,23 @@ class InstantCallResponse(BaseModel):
     caller_role: str
     target_id: str
     target_name: str
+
+
+class CallSignalIn(BaseModel):
+    room_code: str
+    signal_type: str  # "offer" | "answer" | "candidate" | "end" | "accept" | "decline"
+    data: dict | None = None
+
+
+class CallSignalOut(BaseModel):
+    room_code: str
+    status: str  # "ringing" | "connected" | "ended" | "declined"
+    caller_id: str
+    caller_name: str
+    caller_role: str
+    target_id: str
+    target_name: str
+    call_type: str
+    offer: dict | None = None
+    answer: dict | None = None
+    candidates: list[dict] = []

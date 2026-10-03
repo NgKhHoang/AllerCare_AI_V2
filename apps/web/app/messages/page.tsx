@@ -89,6 +89,16 @@ function getInitials(fullName: string): string {
     .toUpperCase() || "U";
 }
 
+const RTC_CONFIG: RTCConfiguration = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" },
+  ],
+};
+
 function playRingtone(): () => void {
   if (typeof window === "undefined") return () => {};
   try {
@@ -422,11 +432,17 @@ export default function MessagesPage() {
   const [callStatus, setCallStatus] = useState<"idle" | "ringing" | "connected" | "ended">("idle");
   const [incomingCall, setIncomingCall] = useState<CallSession | null>(null);
 
+  const [hasRemoteStream, setHasRemoteStream] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const livekitRoomRef = useRef<Room | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideosRef = useRef<HTMLDivElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const signalPollRef = useRef<NodeJS.Timeout | null>(null);
   const stopRingtoneRef = useRef<(() => void) | null>(null);
 
   const loadContacts = useCallback(async () => {
@@ -524,6 +540,27 @@ export default function MessagesPage() {
     };
   }, [callStatus]);
 
+  // Polling for incoming calls in background (every 2.5s)
+  useEffect(() => {
+    if (!user || callStatus !== "idle") return;
+
+    const checkIncoming = async () => {
+      try {
+        const inc = await api<CallSession & { status: string; offer?: RTCSessionDescriptionInit }>("/v1/messages/call/incoming");
+        if (inc && inc.status === "ringing" && callStatus === "idle") {
+          setIncomingCall(inc);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    const interval = setInterval(() => {
+      void checkIncoming();
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [user, callStatus]);
+
   // Ringtone playback for incoming and outgoing calls
   useEffect(() => {
     if (incomingCall || callStatus === "ringing") {
@@ -586,99 +623,24 @@ export default function MessagesPage() {
     }
   };
 
-  const attachRemoteVideo = useCallback((track: RemoteTrack, pub: RemoteTrackPublication) => {
-    if (track.kind !== "video") return;
-    const el = document.createElement("video");
-    el.autoplay = true;
-    el.playsInline = true;
-    el.style.cssText = "width:100%;height:100%;object-fit:cover;border-radius:12px;background:#000;";
-    track.attach(el);
-    const wrap = document.createElement("div");
-    wrap.style.cssText = "flex:1;min-width:0;position:relative;height:100%;";
-    wrap.dataset.trackSid = pub.trackSid;
-    wrap.appendChild(el);
-    remoteVideosRef.current?.appendChild(wrap);
-  }, []);
-
-  const detachRemoteVideo = useCallback((pub: RemoteTrackPublication) => {
-    const wrap = remoteVideosRef.current?.querySelector(`[data-track-sid="${pub.trackSid}"]`);
-    if (wrap) {
-      wrap.querySelectorAll("video").forEach((v) => {
-        v.srcObject = null;
-        v.remove();
-      });
-      wrap.remove();
+  const endCall = useCallback(() => {
+    if (signalPollRef.current) {
+      clearInterval(signalPollRef.current);
+      signalPollRef.current = null;
     }
-  }, []);
-
-  const startInstantCall = async (type: "voice" | "video") => {
-    if (!selectedContact) return;
-
-    try {
-      setCallStatus("ringing");
-
-      const resp = await api<CallSession>("/v1/messages/call/token", {
+    if (callSession) {
+      void api("/v1/messages/call/signal", {
         method: "POST",
-        body: { target_user_id: selectedContact.id, call_type: type },
-      });
-
-      setCallSession(resp);
-      setCamOn(type === "video");
-      setMicOn(true);
-
-      // Local camera/mic media capture
-      try {
-        if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: type === "video",
-            audio: true,
-          });
-          localStreamRef.current = stream;
-        }
-      } catch (mediaErr) {
-        console.warn("Camera/Mic device capture not accessible:", mediaErr);
-      }
-
-      if (resp.token && resp.livekit_url) {
-        try {
-          const room = new Room({ adaptiveStream: true, dynacast: true });
-          livekitRoomRef.current = room;
-
-          room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication) => {
-            attachRemoteVideo(track, pub);
-          });
-          room.on(RoomEvent.TrackUnsubscribed, (_: RemoteTrack, pub: RemoteTrackPublication) => {
-            detachRemoteVideo(pub);
-          });
-
-          await room.connect(resp.livekit_url, resp.token);
-          if (type === "video") {
-            await room.localParticipant.enableCameraAndMicrophone();
-            const camPub = Array.from(room.localParticipant.videoTrackPublications.values())[0];
-            if (camPub?.track && localVideoRef.current) {
-              camPub.track.attach(localVideoRef.current);
-            }
-          } else {
-            await room.localParticipant.setMicrophoneEnabled(true);
-          }
-        } catch (lkErr) {
-          console.warn("LiveKit connection fallback:", lkErr);
-        }
-      }
-
-      setCallStatus("connected");
-      void loadMessages(selectedContact.id);
-    } catch (err) {
-      alert("Không thể khởi tạo cuộc gọi: " + String(err));
-      setCallStatus("idle");
-      setCallSession(null);
+        body: { room_code: callSession.room_code, signal_type: "end" },
+      }).catch(() => {});
     }
-  };
-
-  const endCall = () => {
     if (stopRingtoneRef.current) {
       stopRingtoneRef.current();
       stopRingtoneRef.current = null;
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
     }
     if (livekitRoomRef.current) {
       livekitRoomRef.current.disconnect();
@@ -691,17 +653,266 @@ export default function MessagesPage() {
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
     }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = null;
+    }
+    setHasRemoteStream(false);
     setCallStatus("idle");
     setCallSession(null);
+    setIncomingCall(null);
     if (selectedContact) {
       void loadMessages(selectedContact.id);
     }
+  }, [callSession, selectedContact, loadMessages]);
+
+  const startInstantCall = async (type: "voice" | "video") => {
+    if (!selectedContact) return;
+
+    try {
+      setCallStatus("ringing");
+      setHasRemoteStream(false);
+
+      // 1. Capture local audio/video media
+      let localStream: MediaStream | null = null;
+      try {
+        if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
+          localStream = await navigator.mediaDevices.getUserMedia({
+            video: type === "video",
+            audio: true,
+          });
+          localStreamRef.current = localStream;
+        }
+      } catch (mediaErr) {
+        console.warn("Camera/Mic device capture not accessible:", mediaErr);
+      }
+
+      // 2. Request call session and room code from backend
+      const resp = await api<CallSession>("/v1/messages/call/token", {
+        method: "POST",
+        body: { target_user_id: selectedContact.id, call_type: type },
+      });
+
+      setCallSession(resp);
+      setCamOn(type === "video");
+      setMicOn(true);
+
+      // 3. Create WebRTC Peer Connection (P2P 2-way real streaming)
+      if (typeof RTCPeerConnection !== "undefined") {
+        const pc = new RTCPeerConnection(RTC_CONFIG);
+        peerConnectionRef.current = pc;
+
+        if (localStream) {
+          localStream.getTracks().forEach((track) => {
+            pc.addTrack(track, localStream!);
+          });
+        }
+
+        pc.ontrack = (event) => {
+          const stream = event.streams && event.streams[0] ? event.streams[0] : new MediaStream([event.track]);
+          setHasRemoteStream(true);
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = stream;
+            remoteVideoRef.current.play().catch(() => {});
+          }
+          if (remoteAudioRef.current) {
+            remoteAudioRef.current.srcObject = stream;
+            remoteAudioRef.current.play().catch(() => {});
+          }
+        };
+
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            void api("/v1/messages/call/signal", {
+              method: "POST",
+              body: { room_code: resp.room_code, signal_type: "candidate", data: event.candidate.toJSON() },
+            });
+          }
+        };
+
+        // Create and send SDP Offer
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await api("/v1/messages/call/signal", {
+          method: "POST",
+          body: { room_code: resp.room_code, signal_type: "offer", data: offer },
+        });
+      }
+
+      // 4. Start polling for Callee Answer & Candidates
+      const pollInterval = setInterval(async () => {
+        try {
+          const sig = await api<{
+            status: string;
+            answer?: RTCSessionDescriptionInit;
+            candidates?: RTCIceCandidateInit[];
+          }>(`/v1/messages/call/signal/${resp.room_code}`);
+
+          const pc = peerConnectionRef.current;
+          if (sig.status === "connected" && sig.answer && pc) {
+            if (!pc.currentRemoteDescription) {
+              await pc.setRemoteDescription(new RTCSessionDescription(sig.answer));
+              setCallStatus("connected");
+            }
+          }
+          if (sig.candidates && pc && pc.currentRemoteDescription) {
+            for (const c of sig.candidates) {
+              try {
+                await pc.addIceCandidate(new RTCIceCandidate(c));
+              } catch {}
+            }
+          }
+          if (sig.status === "ended" || sig.status === "declined") {
+            clearInterval(pollInterval);
+            endCall();
+          }
+        } catch {
+          // ignore
+        }
+      }, 1200);
+
+      signalPollRef.current = pollInterval;
+      void loadMessages(selectedContact.id);
+    } catch (err) {
+      alert("Không thể khởi tạo cuộc gọi: " + String(err));
+      endCall();
+    }
+  };
+
+  const acceptIncomingCall = async () => {
+    if (!incomingCall) return;
+
+    try {
+      const type = (incomingCall.call_type || "video") as "voice" | "video";
+      setCallSession(incomingCall);
+      setCamOn(type === "video");
+      setMicOn(true);
+      setCallStatus("connected");
+      setHasRemoteStream(false);
+
+      // 1. Capture local audio/video media
+      let localStream: MediaStream | null = null;
+      try {
+        if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
+          localStream = await navigator.mediaDevices.getUserMedia({
+            video: type === "video",
+            audio: true,
+          });
+          localStreamRef.current = localStream;
+        }
+      } catch (mediaErr) {
+        console.warn("Camera/Mic device capture not accessible:", mediaErr);
+      }
+
+      // 2. Fetch Offer from signaling room
+      const sig = await api<{
+        offer?: RTCSessionDescriptionInit;
+        candidates?: RTCIceCandidateInit[];
+      }>(`/v1/messages/call/signal/${incomingCall.room_code}`);
+
+      // 3. Create WebRTC Peer Connection
+      if (typeof RTCPeerConnection !== "undefined" && sig.offer) {
+        const pc = new RTCPeerConnection(RTC_CONFIG);
+        peerConnectionRef.current = pc;
+
+        if (localStream) {
+          localStream.getTracks().forEach((track) => {
+            pc.addTrack(track, localStream!);
+          });
+        }
+
+        pc.ontrack = (event) => {
+          const stream = event.streams && event.streams[0] ? event.streams[0] : new MediaStream([event.track]);
+          setHasRemoteStream(true);
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = stream;
+            remoteVideoRef.current.play().catch(() => {});
+          }
+          if (remoteAudioRef.current) {
+            remoteAudioRef.current.srcObject = stream;
+            remoteAudioRef.current.play().catch(() => {});
+          }
+        };
+
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            void api("/v1/messages/call/signal", {
+              method: "POST",
+              body: { room_code: incomingCall.room_code, signal_type: "candidate", data: event.candidate.toJSON() },
+            });
+          }
+        };
+
+        await pc.setRemoteDescription(new RTCSessionDescription(sig.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        // Send Answer back to caller
+        await api("/v1/messages/call/signal", {
+          method: "POST",
+          body: { room_code: incomingCall.room_code, signal_type: "answer", data: answer },
+        });
+
+        if (sig.candidates) {
+          for (const c of sig.candidates) {
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(c));
+            } catch {}
+          }
+        }
+      }
+
+      // 4. Start polling for signals & end call
+      const pollInterval = setInterval(async () => {
+        try {
+          const s = await api<{ status: string; candidates?: RTCIceCandidateInit[] }>(
+            `/v1/messages/call/signal/${incomingCall.room_code}`
+          );
+          if (s.candidates && peerConnectionRef.current) {
+            for (const c of s.candidates) {
+              try {
+                await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(c));
+              } catch {}
+            }
+          }
+          if (s.status === "ended") {
+            clearInterval(pollInterval);
+            endCall();
+          }
+        } catch {
+          // ignore
+        }
+      }, 1200);
+
+      signalPollRef.current = pollInterval;
+      setIncomingCall(null);
+    } catch (err) {
+      alert("Không thể kết nối cuộc gọi: " + String(err));
+      endCall();
+    }
+  };
+
+  const declineIncomingCall = () => {
+    if (incomingCall) {
+      void api("/v1/messages/call/signal", {
+        method: "POST",
+        body: { room_code: incomingCall.room_code, signal_type: "decline" },
+      }).catch(() => {});
+    }
+    setIncomingCall(null);
+    setCallStatus("idle");
   };
 
   const toggleMic = () => {
     const nextMic = !micOn;
-    if (livekitRoomRef.current) {
-      void livekitRoomRef.current.localParticipant.setMicrophoneEnabled(nextMic);
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.getSenders().forEach((sender) => {
+        if (sender.track && sender.track.kind === "audio") {
+          sender.track.enabled = nextMic;
+        }
+      });
     }
     if (localStreamRef.current) {
       localStreamRef.current.getAudioTracks().forEach((t) => {
@@ -713,8 +924,12 @@ export default function MessagesPage() {
 
   const toggleCam = () => {
     const nextCam = !camOn;
-    if (livekitRoomRef.current) {
-      void livekitRoomRef.current.localParticipant.setCameraEnabled(nextCam);
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.getSenders().forEach((sender) => {
+        if (sender.track && sender.track.kind === "video") {
+          sender.track.enabled = nextCam;
+        }
+      });
     }
     if (localStreamRef.current) {
       localStreamRef.current.getVideoTracks().forEach((t) => {
@@ -1168,28 +1383,27 @@ export default function MessagesPage() {
       {incomingCall && (
         <IncomingCallModal
           incomingCall={incomingCall}
-          onAccept={() => {
-            setCallSession(incomingCall);
-            setCallStatus("connected");
-            setIncomingCall(null);
-          }}
-          onDecline={() => setIncomingCall(null)}
+          onAccept={acceptIncomingCall}
+          onDecline={declineIncomingCall}
         />
       )}
 
       {/* MODAL PHÒNG GỌI TỨC THÌ */}
-      {callSession && callStatus === "connected" && (
+      {callSession && (callStatus === "connected" || callStatus === "ringing") && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(10, 15, 30, 0.92)",
+            background: "rgba(10, 15, 30, 0.94)",
             zIndex: 9998,
             display: "flex",
             flexDirection: "column",
             padding: 20,
           }}
         >
+          {/* HIDDEN AUDIO ELEMENT FOR REMOTE VOICE STREAM */}
+          <audio ref={remoteAudioRef} autoPlay style={{ display: "none" }} />
+
           <div
             style={{
               display: "flex",
@@ -1207,13 +1421,17 @@ export default function MessagesPage() {
                   Cuộc gọi {callSession.call_type === "video" ? "Video" : "Thoại"} với {callSession.target_name}
                 </div>
                 <div style={{ fontSize: 12, color: "#94a3b8" }}>
-                  Mã phòng: {callSession.room_code} • Thời gian: <strong style={{ color: "#38bdf8" }}>{formatTime(callDuration)}</strong>
+                  Mã phòng: {callSession.room_code} • {callStatus === "ringing" ? (
+                    <span style={{ color: "#f59e0b" }}>Đang đổ chuông...</span>
+                  ) : (
+                    <span>Thời gian: <strong style={{ color: "#38bdf8" }}>{formatTime(callDuration)}</strong></span>
+                  )}
                 </div>
               </div>
             </div>
 
             <span className="badge badge-ok" style={{ fontSize: 11 }}>
-              🟢 Đang kết nối bảo mật WebRTC
+              {callStatus === "ringing" ? "🔔 Đang kết nối..." : "🟢 Đang đàm thoại WebRTC P2P"}
             </span>
           </div>
 
@@ -1284,7 +1502,7 @@ export default function MessagesPage() {
                   </span>
                 </div>
 
-                {/* REMOTE VIDEO VIEW */}
+                {/* REMOTE VIDEO VIEW (REAL 2-WAY WEBRTC STREAM) */}
                 <div
                   ref={remoteVideosRef}
                   style={{
@@ -1300,30 +1518,43 @@ export default function MessagesPage() {
                     color: "#94a3b8",
                   }}
                 >
-                  <div style={{ textAlign: "center" }}>
-                    <div
-                      style={{
-                        width: 80,
-                        height: 80,
-                        borderRadius: "50%",
-                        background: "linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 36,
-                        margin: "0 auto 12px",
-                        boxShadow: "0 0 25px rgba(56, 189, 248, 0.4)",
-                      }}
-                    >
-                      {callSession.target_name.startsWith("BS.") ? "🩺" : "🧑‍💼"}
+                  <video
+                    ref={remoteVideoRef}
+                    autoPlay
+                    playsInline
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: hasRemoteStream ? "block" : "none",
+                    }}
+                  />
+                  {!hasRemoteStream && (
+                    <div style={{ textAlign: "center" }}>
+                      <div
+                        style={{
+                          width: 80,
+                          height: 80,
+                          borderRadius: "50%",
+                          background: "linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 36,
+                          margin: "0 auto 12px",
+                          boxShadow: "0 0 25px rgba(56, 189, 248, 0.4)",
+                        }}
+                      >
+                        {callSession.target_name.startsWith("BS.") ? "🩺" : "🧑‍💼"}
+                      </div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
+                        {callSession.target_name}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#38bdf8" }}>
+                        {callStatus === "ringing" ? "🔔 Đang chờ đối phương nhấc máy..." : "🟢 Đang kết nối luồng video HD..."}
+                      </div>
                     </div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
-                      {callSession.target_name}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#38bdf8" }}>
-                      🟢 Kênh truyền hình ảnh và âm thanh trực tiếp 1080p
-                    </div>
-                  </div>
+                  )}
                   <span
                     style={{
                       position: "absolute",
@@ -1401,7 +1632,7 @@ export default function MessagesPage() {
                     fontWeight: 600,
                   }}
                 >
-                  Đang đàm thoại: <strong>{formatTime(callDuration)}</strong>
+                  {callStatus === "ringing" ? "🔔 Đang gọi..." : <span>Đang đàm thoại: <strong>{formatTime(callDuration)}</strong></span>}
                 </div>
               </div>
             )}

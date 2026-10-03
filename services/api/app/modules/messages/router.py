@@ -12,6 +12,8 @@ from app.db import get_db
 from app.modules.auth.deps import CurrentUser, get_current_user
 from app.modules.messages.models import DirectMessage
 from app.modules.messages.schemas import (
+    CallSignalIn,
+    CallSignalOut,
     ContactOut,
     DirectMessageIn,
     DirectMessageOut,
@@ -358,6 +360,10 @@ def send_message(
     )
 
 
+# In-memory signaling store for instant peer-to-peer WebRTC calls
+_CALL_SESSIONS: dict[str, dict] = {}
+
+
 @router.post("/call/token", summary="Tạo phiên gọi thoại hoặc video tức thì giữa 2 người dùng")
 def create_instant_call(
     data: InstantCallRequest,
@@ -395,6 +401,25 @@ def create_instant_call(
     )
     db.add(auto_msg)
     db.commit()
+
+    # Đăng ký phiên WebRTC Signaling
+    import time
+    _CALL_SESSIONS[room_code] = {
+        "room_code": room_code,
+        "status": "ringing",
+        "caller_id": user.id,
+        "caller_name": user.full_name or user.username,
+        "caller_role": user.role,
+        "target_id": target_user.id,
+        "target_name": target_user.full_name or target_user.username,
+        "call_type": data.call_type,
+        "offer": None,
+        "answer": None,
+        "caller_candidates": [],
+        "target_candidates": [],
+        "created_at": time.time(),
+        "updated_at": time.time(),
+    }
     
     return InstantCallResponse(
         room_code=room_code,
@@ -406,6 +431,130 @@ def create_instant_call(
         caller_role=user.role,
         target_id=target_user.id,
         target_name=target_user.full_name or target_user.username,
+    )
+
+
+@router.get("/call/incoming", summary="Kiểm tra xem có cuộc gọi đến đang reo chuông cho tài khoản hiện tại")
+def check_incoming_call(
+    user: CurrentUser = Depends(get_current_user),
+) -> CallSignalOut | None:
+    """Kiểm tra xem có người gọi tới tài khoản hiện tại không (dùng để reo chuông thiết bị phía nhận)."""
+    import time
+    now = time.time()
+    for room_code, s in list(_CALL_SESSIONS.items()):
+        if now - s.get("created_at", 0) > 90:
+            if s.get("status") == "ringing":
+                s["status"] = "ended"
+            continue
+        
+        if s.get("target_id") == user.id and s.get("status") in ("ringing", "connected"):
+            candidates = s.get("caller_candidates", [])
+            return CallSignalOut(
+                room_code=room_code,
+                status=s["status"],
+                caller_id=s["caller_id"],
+                caller_name=s["caller_name"],
+                caller_role=s["caller_role"],
+                target_id=s["target_id"],
+                target_name=s["target_name"],
+                call_type=s["call_type"],
+                offer=s.get("offer"),
+                answer=s.get("answer"),
+                candidates=candidates,
+            )
+    return None
+
+
+@router.post("/call/signal", summary="Trao đổi tín hiệu WebRTC (Offer, Answer, ICE Candidates, End Call)")
+def send_call_signal(
+    signal: CallSignalIn,
+    user: CurrentUser = Depends(get_current_user),
+) -> CallSignalOut:
+    """Trao đổi tín hiệu WebRTC P2P SDP giữa Người gọi (Caller) và Người nghe (Callee)."""
+    import time
+    s = _CALL_SESSIONS.get(signal.room_code)
+    if not s:
+        s = {
+            "room_code": signal.room_code,
+            "status": "ringing",
+            "caller_id": user.id,
+            "caller_name": user.full_name or user.username,
+            "caller_role": user.role,
+            "target_id": "",
+            "target_name": "",
+            "call_type": "video",
+            "offer": None,
+            "answer": None,
+            "caller_candidates": [],
+            "target_candidates": [],
+            "created_at": time.time(),
+            "updated_at": time.time(),
+        }
+        _CALL_SESSIONS[signal.room_code] = s
+
+    s["updated_at"] = time.time()
+    stype = signal.signal_type
+
+    if stype == "offer":
+        s["offer"] = signal.data
+    elif stype == "answer":
+        s["answer"] = signal.data
+        s["status"] = "connected"
+    elif stype == "candidate" and signal.data:
+        if user.id == s.get("caller_id"):
+            s.setdefault("caller_candidates", []).append(signal.data)
+        else:
+            s.setdefault("target_candidates", []).append(signal.data)
+    elif stype in ("accept", "connected"):
+        s["status"] = "connected"
+    elif stype in ("decline", "declined"):
+        s["status"] = "declined"
+    elif stype in ("end", "ended"):
+        s["status"] = "ended"
+
+    is_caller = user.id == s.get("caller_id")
+    remote_candidates = s.get("target_candidates", []) if is_caller else s.get("caller_candidates", [])
+
+    return CallSignalOut(
+        room_code=signal.room_code,
+        status=s["status"],
+        caller_id=s.get("caller_id", ""),
+        caller_name=s.get("caller_name", ""),
+        caller_role=s.get("caller_role", "doctor"),
+        target_id=s.get("target_id", ""),
+        target_name=s.get("target_name", ""),
+        call_type=s.get("call_type", "video"),
+        offer=s.get("offer"),
+        answer=s.get("answer"),
+        candidates=remote_candidates,
+    )
+
+
+@router.get("/call/signal/{room_code}", summary="Lấy tín hiệu WebRTC hiện tại của phòng đàm thoại")
+def get_call_signal(
+    room_code: str,
+    user: CurrentUser = Depends(get_current_user),
+) -> CallSignalOut:
+    """Lấy trạng thái SDP offer/answer và ICE candidates từ phía đối phương."""
+    s = _CALL_SESSIONS.get(room_code)
+    if not s:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Phiên đàm thoại không tồn tại hoặc đã kết thúc")
+
+    is_caller = user.id == s.get("caller_id")
+    remote_candidates = s.get("target_candidates", []) if is_caller else s.get("caller_candidates", [])
+
+    return CallSignalOut(
+        room_code=room_code,
+        status=s.get("status", "ended"),
+        caller_id=s.get("caller_id", ""),
+        caller_name=s.get("caller_name", ""),
+        caller_role=s.get("caller_role", "doctor"),
+        target_id=s.get("target_id", ""),
+        target_name=s.get("target_name", ""),
+        call_type=s.get("call_type", "video"),
+        offer=s.get("offer"),
+        answer=s.get("answer"),
+        candidates=remote_candidates,
     )
 
 
