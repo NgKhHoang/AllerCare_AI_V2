@@ -541,9 +541,41 @@ function PatientCheckInForm(props: Readonly<PatientCheckInFormProps>) {
 function PatientNavTiles({ isTodayCheckedIn }: Readonly<{ isTodayCheckedIn: boolean }>) {
   return (
     <div className="grid-2" style={{ marginBottom: 16 }}>
+      {/* 1. TILE ZALO Y TẾ: TIN NHẮN & GỌI TRỰC TIẾP */}
+      <Link className="smart-tile" href="/messages" style={{ border: "1.5px solid var(--brand-300)", background: "linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="tile-icon" style={{ background: "var(--brand-100)", color: "var(--brand-700)", fontSize: 22 }}>
+            💬
+          </div>
+          <div>
+            <div className="tile-title" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span>Tin nhắn & Gọi Bác sĩ (Zalo Y Tế)</span>
+              <span className="badge badge-ok" style={{ fontSize: 10 }}>🟢 Online 24/7</span>
+            </div>
+            <div className="tile-desc">Nhắn tin trực tiếp, gửi ảnh da liễu và gọi thoại / video call trực tiếp 1 chạm</div>
+          </div>
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--brand-600)" }}>Mở Chat & Gọi →</span>
+      </Link>
+
+      {/* 2. TILE LỊCH HẸN KHÁM BỆNH */}
+      <Link className="smart-tile" href="/patient/appointments">
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="tile-icon" style={{ background: "var(--brand-50)", color: "var(--brand-600)", fontSize: 22 }}>
+            📅
+          </div>
+          <div>
+            <div className="tile-title">Lịch hẹn khám bệnh</div>
+            <div className="tile-desc">Đặt lịch và tham gia phòng khám từ xa với Bác sĩ phụ trách</div>
+          </div>
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--brand-600)" }}>Xem lịch hẹn →</span>
+      </Link>
+
+      {/* 3. TILE ĐƠN THUỐC */}
       <Link className="smart-tile" href="/patient/updates">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div className="tile-icon" style={{ background: "var(--brand-50)", color: "var(--brand-600)" }}>
+          <div className="tile-icon" style={{ background: "var(--brand-50)", color: "var(--brand-600)", fontSize: 22 }}>
             💊
           </div>
           <div>
@@ -554,6 +586,7 @@ function PatientNavTiles({ isTodayCheckedIn }: Readonly<{ isTodayCheckedIn: bool
         <span style={{ fontSize: 12, fontWeight: 700, color: "var(--brand-600)" }}>Xem đơn thuốc →</span>
       </Link>
 
+      {/* 4. TILE PHÂN LUỒNG TRIAGEGUARD AI */}
       <Link
         className={`smart-tile ${!isTodayCheckedIn ? "pulse-red-alert" : ""}`}
         href="/patient/triage"
@@ -571,6 +604,7 @@ function PatientNavTiles({ isTodayCheckedIn }: Readonly<{ isTodayCheckedIn: bool
             style={{
               background: !isTodayCheckedIn ? "#fee2e2" : "#dcfce7",
               color: !isTodayCheckedIn ? "#dc2626" : "#16a34a",
+              fontSize: 22,
             }}
           >
             {!isTodayCheckedIn ? "🚨" : "✅"}
@@ -592,7 +626,7 @@ function PatientNavTiles({ isTodayCheckedIn }: Readonly<{ isTodayCheckedIn: bool
             </div>
             <div className="tile-desc" style={{ color: !isTodayCheckedIn ? "#7f1d1d" : "#15803d" }}>
               {!isTodayCheckedIn
-                ? "Bắt buộc: Bệnh nhân/Người nhà nhập mô tả triệu chứng hôm nay để AI phân luồng cấp cứu & Bác sĩ theo dõi."
+                ? "Bắt buộc: Nhập mô tả triệu chứng hôm nay để AI phân luồng cấp cứu & Bác sĩ theo dõi."
                 : "Đã gửi dữ liệu lâm sàng ngày hôm nay. Bác sĩ điều trị đã nhận được cập nhật."}
             </div>
           </div>
@@ -611,5 +645,6 @@ function PatientNavTiles({ isTodayCheckedIn }: Readonly<{ isTodayCheckedIn: bool
     </div>
   );
 }
+
 
 
