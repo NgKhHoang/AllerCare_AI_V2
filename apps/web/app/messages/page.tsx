@@ -937,23 +937,6 @@ export default function MessagesPage() {
     setCamOn(nextCam);
   };
 
-  const filteredContacts = contacts.filter((c) => {
-    const q = searchQuery.toLowerCase().trim();
-    const matchSearch =
-      !q ||
-      c.full_name.toLowerCase().includes(q) ||
-      c.username.toLowerCase().includes(q) ||
-      (ROLE_LABELS[c.role]?.label ?? "").toLowerCase().includes(q) ||
-      (c.phone ?? "").includes(q);
-    
-    let matchRole = true;
-    if (roleFilter === "doctor") matchRole = c.role === "doctor";
-    else if (roleFilter === "patient") matchRole = c.role === "patient";
-    else if (roleFilter === "staff") matchRole = ["nurse", "pharmacist", "caregiver"].includes(c.role);
-
-    return matchSearch && matchRole;
-  });
-
   const roleName = (user?.role ?? "patient") as "patient" | "doctor" | "nurse" | "leader" | "admin";
   const isPatient = user?.role === "patient" || user?.role === "caregiver";
 
@@ -1543,6 +1526,331 @@ function ChatMainPanel({
   );
 }
 
+/* ---------------- Sub-component: Video Call Layout ---------------- */
+
+function VideoCallLayout({
+  callSession,
+  callStatus,
+  camOn,
+  micOn,
+  hasRemoteStream,
+  localVideoRef,
+  remoteVideoRef,
+  remoteVideosRef,
+}: Readonly<{
+  callSession: CallSession;
+  callStatus: string;
+  camOn: boolean;
+  micOn: boolean;
+  hasRemoteStream: boolean;
+  localVideoRef: React.RefObject<HTMLVideoElement>;
+  remoteVideoRef: React.RefObject<HTMLVideoElement>;
+  remoteVideosRef: React.RefObject<HTMLDivElement>;
+}>) {
+  return (
+    <div style={{ display: "flex", gap: 16, width: "100%", height: "100%", maxHeight: "60vh" }}>
+      {/* LOCAL VIDEO / CAMERA VIEW */}
+      <div
+        style={{
+          flex: 1,
+          background: "#1e293b",
+          borderRadius: 16,
+          position: "relative",
+          overflow: "hidden",
+          border: "2px solid #3b82f6",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <video
+          ref={localVideoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            transform: "scaleX(-1)",
+            display: camOn ? "block" : "none",
+          }}
+        >
+          <track kind="captions" />
+        </video>
+        {!camOn && (
+          <div style={{ textAlign: "center", color: "#94a3b8" }}>
+            <div style={{ fontSize: 44, marginBottom: 8 }}>📷</div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>Camera của bạn đang tắt</div>
+          </div>
+        )}
+        <span
+          style={{
+            position: "absolute",
+            bottom: 12,
+            left: 12,
+            background: "rgba(0,0,0,0.7)",
+            color: "#fff",
+            padding: "4px 10px",
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span>{micOn ? "🎙️" : "🔇"}</span>
+          <span>Bạn ({camOn ? "Camera bật" : "Camera tắt"})</span>
+        </span>
+      </div>
+
+      {/* REMOTE VIDEO VIEW (REAL 2-WAY WEBRTC STREAM) */}
+      <div
+        ref={remoteVideosRef}
+        style={{
+          flex: 1,
+          background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)",
+          borderRadius: 16,
+          position: "relative",
+          overflow: "hidden",
+          border: "2px solid rgba(255,255,255,0.2)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#94a3b8",
+        }}
+      >
+        <video
+          ref={remoteVideoRef}
+          autoPlay
+          playsInline
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: hasRemoteStream ? "block" : "none",
+          }}
+        >
+          <track kind="captions" />
+        </video>
+        {!hasRemoteStream && (
+          <div style={{ textAlign: "center" }}>
+            <div
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 36,
+                margin: "0 auto 12px",
+                boxShadow: "0 0 25px rgba(56, 189, 248, 0.4)",
+              }}
+            >
+              {callSession.target_name.startsWith("BS.") ? "🩺" : "🧑‍💼"}
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
+              {callSession.target_name}
+            </div>
+            <div style={{ fontSize: 12, color: "#38bdf8" }}>
+              {callStatus === "ringing" ? "🔔 Đang chờ đối phương nhấc máy..." : "🟢 Đang kết nối luồng video HD..."}
+            </div>
+          </div>
+        )}
+        <span
+          style={{
+            position: "absolute",
+            bottom: 12,
+            left: 12,
+            background: "rgba(0,0,0,0.7)",
+            color: "#fff",
+            padding: "4px 10px",
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+        >
+          {callSession.target_name}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Sub-component: Voice Call Layout ---------------- */
+
+function VoiceCallLayout({
+  callSession,
+  callStatus,
+  callDuration,
+  micOn,
+}: Readonly<{
+  callSession: CallSession;
+  callStatus: string;
+  callDuration: number;
+  micOn: boolean;
+}>) {
+  return (
+    <div style={{ textAlign: "center", color: "#fff" }}>
+      <div
+        style={{
+          width: 110,
+          height: 110,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #0284c7 0%, #2563eb 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 44,
+          margin: "0 auto 16px",
+          boxShadow: "0 0 35px rgba(59, 130, 246, 0.7)",
+        }}
+      >
+        {callSession.target_name.startsWith("BS.") ? "🩺" : "🧑‍💼"}
+      </div>
+      <div style={{ fontWeight: 800, fontSize: 24, marginBottom: 4 }}>{callSession.target_name}</div>
+      <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 14 }}>
+        Mã hóa trực tiếp 2 đầu • Chuẩn HD Voice (48kHz Stereo)
+      </div>
+
+      {/* ANIMATED AUDIO WAVEFORM EQUALIZER */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          height: 48,
+          marginBottom: 16,
+        }}
+      >
+        {[16, 32, 44, 28, 48, 36, 42, 22, 38, 18, 30, 46].map((h, i) => (
+          <div
+            key={i}
+            style={{
+              width: 5,
+              height: micOn ? h : 6,
+              borderRadius: 4,
+              background: micOn ? "linear-gradient(180deg, #38bdf8 0%, #3b82f6 100%)" : "#475569",
+              transition: "all 0.25s ease",
+            }}
+          />
+        ))}
+      </div>
+
+      <div
+        style={{
+          display: "inline-block",
+          padding: "6px 16px",
+          borderRadius: 20,
+          background: "rgba(56, 189, 248, 0.15)",
+          border: "1px solid rgba(56, 189, 248, 0.3)",
+          fontSize: 13,
+          color: "#38bdf8",
+          fontWeight: 600,
+        }}
+      >
+        {callStatus === "ringing" ? "🔔 Đang gọi..." : <span>Đang đàm thoại: <strong>{formatTime(callDuration)}</strong></span>}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Sub-component: Call Control Toolbar ---------------- */
+
+function CallControlToolbar({
+  isVideoCall,
+  micOn,
+  camOn,
+  onToggleMic,
+  onToggleCam,
+  onEndCall,
+}: Readonly<{
+  isVideoCall: boolean;
+  micOn: boolean;
+  camOn: boolean;
+  onToggleMic: () => void;
+  onToggleCam: () => void;
+  onEndCall: () => void;
+}>) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        gap: 16,
+        paddingTop: 16,
+        borderTop: "1px solid rgba(255,255,255,0.15)",
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggleMic}
+        style={{
+          padding: "12px 20px",
+          borderRadius: 12,
+          border: "none",
+          background: micOn ? "#334155" : "#ef4444",
+          color: "#fff",
+          fontWeight: 600,
+          fontSize: 13,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        {micOn ? "🎙️ Tắt Mic" : "🔇 Bật Mic"}
+      </button>
+
+      {isVideoCall && (
+        <button
+          type="button"
+          onClick={onToggleCam}
+          style={{
+            padding: "12px 20px",
+            borderRadius: 12,
+            border: "none",
+            background: camOn ? "#334155" : "#ef4444",
+            color: "#fff",
+            fontWeight: 600,
+            fontSize: 13,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          {camOn ? "📹 Tắt Camera" : "📷 Bật Camera"}
+        </button>
+      )}
+
+      <button
+        type="button"
+        onClick={onEndCall}
+        style={{
+          padding: "12px 28px",
+          borderRadius: 12,
+          border: "none",
+          background: "#dc2626",
+          color: "#fff",
+          fontWeight: 700,
+          fontSize: 14,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        📞 Kết thúc cuộc gọi
+      </button>
+    </div>
+  );
+}
+
 /* ---------------- Sub-component: Active Call Overlay Modal ---------------- */
 
 function ActiveCallOverlayModal({
@@ -1574,6 +1882,8 @@ function ActiveCallOverlayModal({
   onToggleCam: () => void;
   onEndCall: () => void;
 }>) {
+  const isVideo = callSession.call_type === "video";
+
   return (
     <div
       style={{
@@ -1602,10 +1912,10 @@ function ActiveCallOverlayModal({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 24 }}>{callSession.call_type === "video" ? "📹" : "📞"}</span>
+          <span style={{ fontSize: 24 }}>{isVideo ? "📹" : "📞"}</span>
           <div>
             <div style={{ fontWeight: 700, fontSize: 16 }}>
-              Cuộc gọi {callSession.call_type === "video" ? "Video" : "Thoại"} với {callSession.target_name}
+              Cuộc gọi {isVideo ? "Video" : "Thoại"} với {callSession.target_name}
             </div>
             <div style={{ fontSize: 12, color: "#94a3b8" }}>
               Mã phòng: {callSession.room_code} • {callStatus === "ringing" ? (
@@ -1633,273 +1943,35 @@ function ActiveCallOverlayModal({
           padding: "20px 0",
         }}
       >
-        {callSession.call_type === "video" ? (
-          <div style={{ display: "flex", gap: 16, width: "100%", height: "100%", maxHeight: "60vh" }}>
-            {/* LOCAL VIDEO / CAMERA VIEW */}
-            <div
-              style={{
-                flex: 1,
-                background: "#1e293b",
-                borderRadius: 16,
-                position: "relative",
-                overflow: "hidden",
-                border: "2px solid #3b82f6",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <video
-                ref={localVideoRef}
-                autoPlay
-                playsInline
-                muted
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  transform: "scaleX(-1)",
-                  display: camOn ? "block" : "none",
-                }}
-              >
-                <track kind="captions" />
-              </video>
-              {!camOn && (
-                <div style={{ textAlign: "center", color: "#94a3b8" }}>
-                  <div style={{ fontSize: 44, marginBottom: 8 }}>📷</div>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>Camera của bạn đang tắt</div>
-                </div>
-              )}
-              <span
-                style={{
-                  position: "absolute",
-                  bottom: 12,
-                  left: 12,
-                  background: "rgba(0,0,0,0.7)",
-                  color: "#fff",
-                  padding: "4px 10px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <span>{micOn ? "🎙️" : "🔇"}</span>
-                <span>Bạn ({camOn ? "Camera bật" : "Camera tắt"})</span>
-              </span>
-            </div>
-
-            {/* REMOTE VIDEO VIEW (REAL 2-WAY WEBRTC STREAM) */}
-            <div
-              ref={remoteVideosRef}
-              style={{
-                flex: 1,
-                background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)",
-                borderRadius: 16,
-                position: "relative",
-                overflow: "hidden",
-                border: "2px solid rgba(255,255,255,0.2)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#94a3b8",
-              }}
-            >
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: hasRemoteStream ? "block" : "none",
-                }}
-              >
-                <track kind="captions" />
-              </video>
-              {!hasRemoteStream && (
-                <div style={{ textAlign: "center" }}>
-                  <div
-                    style={{
-                      width: 80,
-                      height: 80,
-                      borderRadius: "50%",
-                      background: "linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 36,
-                      margin: "0 auto 12px",
-                      boxShadow: "0 0 25px rgba(56, 189, 248, 0.4)",
-                    }}
-                  >
-                    {callSession.target_name.startsWith("BS.") ? "🩺" : "🧑‍💼"}
-                  </div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
-                    {callSession.target_name}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#38bdf8" }}>
-                    {callStatus === "ringing" ? "🔔 Đang chờ đối phương nhấc máy..." : "🟢 Đang kết nối luồng video HD..."}
-                  </div>
-                </div>
-              )}
-              <span
-                style={{
-                  position: "absolute",
-                  bottom: 12,
-                  left: 12,
-                  background: "rgba(0,0,0,0.7)",
-                  color: "#fff",
-                  padding: "4px 10px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 600,
-                }}
-              >
-                {callSession.target_name}
-              </span>
-            </div>
-          </div>
+        {isVideo ? (
+          <VideoCallLayout
+            callSession={callSession}
+            callStatus={callStatus}
+            camOn={camOn}
+            micOn={micOn}
+            hasRemoteStream={hasRemoteStream}
+            localVideoRef={localVideoRef}
+            remoteVideoRef={remoteVideoRef}
+            remoteVideosRef={remoteVideosRef}
+          />
         ) : (
-          <div style={{ textAlign: "center", color: "#fff" }}>
-            <div
-              style={{
-                width: 110,
-                height: 110,
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #0284c7 0%, #2563eb 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 44,
-                margin: "0 auto 16px",
-                boxShadow: "0 0 35px rgba(59, 130, 246, 0.7)",
-              }}
-            >
-              {callSession.target_name.startsWith("BS.") ? "🩺" : "🧑‍💼"}
-            </div>
-            <div style={{ fontWeight: 800, fontSize: 24, marginBottom: 4 }}>{callSession.target_name}</div>
-            <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 14 }}>
-              Mã hóa trực tiếp 2 đầu • Chuẩn HD Voice (48kHz Stereo)
-            </div>
-
-            {/* ANIMATED AUDIO WAVEFORM EQUALIZER */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                height: 48,
-                marginBottom: 16,
-              }}
-            >
-              {[16, 32, 44, 28, 48, 36, 42, 22, 38, 18, 30, 46].map((h, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: 5,
-                    height: micOn ? h : 6,
-                    borderRadius: 4,
-                    background: micOn ? "linear-gradient(180deg, #38bdf8 0%, #3b82f6 100%)" : "#475569",
-                    transition: "all 0.25s ease",
-                  }}
-                />
-              ))}
-            </div>
-
-            <div
-              style={{
-                display: "inline-block",
-                padding: "6px 16px",
-                borderRadius: 20,
-                background: "rgba(56, 189, 248, 0.15)",
-                border: "1px solid rgba(56, 189, 248, 0.3)",
-                fontSize: 13,
-                color: "#38bdf8",
-                fontWeight: 600,
-              }}
-            >
-              {callStatus === "ringing" ? "🔔 Đang gọi..." : <span>Đang đàm thoại: <strong>{formatTime(callDuration)}</strong></span>}
-            </div>
-          </div>
+          <VoiceCallLayout
+            callSession={callSession}
+            callStatus={callStatus}
+            callDuration={callDuration}
+            micOn={micOn}
+          />
         )}
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: 16,
-          paddingTop: 16,
-          borderTop: "1px solid rgba(255,255,255,0.15)",
-        }}
-      >
-        <button
-          type="button"
-          onClick={onToggleMic}
-          style={{
-            padding: "12px 20px",
-            borderRadius: 12,
-            border: "none",
-            background: micOn ? "#334155" : "#ef4444",
-            color: "#fff",
-            fontWeight: 600,
-            fontSize: 13,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          {micOn ? "🎙️ Tắt Mic" : "🔇 Bật Mic"}
-        </button>
-
-        {callSession.call_type === "video" && (
-          <button
-            type="button"
-            onClick={onToggleCam}
-            style={{
-              padding: "12px 20px",
-              borderRadius: 12,
-              border: "none",
-              background: camOn ? "#334155" : "#ef4444",
-              color: "#fff",
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            {camOn ? "📹 Tắt Camera" : "📷 Bật Camera"}
-          </button>
-        )}
-
-        <button
-          type="button"
-          onClick={onEndCall}
-          style={{
-            padding: "12px 28px",
-            borderRadius: 12,
-            border: "none",
-            background: "#dc2626",
-            color: "#fff",
-            fontWeight: 700,
-            fontSize: 14,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          📞 Kết thúc cuộc gọi
-        </button>
-      </div>
+      <CallControlToolbar
+        isVideoCall={isVideo}
+        micOn={micOn}
+        camOn={camOn}
+        onToggleMic={onToggleMic}
+        onToggleCam={onToggleCam}
+        onEndCall={onEndCall}
+      />
     </div>
   );
 }
