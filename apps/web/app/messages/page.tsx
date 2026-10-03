@@ -563,10 +563,13 @@ export default function MessagesPage() {
   };
 
   const filteredContacts = contacts.filter((c) => {
+    const q = searchQuery.toLowerCase().trim();
     const matchSearch =
-      c.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (ROLE_LABELS[c.role]?.label ?? "").toLowerCase().includes(searchQuery.toLowerCase());
+      !q ||
+      c.full_name.toLowerCase().includes(q) ||
+      c.username.toLowerCase().includes(q) ||
+      (ROLE_LABELS[c.role]?.label ?? "").toLowerCase().includes(q) ||
+      (c.phone ?? "").includes(q);
     
     let matchRole = true;
     if (roleFilter === "doctor") matchRole = c.role === "doctor";
@@ -575,6 +578,7 @@ export default function MessagesPage() {
 
     return matchSearch && matchRole;
   });
+
 
   const roleName = (user?.role ?? "patient") as "patient" | "doctor" | "nurse" | "leader" | "admin";
 
