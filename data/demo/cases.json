@@ -10,9 +10,9 @@
       { "substance": "Penicillin", "reaction": "Nổi mề đay toàn thân", "severity": "medium", "verification": "verified" }
     ],
     "meds": [
-      { "raw_name": "Glucophage 850mg", "is_current": true, "is_planned": false, "frequency": "1 viên x 2 lần/ngày", "route": "uống" },
-      { "raw_name": "Amlodipin 5mg", "is_current": true, "is_planned": false, "frequency": "1 viên/ngày", "route": "uống" },
-      { "raw_name": "Amoxicillin 500mg", "is_current": false, "is_planned": true, "frequency": "1 viên x 3 lần/ngày", "route": "uống" }
+      { "raw_name": "Glucophage 850mg", "is_current": true, "is_planned": false, "frequency": "1 viên x 2 lần/ngày", "route": "uống", "source": "Điều trị: Đái tháo đường típ 2" },
+      { "raw_name": "Amlodipin 5mg", "is_current": true, "is_planned": false, "frequency": "1 viên/ngày", "route": "uống", "source": "Điều trị: Tăng huyết áp" },
+      { "raw_name": "Amoxicillin 500mg", "is_current": false, "is_planned": true, "frequency": "1 viên x 3 lần/ngày", "route": "uống", "source": "Dự kiến (Thử nghiệm)" }
     ],
     "labs": [
       { "label": "CrCl (tính theo Cockcroft-Gault)", "value": "52", "unit": "ml/min" }
@@ -41,8 +41,8 @@
     "doctor": "doctor1",
     "allergies": [],
     "meds": [
-      { "raw_name": "Warfarin 3mg", "is_current": true, "is_planned": false, "frequency": "1 viên/ngày", "route": "uống" },
-      { "raw_name": "Aspirin 81mg", "is_current": true, "is_planned": false, "frequency": "1 viên/ngày", "route": "uống" }
+      { "raw_name": "Warfarin 3mg", "is_current": true, "is_planned": false, "frequency": "1 viên/ngày", "route": "uống", "source": "Điều trị: Rung nhĩ" },
+      { "raw_name": "Aspirin 81mg", "is_current": true, "is_planned": false, "frequency": "1 viên/ngày", "route": "uống", "source": "Điều trị: Tăng huyết áp" }
     ],
     "labs": []
   },

@@ -44,6 +44,7 @@ export interface ActiveMedicationItem {
   dose?: string | null;
   timing?: string | null;
   frequency?: string | null;
+  route?: string | null;
   prescriber?: string | null;
   source_label?: string | null;
   verification?: string;
@@ -101,6 +102,100 @@ const STATUS_CONFIG: Record<TreatmentStatus, { label: string; badge: string; col
   },
 };
 
+// Helper phân loại thuốc theo từng loại bệnh
+export function isMedForCondition(
+  med: ActiveMedicationItem,
+  condition: DiseaseCondition,
+  allConditions: DiseaseCondition[] = []
+): boolean {
+  if (!med || !condition) return false;
+  const condName = (condition.name || "").toLowerCase().trim();
+  const src = (med.source_label || "").toLowerCase();
+  const prescriber = (med.prescriber || "").toLowerCase();
+  const medName = (med.name || "").toLowerCase();
+
+  // 1. Khớp chính xác tên bệnh trong nguồn gốc hoặc người kê
+  if (src.includes(condName) || prescriber.includes(condName)) {
+    return true;
+  }
+
+  // 2. Bộ từ khóa lâm sàng ánh xạ thuốc với diện bệnh
+  const rules: Array<{ keywords: string[]; medKeywords: string[] }> = [
+    {
+      keywords: ["đái tháo đường", "tiểu đường", "diabetes"],
+      medKeywords: ["glucophage", "metformin", "gliclazide", "diamicron", "insulin", "januvia", "forxiga", "jardiance", "glimepiride"]
+    },
+    {
+      keywords: ["tăng huyết áp", "huyết áp", "hypertension", "tim mạch", "suy tim", "rung nhĩ", "mạch vành", "tim"],
+      medKeywords: ["amlodipin", "losartan", "enalapril", "captopril", "bisoprolol", "concor", "nebivolol", "telmisartan", "micardis", "aspirin", "warfarin", "clopidogrel", "plavix", "atorvastatin", "rosuvastatin", "lipitor", "crestor"]
+    },
+    {
+      keywords: ["dạ dày", "ruột", "tiêu hóa", "viêm loét", "trào ngược", "gastro", "gerd", "đại tràng"],
+      medKeywords: ["smecta", "berberin", "omeprazole", "nexium", "esomeprazole", "pantoprazole", "gaviscon", "phosphalugel", "domperidone", "motilium", "spasfon", "men vi sinh", "probiotic", "enterogermina"]
+    },
+    {
+      keywords: ["dị ứng", "viêm da", "viêm mũi", "mày đay", "allergy", "dermatitis", "asthma", "hen suyễn"],
+      medKeywords: ["fexofenadine", "cetirizine", "loratadine", "telfast", "clarityne", "singulair", "montelukast", "hydrocortisone", "prednisolone", "medrol", "seretide", "symbicort", "ventolin"]
+    },
+    {
+      keywords: ["nhiễm trùng", "nhiễm khuẩn", "viêm họng", "viêm phế quản", "viêm phổi"],
+      medKeywords: ["augmentin", "amoxicillin", "azithromycin", "ciprofloxacin", "cefixime", "klacid", "zithromax"]
+    },
+    {
+      keywords: ["xương khớp", "thoái hóa", "gout", "viêm khớp"],
+      medKeywords: ["colchicine", "allopurinol", "febuxostat", "celebrex", "meloxicam", "glucosamine", "paracetamol", "efferalgan"]
+    }
+  ];
+
+  for (const r of rules) {
+    const condMatches = r.keywords.some((k) => condName.includes(k));
+    if (condMatches) {
+      if (r.medKeywords.some((mk) => medName.includes(mk) || src.includes(mk))) {
+        return true;
+      }
+    }
+  }
+
+  // 3. Nếu thuốc này khớp với một bệnh khác trong danh sách của bệnh nhân, không gán cho bệnh hiện tại
+  const matchesOther = (allConditions || []).some((c) => {
+    if (c.id === condition.id) return false;
+    const otherName = (c.name || "").toLowerCase().trim();
+    if (src.includes(otherName) || prescriber.includes(otherName)) return true;
+    for (const r of rules) {
+      if (r.keywords.some((k) => otherName.includes(k))) {
+        if (r.medKeywords.some((mk) => medName.includes(mk) || src.includes(mk))) {
+          return true;
+        }
+      }
+    }
+    return false;
+  });
+
+  if (matchesOther) {
+    return false;
+  }
+
+  // 4. Mặc định: nếu bệnh nhân chỉ có đúng 1 loại bệnh, hiển thị toàn bộ
+  if (!allConditions || allConditions.length <= 1) {
+    return true;
+  }
+
+  return false;
+}
+
+// Tìm tên bệnh tương ứng của thuốc trong danh sách bệnh
+export function getConditionForMed(med: ActiveMedicationItem, allConditions: DiseaseCondition[] = []): string | null {
+  for (const cond of allConditions) {
+    if (isMedForCondition(med, cond, allConditions)) {
+      return cond.name;
+    }
+  }
+  if (med.source_label && med.source_label.startsWith("Điều trị: ")) {
+    return med.source_label.replace("Điều trị: ", "").trim();
+  }
+  return null;
+}
+
 // Helper tính toán tiến trình Real-time theo ngày thực tế
 function calcLiveTreatmentProgress(startDateStr?: string, followupDateStr?: string | null) {
   const now = new Date();
@@ -113,7 +208,6 @@ function calcLiveTreatmentProgress(startDateStr?: string, followupDateStr?: stri
   let followup = followupDateStr && followupDateStr !== "Chưa hẹn" ? new Date(followupDateStr) : null;
   if (followup && Number.isNaN(followup.getTime())) followup = null;
 
-  // Nếu chưa có ngày tái khám, mặc định 14 ngày
   const targetDate = followup
     ? new Date(followup.getFullYear(), followup.getMonth(), followup.getDate())
     : new Date(startDate.getTime() + 14 * 24 * 60 * 60 * 1000);
@@ -122,7 +216,6 @@ function calcLiveTreatmentProgress(startDateStr?: string, followupDateStr?: stri
   const totalDays = Math.max(1, Math.round((targetDate.getTime() - startDate.getTime()) / msPerDay));
   const elapsedDays = Math.round((today.getTime() - startDate.getTime()) / msPerDay);
 
-  // Ngày thứ mấy trong đợt điều trị (1-indexed)
   const currentDay = Math.max(1, Math.min(totalDays, elapsedDays + 1));
   const daysLeft = Math.max(0, Math.round((targetDate.getTime() - today.getTime()) / msPerDay));
 
@@ -183,62 +276,81 @@ function DiseaseCardButton({
     <div
       style={{
         padding: "16px 18px",
-        background: "var(--bg-surface, #ffffff)",
-        border: `1.5px solid ${cfg.border}`,
-        borderRadius: 12,
-        transition: "all 0.2s ease-in-out",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+        background: "#ffffff",
+        border: "1.5px solid var(--border-default)",
+        borderRadius: 14,
+        boxShadow: "0 3px 10px rgba(0,0,0,0.03)",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        textAlign: "left",
-        width: "100%",
-        position: "relative",
+        transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
       }}
     >
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => onSelect(cond.id)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") onSelect(cond.id);
-        }}
-        style={{ cursor: "pointer" }}
-      >
+      <div>
+        {/* HEADER THẺ */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
-          <span style={{ fontSize: "0.78rem", color: "#0284c7", fontWeight: 800, background: "#e0f2fe", padding: "2px 8px", borderRadius: 6 }}>
-            Loại {index + 1}
-          </span>
-          <span className={cfg.badge} style={{ fontSize: "0.75rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: "50%",
+                background: "#f0f9ff",
+                color: "#0284c7",
+                fontSize: "0.75rem",
+                fontWeight: 800,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid #bae6fd",
+              }}
+            >
+              {index + 1}
+            </span>
+            <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 700, textTransform: "uppercase" }}>
+              Bệnh {index + 1}
+            </span>
+          </div>
+          <span className={cfg.badge} style={{ fontSize: "0.75rem", padding: "2px 8px" }}>
             ● {cfg.label}
           </span>
         </div>
 
-        <h4 style={{ margin: "0 0 6px", fontSize: "1.1rem", color: "var(--text-primary)", fontWeight: 700 }}>
+        {/* TÊN BỆNH */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => onSelect(cond.id)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") onSelect(cond.id);
+          }}
+          style={{
+            fontSize: "1.05rem",
+            fontWeight: 800,
+            color: "var(--text-primary)",
+            marginBottom: 6,
+            cursor: "pointer",
+            lineHeight: 1.3,
+          }}
+        >
           🩺 {cond.name}
-        </h4>
+        </div>
 
         {cond.note && (
-          <p style={{ margin: "0 0 8px", fontSize: "0.82rem", color: "var(--text-secondary)", fontStyle: "italic" }}>
-            {cond.note}
+          <p style={{ margin: "0 0 10px", fontSize: "0.82rem", color: "var(--text-secondary)", fontStyle: "italic", lineClamp: 2 }}>
+            "{cond.note}"
           </p>
         )}
 
-        <div style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: 6 }}>
-          <div>🚩 Bắt đầu: <strong>{cardStats.startDateStr}</strong></div>
-          <div>🗓️ Tái khám: <strong style={{ color: "#d97706" }}>{cardStats.followupDateStr}</strong></div>
-        </div>
-
-        {/* Live Progress Mini-Bar */}
-        <div style={{ marginTop: 10, padding: "8px 10px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #f1f5f9" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.75rem", marginBottom: 4 }}>
-            <span style={{ color: "#0369a1", fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#10b981" }} />
-              Live: Ngày {cardStats.currentDay}/{cardStats.totalDays} ({cardStats.percent}%)
-            </span>
-            <span style={{ color: "#d97706", fontWeight: 700 }}>
-              Còn {cardStats.daysLeft} ngày
-            </span>
+        {/* TIẾN ĐỘ THỜI GIAN NHANH */}
+        <div style={{ background: "#f8fafc", padding: "8px 10px", borderRadius: 8, border: "1px solid #f1f5f9", marginTop: 6 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.76rem", color: "#64748b", marginBottom: 4 }}>
+            <span>Bắt đầu: <strong>{cardStats.startDateStr}</strong></span>
+            <span style={{ color: "#d97706", fontWeight: 700 }}>Tái khám: {cardStats.followupDateStr}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.74rem", color: "#0284c7", fontWeight: 700, marginBottom: 2 }}>
+            <span>Hôm nay: Ngày {cardStats.currentDay}/{cardStats.totalDays}</span>
+            <span>Tiến độ: {cardStats.percent}%</span>
           </div>
           <div style={{ width: "100%", height: 6, backgroundColor: "#e2e8f0", borderRadius: 4, overflow: "hidden" }}>
             <div
@@ -253,7 +365,7 @@ function DiseaseCardButton({
         </div>
       </div>
 
-      {/* FOOTER ACTIONS: KẾT THÚC / XÓA BỆNH CHO BÁC SĨ HOẶC XEM PHÁC ĐỒ */}
+      {/* FOOTER ACTIONS */}
       <div
         style={{
           marginTop: 14,
@@ -327,7 +439,7 @@ function DiseaseCardButton({
 }
 
 // ----------------------------------------------------------------------
-// SUB-COMPONENT: THẺ UỐNG THUỐC HÔM NAY (VIEW 2)
+// SUB-COMPONENT: THẺ UỐNG THUỐC CHO BỆNH NHÂN (CHECKIN HÔM NAY)
 // ----------------------------------------------------------------------
 function MedicationAdherenceItem({
   med,
@@ -386,6 +498,76 @@ function MedicationAdherenceItem({
 }
 
 // ----------------------------------------------------------------------
+// SUB-COMPONENT: THẺ QUẢN TRỊ THUỐC CHO BÁC SĨ (THÊM, SỬA, XÓA)
+// ----------------------------------------------------------------------
+function DoctorMedicationCard({
+  med,
+  onEdit,
+  onDelete,
+}: {
+  readonly med: ActiveMedicationItem;
+  readonly onEdit: (med: ActiveMedicationItem) => void;
+  readonly onDelete: (medId: string, medName: string) => void;
+}) {
+  return (
+    <div
+      style={{
+        padding: "14px 16px",
+        background: "#ffffff",
+        border: "1.5px solid #e2e8f0",
+        borderRadius: 12,
+        boxShadow: "0 2px 6px rgba(0,0,0,0.03)",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        gap: 10,
+      }}
+    >
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+          <strong style={{ fontSize: "0.95rem", color: "#0f172a" }}>💊 {med.name}</strong>
+          <VerifiedBadge verification={med.verification || "verified"} />
+        </div>
+        <div style={{ fontSize: "0.83rem", color: "#475569", marginTop: 4 }}>
+          Liều dùng: <strong>{med.dose || "1 viên/lần"}</strong> • Tần suất: <strong>{med.frequency || "Hàng ngày"}</strong>
+        </div>
+        {med.timing && (
+          <div style={{ fontSize: "0.8rem", color: "#0284c7", marginTop: 3, fontWeight: 600 }}>
+            ⏰ Thời điểm: {med.timing}
+          </div>
+        )}
+        {med.prescriber && (
+          <div style={{ fontSize: "0.76rem", color: "#64748b", marginTop: 2 }}>
+            👨‍⚕️ {med.prescriber}
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, borderTop: "1px dashed #f1f5f9", paddingTop: 8 }}>
+        <button
+          type="button"
+          onClick={() => onEdit(med)}
+          className="btn btn-secondary btn-sm"
+          style={{ fontSize: "0.78rem", padding: "4px 10px", color: "#0284c7", borderColor: "#bae6fd", background: "#f0f9ff", fontWeight: 700 }}
+          title="Chỉnh sửa liều lượng, tần suất hoặc giờ uống"
+        >
+          ✏️ Sửa
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(med.id, med.name)}
+          className="btn btn-secondary btn-sm"
+          style={{ fontSize: "0.78rem", padding: "4px 10px", color: "#dc2626", borderColor: "#fca5a5", background: "#fef2f2", fontWeight: 700 }}
+          title="Xóa thuốc khỏi đơn điều trị"
+        >
+          🗑️ Xóa
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------
 // SUB-COMPONENT: CHI TIẾT LOẠI BỆNH & CÂY TIMELINE REAL-TIME (VIEW 2)
 // ----------------------------------------------------------------------
 function ConditionDetailView({
@@ -404,6 +586,9 @@ function ConditionDetailView({
   onToggleMed,
   onResolveCondition,
   onOpenDeleteModal,
+  onOpenPrescribeModal,
+  onOpenEditMedModal,
+  onOpenDeleteMedModal,
 }: {
   readonly data: TreatmentTimelineData;
   readonly activeCondition: DiseaseCondition;
@@ -420,6 +605,9 @@ function ConditionDetailView({
   readonly onToggleMed: (id: string) => void;
   readonly onResolveCondition?: (id: string) => void;
   readonly onOpenDeleteModal?: (id: string, name: string) => void;
+  readonly onOpenPrescribeModal?: (conditionName: string) => void;
+  readonly onOpenEditMedModal?: (med: ActiveMedicationItem) => void;
+  readonly onOpenDeleteMedModal?: (medId: string, medName: string) => void;
 }) {
   const statusCfg = STATUS_CONFIG[activeCondition.status] || STATUS_CONFIG.active;
   const condStartDate = activeCondition.start_date || data.treatment_start_date || "2026-09-01";
@@ -429,17 +617,12 @@ function ConditionDetailView({
   const conditionIndex = data.conditions?.findIndex((c) => c.id === activeCondition.id) ?? -1;
   const conditionOrderLabel = conditionIndex >= 0 ? `Loại ${conditionIndex + 1}` : "Bệnh lý";
 
-  // Lọc danh mục thuốc riêng cho loại bệnh này
-  const conditionMeds = (data.active_medications || []).filter((m) => {
-    if (!m) return false;
-    const src = (m.source_label || m.prescriber || "").toLowerCase();
-    const condName = activeCondition.name.toLowerCase();
-    return src.includes(condName) || (data.conditions?.length === 1);
-  });
+  // LỌC CHÍNH XÁC DANH MỤC THUỐC CHO LOẠI BỆNH NÀY
+  const conditionMeds = (data.active_medications || []).filter((m) =>
+    isMedForCondition(m, activeCondition, data.conditions || [])
+  );
   const conditionTakenCount = conditionMeds.filter((m) => !!takenMeds[m.id]).length;
   const conditionTotalMeds = conditionMeds.length;
-  const totalMeds = conditionTotalMeds;
-  const takenCount = conditionTakenCount;
 
   return (
     <div className="card" style={{ marginBottom: 20, border: "1px solid var(--border-default)", boxShadow: "0 4px 16px rgba(0,0,0,0.04)" }}>
@@ -456,10 +639,18 @@ function ConditionDetailView({
 
         {isDoctor && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => onOpenPrescribeModal && onOpenPrescribeModal(activeCondition.name)}
+              style={{ fontSize: "0.85rem", padding: "6px 14px", background: "#0284c7", borderColor: "#0284c7" }}
+            >
+              ➕ 🩺 Kê đơn thuốc cho bệnh này
+            </button>
             {!isEditing && (
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-secondary"
                 onClick={onStartEdit}
                 style={{ fontSize: "0.85rem", padding: "6px 14px" }}
               >
@@ -725,7 +916,7 @@ function ConditionDetailView({
             </span>
             <strong style={{ fontSize: "0.88rem", color: "var(--text-primary)" }}>Uống thuốc & Theo dõi</strong>
             <span style={{ fontSize: "0.8rem", color: "#059669", fontWeight: 700 }}>
-              {totalMeds} loại thuốc đang dùng ({takenCount}/{totalMeds} cữ đã uống)
+              {conditionTotalMeds} loại thuốc đang dùng ({conditionTakenCount}/{conditionTotalMeds} cữ đã uống)
             </span>
             <p style={{ fontSize: "0.78rem", color: "var(--muted)", margin: "4px 0 0" }}>
               Tuân thủ đúng liều lượng và thời điểm uống hôm nay
@@ -749,7 +940,7 @@ function ConditionDetailView({
         </div>
       </div>
 
-      {/* DANH MỤC THUỐC RIÊNG CHO TỪNG LOẠI BỆNH (CHUẨN 10.3) */}
+      {/* DANH MỤC THUỐC RIÊNG CHO TỪNG LOẠI BỆNH */}
       <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--border-default)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
           <div>
@@ -761,21 +952,41 @@ function ConditionDetailView({
             </span>
           </div>
 
-          <span style={{ fontSize: "0.82rem", color: conditionTotalMeds > 0 && conditionTakenCount === conditionTotalMeds ? "#16a34a" : "#0284c7", fontWeight: 700 }}>
-            {conditionTotalMeds > 0 && conditionTakenCount === conditionTotalMeds ? "✓ Đã hoàn thành uống thuốc cho bệnh này!" : `Đã uống: ${conditionTakenCount}/${conditionTotalMeds} thuốc`}
-          </span>
+          {isDoctor ? (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => onOpenPrescribeModal && onOpenPrescribeModal(activeCondition.name)}
+              style={{ fontSize: "0.8rem", padding: "4px 12px", background: "#0284c7", borderColor: "#0284c7" }}
+            >
+              ➕ Kê thêm thuốc cho bệnh này
+            </button>
+          ) : (
+            <span style={{ fontSize: "0.82rem", color: conditionTotalMeds > 0 && conditionTakenCount === conditionTotalMeds ? "#16a34a" : "#0284c7", fontWeight: 700 }}>
+              {conditionTotalMeds > 0 && conditionTakenCount === conditionTotalMeds ? "✓ Đã hoàn thành uống thuốc cho bệnh này!" : `Đã uống: ${conditionTakenCount}/${conditionTotalMeds} thuốc`}
+            </span>
+          )}
         </div>
 
         {conditionMeds.length > 0 ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
-            {conditionMeds.map((m) => (
-              <MedicationAdherenceItem
-                key={m.id}
-                med={m}
-                isTaken={!!takenMeds[m.id]}
-                onToggle={onToggleMed}
-              />
-            ))}
+            {conditionMeds.map((m) =>
+              isDoctor ? (
+                <DoctorMedicationCard
+                  key={m.id}
+                  med={m}
+                  onEdit={(med) => onOpenEditMedModal && onOpenEditMedModal(med)}
+                  onDelete={(id, name) => onOpenDeleteMedModal && onOpenDeleteMedModal(id, name)}
+                />
+              ) : (
+                <MedicationAdherenceItem
+                  key={m.id}
+                  med={m}
+                  isTaken={!!takenMeds[m.id]}
+                  onToggle={onToggleMed}
+                />
+              )
+            )}
           </div>
         ) : (
           <div style={{ padding: "16px 18px", background: "#f8fafc", borderRadius: 12, border: "1px dashed #cbd5e1" }}>
@@ -783,7 +994,9 @@ function ConditionDetailView({
               Chưa có thuốc nào được kê riêng cho {activeCondition.name}.
             </p>
             <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
-              Bác sĩ có thể bấm nút kê đơn để bổ sung thuốc điều trị riêng cho bệnh này, hoặc xem danh mục thuốc toàn thân tại trang tổng quan.
+              {isDoctor
+                ? "Bác sĩ có thể bấm nút 'Kê đơn thuốc cho bệnh này' ở trên để bổ sung thuốc điều trị."
+                : "Bác sĩ chưa kê đơn thuốc riêng cho mặt bệnh này."}
             </span>
           </div>
         )}
@@ -793,7 +1006,7 @@ function ConditionDetailView({
 }
 
 // ----------------------------------------------------------------------
-// SUB-COMPONENT: DANH SÁCH BỆNH & TIỀN SỬ DỊ ỨNG (VIEW 1)
+// SUB-COMPONENT: DANH SÁCH BỆNH & TIỀN SỬ DỊ ỨNG & TOÀN BỘ THUỐC (VIEW 1 - TỔNG QUAN)
 // ----------------------------------------------------------------------
 function ConditionListView({
   data,
@@ -807,6 +1020,9 @@ function ConditionListView({
   adding,
   onResolveCondition,
   onOpenDeleteModal,
+  onOpenPrescribeModal,
+  onOpenEditMedModal,
+  onOpenDeleteMedModal,
 }: {
   readonly data: TreatmentTimelineData;
   readonly isDoctor: boolean;
@@ -819,6 +1035,9 @@ function ConditionListView({
   readonly adding: boolean;
   readonly onResolveCondition?: (id: string) => void;
   readonly onOpenDeleteModal?: (id: string, name: string) => void;
+  readonly onOpenPrescribeModal?: (conditionName?: string) => void;
+  readonly onOpenEditMedModal?: (med: ActiveMedicationItem) => void;
+  readonly onOpenDeleteMedModal?: (medId: string, medName: string) => void;
 }) {
   return (
     <div className="card" style={{ marginBottom: 20, border: "1px solid var(--border-default)", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
@@ -830,7 +1049,7 @@ function ConditionListView({
               🩺 CÁC LOẠI BỆNH ĐANG ĐIỀU TRỊ ({data.conditions?.length || 0})
             </h4>
             <span style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
-              Bấm vào từng loại bệnh bên dưới để xem chi tiết phác đồ, mốc thời gian & cây timeline
+              Bấm vào từng loại bệnh bên dưới để xem chi tiết phác đồ, mốc thời gian & danh mục thuốc riêng
             </span>
           </div>
 
@@ -1005,41 +1224,79 @@ function ConditionListView({
       {/* 3. MỤC DANH MỤC THUỐC ĐANG ĐIỀU TRỊ (TỔNG HỢP TOÀN DIỆN - TRANG CHỦ) */}
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-          <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
-            💊 DANH MỤC THUỐC ĐANG ĐIỀU TRỊ (TỔNG HỢP TOÀN BỘ: {data.active_medications?.length || 0} THUỐC)
-          </h4>
-          <span className="badge badge-info" style={{ fontSize: "0.78rem" }}>
-            Hiển thị tổng quan các thuốc đang nạp vào cơ thể
-          </span>
+          <div>
+            <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
+              💊 DANH MỤC THUỐC ĐANG ĐIỀU TRỊ (TỔNG HỢP TẤT CẢ CÁC BỆNH: {data.active_medications?.length || 0} THUỐC)
+            </h4>
+            <span style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
+              Hiển thị toàn bộ thuốc được kê cho các mặt bệnh của bệnh nhân
+            </span>
+          </div>
+
+          {isDoctor && (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => onOpenPrescribeModal && onOpenPrescribeModal()}
+              style={{ fontSize: "0.8rem", padding: "4px 12px", background: "#0284c7", borderColor: "#0284c7" }}
+            >
+              ➕ 🩺 Kê đơn thuốc mới
+            </button>
+          )}
         </div>
 
         {data.active_medications && data.active_medications.length > 0 ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
-            {data.active_medications.map((m) => (
-              <div
-                key={m.id}
-                className="list-row"
-                style={{
-                  padding: "12px 14px",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 10,
-                  background: "#ffffff",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <div className="list-main">
-                  <div style={{ fontWeight: 700, fontSize: "0.92rem", color: "#0f172a" }}>💊 {m.name}</div>
-                  <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: 2 }}>
-                    {m.dose || "1 viên"} · {m.timing || "Sau ăn"} · {m.prescriber || "Bác sĩ kê"}
-                  </div>
+            {data.active_medications.map((m) => {
+              const matchedCondName = getConditionForMed(m, data.conditions || []);
+              return isDoctor ? (
+                <div key={m.id} style={{ position: "relative" }}>
+                  {matchedCondName && (
+                    <div style={{ marginBottom: 4 }}>
+                      <span className="badge badge-info" style={{ fontSize: "0.72rem", fontWeight: 700 }}>
+                        🩺 Điều trị: {matchedCondName}
+                      </span>
+                    </div>
+                  )}
+                  <DoctorMedicationCard
+                    med={m}
+                    onEdit={(med) => onOpenEditMedModal && onOpenEditMedModal(med)}
+                    onDelete={(id, name) => onOpenDeleteMedModal && onOpenDeleteMedModal(id, name)}
+                  />
                 </div>
-                <span className="badge badge-ok" style={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>
-                  Đang dùng
-                </span>
-              </div>
-            ))}
+              ) : (
+                <div
+                  key={m.id}
+                  className="list-row"
+                  style={{
+                    padding: "12px 14px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 10,
+                    background: "#ffffff",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div className="list-main">
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ fontWeight: 700, fontSize: "0.92rem", color: "#0f172a" }}>💊 {m.name}</span>
+                      {matchedCondName && (
+                        <span className="badge badge-info" style={{ fontSize: "0.7rem", padding: "1px 6px" }}>
+                          🩺 {matchedCondName}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: 2 }}>
+                      {m.dose || "1 viên"} · {m.timing || "Sau ăn"} · {m.prescriber || "Bác sĩ kê"}
+                    </div>
+                  </div>
+                  <span className="badge badge-ok" style={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>
+                    Đang dùng
+                  </span>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="muted" style={{ fontSize: "0.85rem", fontStyle: "italic", margin: 0 }}>
@@ -1085,12 +1342,65 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
   });
   const [adding, setAdding] = useState(false);
 
-  // Modal Delete Condition State (10.3)
+  // Modal Delete Condition State
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; condId: string; condName: string; reason: string }>({
     open: false,
     condId: "",
     condName: "",
     reason: "",
+  });
+
+  // Modal Quick Prescribe for Doctor
+  const [prescribeModal, setPrescribeModal] = useState<{
+    open: boolean;
+    conditionName: string;
+    rawName: string;
+    dose: string;
+    frequency: string;
+    timing: string;
+    route: string;
+    instructions: string;
+  }>({
+    open: false,
+    conditionName: "",
+    rawName: "",
+    dose: "1 viên/lần",
+    frequency: "2 lần/ngày",
+    timing: "Sau ăn 30 phút",
+    route: "uống",
+    instructions: "",
+  });
+
+  // Modal Edit Medication for Doctor
+  const [editMedModal, setEditMedModal] = useState<{
+    open: boolean;
+    medId: string;
+    medName: string;
+    dose: string;
+    frequency: string;
+    timing: string;
+    route: string;
+    conditionName: string;
+  }>({
+    open: false,
+    medId: "",
+    medName: "",
+    dose: "",
+    frequency: "",
+    timing: "",
+    route: "uống",
+    conditionName: "",
+  });
+
+  // Modal Delete Medication for Doctor
+  const [deleteMedModal, setDeleteMedModal] = useState<{
+    open: boolean;
+    medId: string;
+    medName: string;
+  }>({
+    open: false,
+    medId: "",
+    medName: "",
   });
 
   function toggleMedTaken(medId: string) {
@@ -1250,6 +1560,104 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
     }
   }
 
+  // Doctor Quick Prescribe Submit
+  async function handlePrescribeSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!prescribeModal.rawName.trim()) {
+      setError("Vui lòng nhập tên thuốc");
+      return;
+    }
+    try {
+      setSaving(true);
+      setError("");
+      await api(`/v1/patients/${profileId}/prescribe`, {
+        method: "POST",
+        body: {
+          raw_name: prescribeModal.rawName.trim(),
+          dose: prescribeModal.dose.trim() || null,
+          frequency: prescribeModal.frequency.trim() || null,
+          timing: prescribeModal.timing.trim() || null,
+          route: prescribeModal.route.trim() || "uống",
+          instructions: prescribeModal.instructions.trim() || null,
+          condition_name: prescribeModal.conditionName.trim() || null,
+        },
+      });
+      setSuccess(`Bác sĩ đã kê đơn thuốc "${prescribeModal.rawName}" thành công cho bệnh nhân!`);
+      setPrescribeModal({
+        open: false,
+        conditionName: "",
+        rawName: "",
+        dose: "1 viên/lần",
+        frequency: "2 lần/ngày",
+        timing: "Sau ăn 30 phút",
+        route: "uống",
+        instructions: "",
+      });
+      await loadTimeline(true);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể kê đơn thuốc");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Doctor Edit Medication Submit
+  async function handleEditMedSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      setSaving(true);
+      setError("");
+      await api(`/v1/patients/${profileId}/medications/${editMedModal.medId}`, {
+        method: "PATCH",
+        body: {
+          dose: editMedModal.dose.trim() || null,
+          frequency: editMedModal.frequency.trim() || null,
+          timing: editMedModal.timing.trim() || null,
+          route: editMedModal.route.trim() || "uống",
+          condition_name: editMedModal.conditionName.trim() || null,
+        },
+      });
+      setSuccess(`Cập nhật đơn thuốc "${editMedModal.medName}" thành công!`);
+      setEditMedModal({
+        open: false,
+        medId: "",
+        medName: "",
+        dose: "",
+        frequency: "",
+        timing: "",
+        route: "uống",
+        conditionName: "",
+      });
+      await loadTimeline(true);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể cập nhật đơn thuốc");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Doctor Delete Medication Submit
+  async function handleDeleteMedSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      setSaving(true);
+      setError("");
+      await api(`/v1/patients/${profileId}/medications/${deleteMedModal.medId}`, {
+        method: "DELETE",
+      });
+      setSuccess(`Đã xóa thuốc "${deleteMedModal.medName}" khỏi đơn điều trị!`);
+      setDeleteMedModal({ open: false, medId: "", medName: "" });
+      await loadTimeline(true);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không thể xóa đơn thuốc");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading && !data) {
     return (
       <div className="card" style={{ padding: 24, textAlign: "center" }}>
@@ -1265,7 +1673,331 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
       {error && <ErrorBox text={error} />}
       {success && <SuccessBox text={success} />}
 
-      {/* MODAL XÓA BỆNH ĐIỀU TRỊ (10.3) */}
+      {/* MODAL KÊ ĐƠN THUỐC CHO BÁC SĨ */}
+      {prescribeModal.open && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.6)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: 16,
+              maxWidth: 520,
+              width: "100%",
+              padding: 24,
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
+              border: "1px solid #bae6fd",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 24 }}>🩺</span>
+              <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800, color: "#0284c7" }}>
+                Bác sĩ kê đơn thuốc {prescribeModal.conditionName ? `cho bệnh: ${prescribeModal.conditionName}` : ""}
+              </h3>
+            </div>
+            <p style={{ fontSize: "0.85rem", color: "#64748b", marginBottom: 16 }}>
+              Thuốc sẽ được đồng bộ ngay lập tức sang tài khoản người bệnh và lưu vào hồ sơ điều trị.
+            </p>
+            <form onSubmit={handlePrescribeSubmit}>
+              <div style={{ marginBottom: 12 }}>
+                <label className="label" style={{ fontWeight: 700, fontSize: "0.82rem" }}>
+                  Tên thuốc & Hàm lượng (*)
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="VD: Glucophage 850mg, Amlodipin 5mg, Nexium 40mg..."
+                  value={prescribeModal.rawName}
+                  onChange={(e) => setPrescribeModal((prev) => ({ ...prev, rawName: e.target.value }))}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                    Liều dùng
+                  </label>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="VD: 1 viên/lần, 2 gói/ngày"
+                    value={prescribeModal.dose}
+                    onChange={(e) => setPrescribeModal((prev) => ({ ...prev, dose: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                    Tần suất
+                  </label>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="VD: 2 lần/ngày, Khi đau"
+                    value={prescribeModal.frequency}
+                    onChange={(e) => setPrescribeModal((prev) => ({ ...prev, frequency: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                    Thời điểm uống
+                  </label>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="VD: Sau ăn 30 phút, Trước ngủ"
+                    value={prescribeModal.timing}
+                    onChange={(e) => setPrescribeModal((prev) => ({ ...prev, timing: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                    Đường dùng
+                  </label>
+                  <select
+                    className="input"
+                    value={prescribeModal.route}
+                    onChange={(e) => setPrescribeModal((prev) => ({ ...prev, route: e.target.value }))}
+                  >
+                    <option value="uống">Uống</option>
+                    <option value="bôi ngoài da">Bôi ngoài da</option>
+                    <option value="tiêm dưới da">Tiêm dưới da</option>
+                    <option value="xịt họng/mũi">Xịt họng/mũi</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                  Mặt bệnh điều trị liên quan
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="VD: Đái tháo đường típ 2, Tăng huyết áp..."
+                  value={prescribeModal.conditionName}
+                  onChange={(e) => setPrescribeModal((prev) => ({ ...prev, conditionName: e.target.value }))}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setPrescribeModal((prev) => ({ ...prev, open: false }))}
+                  disabled={saving}
+                >
+                  Hủy
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ background: "#0284c7", borderColor: "#0284c7" }} disabled={saving}>
+                  {saving ? "Đang kê đơn…" : "💾 Xác nhận kê đơn"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CHỈNH SỬA THUỐC CHO BÁC SĨ */}
+      {editMedModal.open && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.6)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: 16,
+              maxWidth: 480,
+              width: "100%",
+              padding: 24,
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
+              border: "1px solid #bae6fd",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 24 }}>✏️</span>
+              <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "#0f172a" }}>
+                Chỉnh sửa đơn thuốc: {editMedModal.medName}
+              </h3>
+            </div>
+            <form onSubmit={handleEditMedSubmit}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                    Liều dùng
+                  </label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={editMedModal.dose}
+                    onChange={(e) => setEditMedModal((prev) => ({ ...prev, dose: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                    Tần suất
+                  </label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={editMedModal.frequency}
+                    onChange={(e) => setEditMedModal((prev) => ({ ...prev, frequency: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                    Thời điểm uống
+                  </label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={editMedModal.timing}
+                    onChange={(e) => setEditMedModal((prev) => ({ ...prev, timing: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                    Đường dùng
+                  </label>
+                  <select
+                    className="input"
+                    value={editMedModal.route}
+                    onChange={(e) => setEditMedModal((prev) => ({ ...prev, route: e.target.value }))}
+                  >
+                    <option value="uống">Uống</option>
+                    <option value="bôi ngoài da">Bôi ngoài da</option>
+                    <option value="tiêm dưới da">Tiêm dưới da</option>
+                    <option value="xịt họng/mũi">Xịt họng/mũi</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                  Mặt bệnh điều trị
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  value={editMedModal.conditionName}
+                  onChange={(e) => setEditMedModal((prev) => ({ ...prev, conditionName: e.target.value }))}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setEditMedModal((prev) => ({ ...prev, open: false }))}
+                  disabled={saving}
+                >
+                  Hủy
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? "Đang lưu…" : "💾 Lưu thay đổi"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL XÁC NHẬN XÓA THUỐC CHO BÁC SĨ */}
+      {deleteMedModal.open && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.6)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: 16,
+              maxWidth: 450,
+              width: "100%",
+              padding: 24,
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
+              border: "1px solid #fecaca",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 24 }}>🗑️</span>
+              <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "#991b1b" }}>
+                Xác nhận xóa thuốc
+              </h3>
+            </div>
+            <p style={{ fontSize: "0.88rem", color: "#475569", marginBottom: 16, lineHeight: 1.5 }}>
+              Bạn có chắc chắn muốn xóa thuốc <strong>"{deleteMedModal.medName}"</strong> khỏi phác đồ điều trị của bệnh nhân? Hành động này sẽ được ghi nhận vào Audit Log y khoa.
+            </p>
+            <form onSubmit={handleDeleteMedSubmit}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setDeleteMedModal({ open: false, medId: "", medName: "" })}
+                  disabled={saving}
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ background: "#dc2626", borderColor: "#dc2626" }}
+                  disabled={saving}
+                >
+                  {saving ? "Đang xóa..." : "🗑️ Xác nhận xóa thuốc"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL XÓA BỆNH ĐIỀU TRỊ */}
       {deleteModal.open && (
         <div
           style={{
@@ -1363,6 +2095,31 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
           onToggleMed={toggleMedTaken}
           onResolveCondition={handleResolveCondition}
           onOpenDeleteModal={(id, name) => setDeleteModal({ open: true, condId: id, condName: name, reason: "" })}
+          onOpenPrescribeModal={(condName) =>
+            setPrescribeModal({
+              open: true,
+              conditionName: condName,
+              rawName: "",
+              dose: "1 viên/lần",
+              frequency: "2 lần/ngày",
+              timing: "Sau ăn 30 phút",
+              route: "uống",
+              instructions: "",
+            })
+          }
+          onOpenEditMedModal={(med) =>
+            setEditMedModal({
+              open: true,
+              medId: med.id,
+              medName: med.name,
+              dose: med.dose || "",
+              frequency: med.frequency || "",
+              timing: med.timing || "",
+              route: med.route || "uống",
+              conditionName: activeCondition.name,
+            })
+          }
+          onOpenDeleteMedModal={(id, name) => setDeleteMedModal({ open: true, medId: id, medName: name })}
         />
       ) : (
         <ConditionListView
@@ -1381,10 +2138,33 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
           adding={adding}
           onResolveCondition={handleResolveCondition}
           onOpenDeleteModal={(id, name) => setDeleteModal({ open: true, condId: id, condName: name, reason: "" })}
+          onOpenPrescribeModal={(condName) =>
+            setPrescribeModal({
+              open: true,
+              conditionName: condName || (data.conditions?.[0]?.name || ""),
+              rawName: "",
+              dose: "1 viên/lần",
+              frequency: "2 lần/ngày",
+              timing: "Sau ăn 30 phút",
+              route: "uống",
+              instructions: "",
+            })
+          }
+          onOpenEditMedModal={(med) =>
+            setEditMedModal({
+              open: true,
+              medId: med.id,
+              medName: med.name,
+              dose: med.dose || "",
+              frequency: med.frequency || "",
+              timing: med.timing || "",
+              route: med.route || "uống",
+              conditionName: getConditionForMed(med, data.conditions || []) || "",
+            })
+          }
+          onOpenDeleteMedModal={(id, name) => setDeleteMedModal({ open: true, medId: id, medName: name })}
         />
       )}
     </>
   );
 }
-
-
