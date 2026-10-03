@@ -11,7 +11,7 @@ export function ThemeToggle() {
     const saved = localStorage.getItem("allercare_theme") as "light" | "dark" | null;
     if (saved) {
       setTheme(saved);
-      document.documentElement.setAttribute("data-theme", saved);
+      document.documentElement.dataset.theme = saved;
       if (saved === "dark") {
         document.documentElement.classList.add("dark");
       } else {
@@ -21,7 +21,7 @@ export function ThemeToggle() {
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       const initial = prefersDark ? "dark" : "light";
       setTheme(initial);
-      document.documentElement.setAttribute("data-theme", initial);
+      document.documentElement.dataset.theme = initial;
       if (initial === "dark") {
         document.documentElement.classList.add("dark");
       }
@@ -32,7 +32,7 @@ export function ThemeToggle() {
     const next = theme === "light" ? "dark" : "light";
     setTheme(next);
     localStorage.setItem("allercare_theme", next);
-    document.documentElement.setAttribute("data-theme", next);
+    document.documentElement.dataset.theme = next;
     if (next === "dark") {
       document.documentElement.classList.add("dark");
     } else {
