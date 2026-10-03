@@ -50,16 +50,71 @@ def _sign_livekit_token(room_code: str, user: CurrentUser) -> str | None:
     return jwt.encode(payload, s.LIVEKIT_API_SECRET, algorithm="HS256")
 
 
+def _seed_sample_messages_if_empty(db: Session) -> None:
+    """Tự động tạo các tin nhắn mẫu ban đầu giữa bác sĩ, bệnh nhân, điều dưỡng, dược sĩ."""
+    count = db.query(DirectMessage).count()
+    if count > 0:
+        return
+    
+    doc = db.query(User).filter(User.username == "doctor1").first()
+    pat = db.query(User).filter(User.username == "patient1").first()
+    nurse = db.query(User).filter(User.username == "nurse1").first()
+    pharma = db.query(User).filter(User.username == "pharmacist1").first()
+    
+    if not (doc and pat):
+        return
+    
+    samples = [
+        DirectMessage(
+            sender_id=doc.id,
+            receiver_id=pat.id,
+            content="Chào bạn Huy, tình trạng phát ban da liễu sau khi dùng thuốc hôm nay đỡ ngứa chưa?",
+            is_read=True,
+        ),
+        DirectMessage(
+            sender_id=pat.id,
+            receiver_id=doc.id,
+            content="Dạ chào Bác sĩ An, vùng da cẳng tay đỡ đỏ nhiều rồi ạ, nhưng thỉnh thoảng còn hơi châm chích nhẹ.",
+            is_read=True,
+        ),
+        DirectMessage(
+            sender_id=doc.id,
+            receiver_id=pat.id,
+            content="Tốt lắm. Bạn tiếp tục bôi thuốc mỡ đúng theo đơn nhé. Nếu có dấu hiệu nổi mày đay lan rộng hãy bấm gọi video cho tôi ngay.",
+            is_read=True,
+        ),
+    ]
+    if nurse:
+        samples.append(
+            DirectMessage(
+                sender_id=nurse.id,
+                receiver_id=pat.id,
+                content="Nhắc nhở: Bạn nhớ uống thuốc dị ứng vào lúc 20h tối nay sau khi ăn no nhé.",
+                is_read=False,
+            )
+        )
+    if pharma:
+        samples.append(
+            DirectMessage(
+                sender_id=pharma.id,
+                receiver_id=doc.id,
+                content="Bác sĩ An ơi, đơn thuốc của bệnh nhân Huy đã được rà soát MedSafe đạt chuẩn an toàn, không có tương tác chéo.",
+                is_read=True,
+            )
+        )
+    for s in samples:
+        db.add(s)
+    db.commit()
+
+
 @router.get("/contacts", summary="Lấy danh bạ người dùng có thể tương tác theo phân quyền")
 def get_contacts(
     user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[ContactOut]:
-    """Trả về danh bạ liên lạc dựa trên phân quyền y tế (RBAC):
-    - Bác sĩ: Thấy bệnh nhân được phân công, điều dưỡng, dược sĩ, bác sĩ khác.
-    - Bệnh nhân: Thấy bác sĩ phụ trách, điều dưỡng, dược sĩ, người nhà.
-    - Điều dưỡng/Dược sĩ/Admin: Thấy các bác sĩ, bệnh nhân, nhân viên y tế liên quan.
-    """
+    """Trả về danh bạ liên lạc dựa trên phân quyền y tế (RBAC)."""
+    _seed_sample_messages_if_empty(db)
+
     # Lấy danh sách user theo vai trò
     all_users = db.query(User).filter(User.is_active == True, User.id != user.id).all()
     
@@ -119,6 +174,7 @@ def get_contacts(
         reverse=True,
     )
     return contacts
+
 
 
 @router.get("/{contact_id}", summary="Lấy lịch sử tin nhắn với 1 tài khoản")
@@ -260,3 +316,63 @@ def create_instant_call(
         target_id=target_user.id,
         target_name=target_user.full_name or target_user.username,
     )
+
+
+@router.post("/{contact_id}/auto-reply", summary="Tự động tạo tin nhắn phản hồi từ người liên hệ")
+def trigger_auto_reply(
+    contact_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> DirectMessageOut:
+    """Tạo tin nhắn phản hồi tương tác mô phỏng từ người nhận về cho người gửi."""
+    target_user = db.query(User).filter(User.id == contact_id).first()
+    if not target_user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy người gửi phản hồi")
+    
+    # Mẫu câu trả lời theo role của target
+    reply_templates = {
+        "doctor": [
+            "Tôi đã nhận được thông tin và hình ảnh của bạn. Bạn tiếp tục duy trì liều lượng thuốc như hướng dẫn nhé.",
+            "Chào bạn, các triệu chứng này nằm trong phạm vi kiểm soát tốt. Hãy theo dõi thêm 2 ngày và báo lại cho tôi.",
+            "Đã kiểm tra hồ sơ. Vui lòng bấm gọi video nếu bạn cảm thấy khó chịu hoặc ngứa tăng lên nhé.",
+        ],
+        "patient": [
+            "Dạ em đã nhận được lời dặn của bác sĩ. Em sẽ uống thuốc đúng giờ ạ.",
+            "Dạ cảm ơn bác sĩ/điều dưỡng đã hướng dẫn nhiệt tình, tình trạng em đã đỡ nhiều rồi ạ!",
+            "Dạ vâng, em vừa uống thuốc xong và đang theo dõi tại nhà ạ.",
+        ],
+        "nurse": [
+            "Điều dưỡng đã ghi nhận thông tin và cập nhật vào sổ theo dõi ca trực hôm nay.",
+            "Bạn nhớ đo nhiệt độ và kiểm tra huyết áp/nhịp tim rồi gửi cho bên mình nhé.",
+        ],
+        "pharmacist": [
+            "Dược sĩ xác nhận đơn thuốc này không có tương tác bất lợi. Bạn có thể yên tâm sử dụng theo chỉ dẫn.",
+        ],
+    }
+    choices = reply_templates.get(target_user.role, ["Đã nhận được tin nhắn của bạn."])
+    import random
+    reply_text = random.choice(choices)
+
+    msg = DirectMessage(
+        sender_id=contact_id,
+        receiver_id=user.id,
+        content=reply_text,
+        is_read=False,
+    )
+    db.add(msg)
+    db.commit()
+    db.refresh(msg)
+
+    return DirectMessageOut(
+        id=msg.id,
+        sender_id=msg.sender_id,
+        receiver_id=msg.receiver_id,
+        content=msg.content,
+        attachment_url=msg.attachment_url,
+        attachment_type=msg.attachment_type,
+        is_read=msg.is_read,
+        created_at=msg.created_at.isoformat(),
+        sender_name=target_user.full_name or target_user.username,
+        sender_role=target_user.role,
+    )
+

@@ -57,6 +57,13 @@ const ROLE_LABELS: Record<string, { label: string; badgeCls: string; icon: strin
   admin: { label: "Quản trị viên", badgeCls: "badge-danger", icon: "🛠" },
 };
 
+const DEMO_PERSONAS = [
+  { u: "doctor1", p: "doctor123", label: "BS. Nguyễn Văn An", role: "doctor", icon: "🩺" },
+  { u: "patient1", p: "patient123", label: "NB. Đỗ Quốc Huy", role: "patient", icon: "🧑‍💼" },
+  { u: "nurse1", p: "nurse123", label: "ĐD. Trịnh Thu Hà", role: "nurse", icon: "👩‍⚕️" },
+  { u: "pharmacist1", p: "pharma123", label: "DS. Nguyễn Thị Em", role: "pharmacist", icon: "💊" },
+];
+
 function formatTime(secs: number): string {
   const mins = Math.floor(secs / 60);
   const s = secs % 60;
@@ -358,7 +365,7 @@ function IncomingCallModal({
 /* ---------------- Main Page Component ---------------- */
 
 export default function MessagesPage() {
-  const [user, setUser] = useState<{ id?: string; full_name?: string; role: string } | null>(null);
+  const [user, setUser] = useState<{ id?: string; full_name?: string; role: string; username?: string } | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -367,6 +374,7 @@ export default function MessagesPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [autoReplying, setAutoReplying] = useState(false);
 
   // Calling state
   const [callSession, setCallSession] = useState<CallSession | null>(null);
@@ -403,6 +411,30 @@ export default function MessagesPage() {
       // ignore
     }
   }, []);
+
+  const switchAccount = async (u: string, p: string) => {
+    try {
+      const form = new URLSearchParams({ username: u, password: p });
+      const res = await fetch("/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: form.toString(),
+      });
+      if (!res.ok) throw new Error("Chuyển tài khoản thất bại");
+      const data = await res.json();
+      localStorage.setItem("allercare_token", data.access_token);
+      localStorage.setItem("allercare_user", JSON.stringify(data.user));
+      setUser(data.user);
+      setSelectedContact(null);
+      const newContacts = await api<Contact[]>("/v1/messages/contacts");
+      setContacts(newContacts);
+      if (newContacts.length > 0) {
+        setSelectedContact(newContacts[0]);
+      }
+    } catch (err) {
+      alert(String(err));
+    }
+  };
 
   useEffect(() => {
     if (!getToken()) {
@@ -463,6 +495,22 @@ export default function MessagesPage() {
       alert("Không thể gửi tin nhắn: " + String(err));
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleTriggerAutoReply = async () => {
+    if (!selectedContact || autoReplying) return;
+    setAutoReplying(true);
+    try {
+      const replyMsg = await api<Message>(`/v1/messages/${selectedContact.id}/auto-reply`, {
+        method: "POST",
+      });
+      setMessages((prev) => [...prev, replyMsg]);
+      void loadContacts();
+    } catch (err) {
+      alert("Không thể tạo phản hồi: " + String(err));
+    } finally {
+      setAutoReplying(false);
     }
   };
 
@@ -579,7 +627,6 @@ export default function MessagesPage() {
     return matchSearch && matchRole;
   });
 
-
   const roleName = (user?.role ?? "patient") as "patient" | "doctor" | "nurse" | "leader" | "admin";
 
   return (
@@ -590,6 +637,61 @@ export default function MessagesPage() {
       icon="💬"
       wide
     >
+      {/* QUICK PERSONA SWITCHER BAR */}
+      <div
+        style={{
+          marginBottom: 12,
+          padding: "10px 16px",
+          borderRadius: 14,
+          background: "linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 100%)",
+          border: "1.5px solid #bae6fd",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 10,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16 }}>👤</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#0369a1" }}>
+            Đang đăng nhập: <strong>{user?.full_name || user?.username}</strong> ({ROLE_LABELS[user?.role ?? ""]?.label ?? user?.role})
+          </span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Chuyển nhanh sang:</span>
+          {DEMO_PERSONAS.map((p) => {
+            const isCurrent = user?.username === p.u;
+            return (
+              <button
+                key={p.u}
+                type="button"
+                onClick={() => { void switchAccount(p.u, p.p); }}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  border: isCurrent ? "2px solid #0284c7" : "1px solid #cbd5e1",
+                  background: isCurrent ? "#0284c7" : "#ffffff",
+                  color: isCurrent ? "#ffffff" : "#334155",
+                  cursor: isCurrent ? "default" : "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                }}
+              >
+                <span>{p.icon}</span>
+                <span>{p.label}</span>
+                {isCurrent && <span>(Hiện tại)</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 16, height: "76vh", minHeight: 560 }}>
         {/* LEFT COLUMN: DANH BẠ HỘI THOẠI */}
         <div
@@ -617,7 +719,7 @@ export default function MessagesPage() {
                     room_code: "demo-incoming",
                     call_type: "video",
                     caller_id: "demo-doc",
-                    caller_name: "BS. Hoàng Minh Đức",
+                    caller_name: "BS. Nguyễn Văn An",
                     target_id: user?.id ?? "",
                     target_name: user?.full_name ?? "Bạn",
                   });
@@ -807,7 +909,7 @@ export default function MessagesPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Quick Clinical Prompts */}
+              {/* Quick Clinical Prompts & Auto-Reply Test Button */}
               <div
                 style={{
                   padding: "8px 16px",
@@ -815,9 +917,29 @@ export default function MessagesPage() {
                   background: "var(--surface-card)",
                   display: "flex",
                   gap: 6,
+                  alignItems: "center",
                   overflowX: "auto",
                 }}
               >
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  style={{
+                    fontSize: 11,
+                    padding: "4px 10px",
+                    whiteSpace: "nowrap",
+                    background: "#fef3c7",
+                    color: "#92400e",
+                    borderColor: "#fde68a",
+                    fontWeight: 700,
+                  }}
+                  onClick={() => { void handleTriggerAutoReply(); }}
+                  disabled={autoReplying}
+                  title={`Tạo phản hồi tự động từ ${selectedContact.full_name} để kiểm tra tương tác 2 chiều`}
+                >
+                  ⚡ {autoReplying ? "Đang trả lời..." : `Mô phỏng ${selectedContact.full_name.split(" ").slice(-1)} trả lời`}
+                </button>
+
                 {[
                   "🩺 Bác sĩ gửi lời dặn dò",
                   "💊 Hướng dẫn uống thuốc sau ăn",
