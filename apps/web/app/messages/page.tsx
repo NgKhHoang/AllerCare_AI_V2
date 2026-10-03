@@ -634,12 +634,17 @@ export default function MessagesPage() {
   });
 
   const roleName = (user?.role ?? "patient") as "patient" | "doctor" | "nurse" | "leader" | "admin";
+  const isPatient = user?.role === "patient" || user?.role === "caregiver";
 
   return (
     <AppShell
       role={["doctor", "nurse", "leader", "admin"].includes(roleName) ? roleName : "patient"}
-      title="Zalo Y Tế — Nhắn Tin & Gọi Trực Tiếp"
-      subtitle="Kênh liên lạc tức thì 24/7 giữa Bác sĩ, Bệnh nhân, Điều dưỡng & Dược sĩ"
+      title={isPatient ? "💬 Liên Hệ Bác Sĩ Phụ Trách (24/7)" : "Zalo Y Tế — Nhắn Tin & Gọi Trực Tiếp"}
+      subtitle={
+        isPatient
+          ? "Kênh liên lạc tức thì 24/7 trực tiếp với Bác sĩ đang phụ trách điều trị của bạn"
+          : "Kênh liên lạc tức thì 24/7 giữa Bác sĩ, Bệnh nhân, Điều dưỡng & Dược sĩ"
+      }
       icon="💬"
       wide
     >
@@ -663,6 +668,11 @@ export default function MessagesPage() {
           <span style={{ fontSize: 13, fontWeight: 700, color: "#0369a1" }}>
             Đang đăng nhập: <strong>{user?.full_name || user?.username}</strong> ({ROLE_LABELS[user?.role ?? ""]?.label ?? user?.role})
           </span>
+          {isPatient && (
+            <span className="badge badge-ok" style={{ fontSize: 11, marginLeft: 4 }}>
+              🔒 Chế độ Người bệnh: Kết nối Bác sĩ phụ trách
+            </span>
+          )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -713,7 +723,7 @@ export default function MessagesPage() {
           <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border-default)", background: "var(--surface-ground)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div style={{ fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center", gap: 6 }}>
-                <span>👥 Danh bạ y tế</span>
+                <span>{isPatient ? "🩺 Bác sĩ phụ trách" : "👥 Danh bạ y tế"}</span>
                 <span className="badge badge-ok" style={{ fontSize: 10 }}>{contacts.length} liên hệ</span>
               </div>
               <button
@@ -738,7 +748,7 @@ export default function MessagesPage() {
 
             <input
               type="text"
-              placeholder="🔍 Tìm theo tên, vai trò..."
+              placeholder={isPatient ? "🔍 Tìm bác sĩ..." : "🔍 Tìm theo tên, vai trò..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
@@ -748,38 +758,40 @@ export default function MessagesPage() {
                 border: "1px solid var(--border-default)",
                 background: "var(--surface-card)",
                 fontSize: 13,
-                marginBottom: 8,
+                marginBottom: isPatient ? 0 : 8,
               }}
             />
 
-            <div style={{ display: "flex", gap: 4 }}>
-              {[
-                { id: "all", label: "Tất cả" },
-                { id: "doctor", label: "Bác sĩ" },
-                { id: "patient", label: "Bệnh nhân" },
-                { id: "staff", label: "Điều dưỡng/Dược" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setRoleFilter(tab.id)}
-                  style={{
-                    flex: 1,
-                    padding: "5px 2px",
-                    borderRadius: 8,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    border: "none",
-                    background: roleFilter === tab.id ? "var(--brand-600)" : "transparent",
-                    color: roleFilter === tab.id ? "#fff" : "var(--text-secondary)",
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+            {!isPatient && (
+              <div style={{ display: "flex", gap: 4 }}>
+                {[
+                  { id: "all", label: "Tất cả" },
+                  { id: "doctor", label: "Bác sĩ" },
+                  { id: "patient", label: "Bệnh nhân" },
+                  { id: "staff", label: "Điều dưỡng/Dược" },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setRoleFilter(tab.id)}
+                    style={{
+                      flex: 1,
+                      padding: "5px 2px",
+                      borderRadius: 8,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      border: "none",
+                      background: roleFilter === tab.id ? "var(--brand-600)" : "transparent",
+                      color: roleFilter === tab.id ? "#fff" : "var(--text-secondary)",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", padding: "6px" }}>

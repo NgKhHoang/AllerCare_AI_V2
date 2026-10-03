@@ -107,16 +107,86 @@ def _seed_sample_messages_if_empty(db: Session) -> None:
     db.commit()
 
 
+def _get_allowed_contact_ids(user: CurrentUser, db: Session) -> set[str] | None:
+    """Xác định danh sách user ID mà người dùng hiện tại được phép liên lạc:
+    - Bác sĩ, Lãnh đạo, Quản trị viên, Điều dưỡng, Dược sĩ: Liên lạc toàn bộ danh bạ y tế (None).
+    - Người bệnh: CHỈ có thể liên lạc với Bác sĩ đang phụ trách điều trị.
+    - Người nhà (Caregiver): Liên lạc với Bác sĩ phụ trách của bệnh nhân được ủy quyền.
+    """
+    if user.role in ("doctor", "leader", "admin", "nurse", "pharmacist"):
+        return None
+
+    if user.role == "patient":
+        doc_ids = set()
+        # 1. Từ phân công điều trị CareAssignment
+        for ca in (
+            db.query(CareAssignment)
+            .filter(CareAssignment.patient_user_id == user.id, CareAssignment.active == True)
+            .all()
+        ):
+            doc_ids.add(ca.doctor_id)
+
+        # 2. Từ hồ sơ bệnh nhân PatientProfile.assigned_doctor_id
+        prof = db.query(PatientProfile).filter(PatientProfile.user_id == user.id).first()
+        if prof and prof.assigned_doctor_id:
+            doc_ids.add(prof.assigned_doctor_id)
+
+        # 3. Fallback an toàn cho tài khoản demo: Gán bác sĩ doctor1 (BS. Nguyễn Văn An)
+        if not doc_ids:
+            doc1 = db.query(User).filter(User.username == "doctor1", User.is_active == True).first()
+            if doc1:
+                doc_ids.add(doc1.id)
+            else:
+                first_doc = db.query(User).filter(User.role == "doctor", User.is_active == True).first()
+                if first_doc:
+                    doc_ids.add(first_doc.id)
+        return doc_ids
+
+    if user.role == "caregiver":
+        patient_ids = [
+            cl.patient_user_id
+            for cl in db.query(CaregiverLink)
+            .filter(CaregiverLink.caregiver_user_id == user.id, CaregiverLink.active == True)
+            .all()
+        ]
+        doc_ids = set()
+        for pid in patient_ids:
+            for ca in (
+                db.query(CareAssignment)
+                .filter(CareAssignment.patient_user_id == pid, CareAssignment.active == True)
+                .all()
+            ):
+                doc_ids.add(ca.doctor_id)
+            prof = db.query(PatientProfile).filter(PatientProfile.user_id == pid).first()
+            if prof and prof.assigned_doctor_id:
+                doc_ids.add(prof.assigned_doctor_id)
+        if not doc_ids:
+            doc1 = db.query(User).filter(User.username == "doctor1", User.is_active == True).first()
+            if doc1:
+                doc_ids.add(doc1.id)
+        return doc_ids
+
+    return None
+
+
 @router.get("/contacts", summary="Lấy danh bạ người dùng có thể tương tác theo phân quyền")
 def get_contacts(
     user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[ContactOut]:
-    """Trả về danh bạ liên lạc dựa trên phân quyền y tế (RBAC)."""
+    """Trả về danh bạ liên lạc dựa trên phân quyền y tế (RBAC):
+    - Người bệnh: Chỉ hiển thị Bác sĩ đang phụ trách.
+    - Bác sĩ: Hiển thị toàn bộ người bệnh, bác sĩ, điều dưỡng, dược sĩ.
+    """
     _seed_sample_messages_if_empty(db)
 
-    # Lấy danh sách user theo vai trò
-    all_users = db.query(User).filter(User.is_active == True, User.id != user.id).all()
+    allowed_ids = _get_allowed_contact_ids(user, db)
+
+    # Lấy danh sách user theo vai trò & phạm vi phân quyền
+    query = db.query(User).filter(User.is_active == True, User.id != user.id)
+    if allowed_ids is not None:
+        query = query.filter(User.id.in_(allowed_ids))
+    all_users = query.all()
     
     # Map profile_id nếu có
     profiles = {p.user_id: p for p in db.query(PatientProfile).all()}
@@ -187,6 +257,13 @@ def get_messages(
     target_user = db.query(User).filter(User.id == contact_id).first()
     if not target_user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy người dùng")
+
+    allowed_ids = _get_allowed_contact_ids(user, db)
+    if allowed_ids is not None and target_user.id not in allowed_ids:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Người bệnh chỉ có thể liên lạc với Bác sĩ đang phụ trách điều trị.",
+        )
     
     messages = (
         db.query(DirectMessage)
@@ -244,6 +321,13 @@ def send_message(
     target_user = db.query(User).filter(User.id == contact_id).first()
     if not target_user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy người nhận")
+
+    allowed_ids = _get_allowed_contact_ids(user, db)
+    if allowed_ids is not None and target_user.id not in allowed_ids:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Người bệnh chỉ có thể liên lạc với Bác sĩ đang phụ trách điều trị.",
+        )
     
     if not data.content.strip() and not data.attachment_url:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Nội dung tin nhắn không được để trống")
@@ -284,6 +368,13 @@ def create_instant_call(
     target_user = db.query(User).filter(User.id == data.target_user_id).first()
     if not target_user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy người nhận cuộc gọi")
+
+    allowed_ids = _get_allowed_contact_ids(user, db)
+    if allowed_ids is not None and target_user.id not in allowed_ids:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Người bệnh chỉ có thể liên lạc với Bác sĩ đang phụ trách điều trị.",
+        )
     
     # Tạo mã phòng hội thoại thống nhất giữa 2 người dùng
     u1, u2 = sorted([user.id, target_user.id])
@@ -328,6 +419,13 @@ def trigger_auto_reply(
     target_user = db.query(User).filter(User.id == contact_id).first()
     if not target_user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy người gửi phản hồi")
+
+    allowed_ids = _get_allowed_contact_ids(user, db)
+    if allowed_ids is not None and target_user.id not in allowed_ids:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Người bệnh chỉ có thể liên lạc với Bác sĩ đang phụ trách điều trị.",
+        )
     
     # Mẫu câu trả lời theo role của target
     reply_templates = {
