@@ -123,28 +123,28 @@ export function isMedForCondition(
   const rules: Array<{ keywords: string[]; medKeywords: string[] }> = [
     {
       keywords: ["đái tháo đường", "tiểu đường", "diabetes"],
-      medKeywords: ["glucophage", "metformin", "gliclazide", "diamicron", "insulin", "januvia", "forxiga", "jardiance", "glimepiride"]
+      medKeywords: ["glucophage", "metformin", "gliclazide", "diamicron", "insulin", "januvia", "forxiga", "jardiance", "glimepiride"],
     },
     {
       keywords: ["tăng huyết áp", "huyết áp", "hypertension", "tim mạch", "suy tim", "rung nhĩ", "mạch vành", "tim"],
-      medKeywords: ["amlodipin", "losartan", "enalapril", "captopril", "bisoprolol", "concor", "nebivolol", "telmisartan", "micardis", "aspirin", "warfarin", "clopidogrel", "plavix", "atorvastatin", "rosuvastatin", "lipitor", "crestor"]
+      medKeywords: ["amlodipin", "losartan", "enalapril", "captopril", "bisoprolol", "concor", "nebivolol", "telmisartan", "micardis", "aspirin", "warfarin", "clopidogrel", "plavix", "atorvastatin", "rosuvastatin", "lipitor", "crestor"],
     },
     {
       keywords: ["dạ dày", "ruột", "tiêu hóa", "viêm loét", "trào ngược", "gastro", "gerd", "đại tràng"],
-      medKeywords: ["smecta", "berberin", "omeprazole", "nexium", "esomeprazole", "pantoprazole", "gaviscon", "phosphalugel", "domperidone", "motilium", "spasfon", "men vi sinh", "probiotic", "enterogermina"]
+      medKeywords: ["smecta", "berberin", "omeprazole", "nexium", "esomeprazole", "pantoprazole", "gaviscon", "phosphalugel", "domperidone", "motilium", "spasfon", "men vi sinh", "probiotic", "enterogermina"],
     },
     {
       keywords: ["dị ứng", "viêm da", "viêm mũi", "mày đay", "allergy", "dermatitis", "asthma", "hen suyễn"],
-      medKeywords: ["fexofenadine", "cetirizine", "loratadine", "telfast", "clarityne", "singulair", "montelukast", "hydrocortisone", "prednisolone", "medrol", "seretide", "symbicort", "ventolin"]
+      medKeywords: ["fexofenadine", "cetirizine", "loratadine", "telfast", "clarityne", "singulair", "montelukast", "hydrocortisone", "prednisolone", "medrol", "seretide", "symbicort", "ventolin"],
     },
     {
       keywords: ["nhiễm trùng", "nhiễm khuẩn", "viêm họng", "viêm phế quản", "viêm phổi"],
-      medKeywords: ["augmentin", "amoxicillin", "azithromycin", "ciprofloxacin", "cefixime", "klacid", "zithromax"]
+      medKeywords: ["augmentin", "amoxicillin", "azithromycin", "ciprofloxacin", "cefixime", "klacid", "zithromax"],
     },
     {
       keywords: ["xương khớp", "thoái hóa", "gout", "viêm khớp"],
-      medKeywords: ["colchicine", "allopurinol", "febuxostat", "celebrex", "meloxicam", "glucosamine", "paracetamol", "efferalgan"]
-    }
+      medKeywords: ["colchicine", "allopurinol", "febuxostat", "celebrex", "meloxicam", "glucosamine", "paracetamol", "efferalgan"],
+    },
   ];
 
   for (const r of rules) {
@@ -190,7 +190,7 @@ export function getConditionForMed(med: ActiveMedicationItem, allConditions: Dis
       return cond.name;
     }
   }
-  if (med.source_label && med.source_label.startsWith("Điều trị: ")) {
+  if (med.source_label?.startsWith("Điều trị: ")) {
     return med.source_label.replace("Điều trị: ", "").trim();
   }
   return null;
@@ -317,14 +317,16 @@ function DiseaseCardButton({
         </div>
 
         {/* TÊN BỆNH */}
-        <div
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
           onClick={() => onSelect(cond.id)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") onSelect(cond.id);
-          }}
           style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            textAlign: "left",
+            width: "100%",
+            fontFamily: "inherit",
             fontSize: "1.05rem",
             fontWeight: 800,
             color: "var(--text-primary)",
@@ -334,7 +336,7 @@ function DiseaseCardButton({
           }}
         >
           🩺 {cond.name}
-        </div>
+        </button>
 
         {cond.note && (
           <p style={{ margin: "0 0 10px", fontSize: "0.82rem", color: "var(--text-secondary)", fontStyle: "italic", lineClamp: 2 }}>
@@ -389,7 +391,7 @@ function DiseaseCardButton({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (onResolve) onResolve(cond.id);
+                  onResolve?.(cond.id);
                 }}
                 className="btn btn-secondary btn-sm"
                 style={{ fontSize: "0.76rem", padding: "4px 8px", color: "#16a34a", borderColor: "#86efac", background: "#f0fdf4", fontWeight: 700 }}
@@ -401,7 +403,7 @@ function DiseaseCardButton({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (onDelete) onDelete(cond.id, cond.name);
+                  onDelete?.(cond.id, cond.name);
                 }}
                 className="btn btn-secondary btn-sm"
                 style={{ fontSize: "0.76rem", padding: "4px 8px", color: "#dc2626", borderColor: "#fca5a5", background: "#fef2f2", fontWeight: 700 }}
@@ -412,14 +414,14 @@ function DiseaseCardButton({
             </div>
           </div>
         ) : (
-          <div
-            role="button"
-            tabIndex={0}
+          <button
+            type="button"
             onClick={() => onSelect(cond.id)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") onSelect(cond.id);
-            }}
             style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              width: "100%",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -431,7 +433,7 @@ function DiseaseCardButton({
           >
             <span>Xem chi tiết phác đồ & Timeline</span>
             <span>➔</span>
-          </div>
+          </button>
         )}
       </div>
     </div>
@@ -642,7 +644,7 @@ function ConditionDetailView({
             <button
               type="button"
               className="btn btn-primary"
-              onClick={() => onOpenPrescribeModal && onOpenPrescribeModal(activeCondition.name)}
+              onClick={() => onOpenPrescribeModal?.(activeCondition.name)}
               style={{ fontSize: "0.85rem", padding: "6px 14px", background: "#0284c7", borderColor: "#0284c7" }}
             >
               ➕ 🩺 Kê đơn thuốc cho bệnh này
@@ -660,7 +662,7 @@ function ConditionDetailView({
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={() => onResolveCondition && onResolveCondition(activeCondition.id)}
+              onClick={() => onResolveCondition?.(activeCondition.id)}
               style={{ fontSize: "0.85rem", padding: "6px 14px", color: "#16a34a", borderColor: "#86efac", background: "#f0fdf4", fontWeight: 700 }}
               title="Đánh dấu bệnh nhân đã khỏi / kết thúc đợt điều trị"
             >
@@ -669,7 +671,7 @@ function ConditionDetailView({
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={() => onOpenDeleteModal && onOpenDeleteModal(activeCondition.id, activeCondition.name)}
+              onClick={() => onOpenDeleteModal?.(activeCondition.id, activeCondition.name)}
               style={{ fontSize: "0.85rem", padding: "6px 14px", color: "#dc2626", borderColor: "#fca5a5", background: "#fef2f2", fontWeight: 700 }}
               title="Xóa bệnh điều trị do ghi nhầm"
             >
@@ -956,7 +958,7 @@ function ConditionDetailView({
             <button
               type="button"
               className="btn btn-primary btn-sm"
-              onClick={() => onOpenPrescribeModal && onOpenPrescribeModal(activeCondition.name)}
+              onClick={() => onOpenPrescribeModal?.(activeCondition.name)}
               style={{ fontSize: "0.8rem", padding: "4px 12px", background: "#0284c7", borderColor: "#0284c7" }}
             >
               ➕ Kê thêm thuốc cho bệnh này
@@ -975,8 +977,8 @@ function ConditionDetailView({
                 <DoctorMedicationCard
                   key={m.id}
                   med={m}
-                  onEdit={(med) => onOpenEditMedModal && onOpenEditMedModal(med)}
-                  onDelete={(id, name) => onOpenDeleteMedModal && onOpenDeleteMedModal(id, name)}
+                  onEdit={(med) => onOpenEditMedModal?.(med)}
+                  onDelete={(id, name) => onOpenDeleteMedModal?.(id, name)}
                 />
               ) : (
                 <MedicationAdherenceItem
@@ -1237,7 +1239,7 @@ function ConditionListView({
             <button
               type="button"
               className="btn btn-primary btn-sm"
-              onClick={() => onOpenPrescribeModal && onOpenPrescribeModal()}
+              onClick={() => onOpenPrescribeModal?.()}
               style={{ fontSize: "0.8rem", padding: "4px 12px", background: "#0284c7", borderColor: "#0284c7" }}
             >
               ➕ 🩺 Kê đơn thuốc mới
@@ -1260,8 +1262,8 @@ function ConditionListView({
                   )}
                   <DoctorMedicationCard
                     med={m}
-                    onEdit={(med) => onOpenEditMedModal && onOpenEditMedModal(med)}
-                    onDelete={(id, name) => onOpenDeleteMedModal && onOpenDeleteMedModal(id, name)}
+                    onEdit={(med) => onOpenEditMedModal?.(med)}
+                    onDelete={(id, name) => onOpenDeleteMedModal?.(id, name)}
                   />
                 </div>
               ) : (
@@ -1713,26 +1715,27 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
             </p>
             <form onSubmit={handlePrescribeSubmit}>
               <div style={{ marginBottom: 12 }}>
-                <label className="label" style={{ fontWeight: 700, fontSize: "0.82rem" }}>
+                <label htmlFor="prescribe-name" className="label" style={{ fontWeight: 700, fontSize: "0.82rem" }}>
                   Tên thuốc & Hàm lượng (*)
                 </label>
                 <input
+                  id="prescribe-name"
                   type="text"
                   className="input"
                   placeholder="VD: Glucophage 850mg, Amlodipin 5mg, Nexium 40mg..."
                   value={prescribeModal.rawName}
                   onChange={(e) => setPrescribeModal((prev) => ({ ...prev, rawName: e.target.value }))}
                   required
-                  autoFocus
                 />
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
                 <div>
-                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                  <label htmlFor="prescribe-dose" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
                     Liều dùng
                   </label>
                   <input
+                    id="prescribe-dose"
                     type="text"
                     className="input"
                     placeholder="VD: 1 viên/lần, 2 gói/ngày"
@@ -1741,10 +1744,11 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
                   />
                 </div>
                 <div>
-                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                  <label htmlFor="prescribe-freq" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
                     Tần suất
                   </label>
                   <input
+                    id="prescribe-freq"
                     type="text"
                     className="input"
                     placeholder="VD: 2 lần/ngày, Khi đau"
@@ -1756,10 +1760,11 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
                 <div>
-                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                  <label htmlFor="prescribe-timing" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
                     Thời điểm uống
                   </label>
                   <input
+                    id="prescribe-timing"
                     type="text"
                     className="input"
                     placeholder="VD: Sau ăn 30 phút, Trước ngủ"
@@ -1768,10 +1773,11 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
                   />
                 </div>
                 <div>
-                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                  <label htmlFor="prescribe-route" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
                     Đường dùng
                   </label>
                   <select
+                    id="prescribe-route"
                     className="input"
                     value={prescribeModal.route}
                     onChange={(e) => setPrescribeModal((prev) => ({ ...prev, route: e.target.value }))}
@@ -1785,10 +1791,11 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
               </div>
 
               <div style={{ marginBottom: 16 }}>
-                <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                <label htmlFor="prescribe-condition" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
                   Mặt bệnh điều trị liên quan
                 </label>
                 <input
+                  id="prescribe-condition"
                   type="text"
                   className="input"
                   placeholder="VD: Đái tháo đường típ 2, Tăng huyết áp..."
@@ -1853,10 +1860,11 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
             <form onSubmit={handleEditMedSubmit}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
                 <div>
-                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                  <label htmlFor="editmed-dose" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
                     Liều dùng
                   </label>
                   <input
+                    id="editmed-dose"
                     type="text"
                     className="input"
                     value={editMedModal.dose}
@@ -1864,10 +1872,11 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
                   />
                 </div>
                 <div>
-                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                  <label htmlFor="editmed-freq" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
                     Tần suất
                   </label>
                   <input
+                    id="editmed-freq"
                     type="text"
                     className="input"
                     value={editMedModal.frequency}
@@ -1878,10 +1887,11 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
                 <div>
-                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                  <label htmlFor="editmed-timing" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
                     Thời điểm uống
                   </label>
                   <input
+                    id="editmed-timing"
                     type="text"
                     className="input"
                     value={editMedModal.timing}
@@ -1889,10 +1899,11 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
                   />
                 </div>
                 <div>
-                  <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                  <label htmlFor="editmed-route" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
                     Đường dùng
                   </label>
                   <select
+                    id="editmed-route"
                     className="input"
                     value={editMedModal.route}
                     onChange={(e) => setEditMedModal((prev) => ({ ...prev, route: e.target.value }))}
@@ -1906,10 +1917,11 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
               </div>
 
               <div style={{ marginBottom: 16 }}>
-                <label className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
+                <label htmlFor="editmed-cond" className="label" style={{ fontWeight: 600, fontSize: "0.82rem" }}>
                   Mặt bệnh điều trị
                 </label>
                 <input
+                  id="editmed-cond"
                   type="text"
                   className="input"
                   value={editMedModal.conditionName}
@@ -2037,17 +2049,17 @@ export function TreatmentTimeline({ profileId, isDoctor = false, onRefresh }: Pr
             </p>
             <form onSubmit={handleDeleteConditionSubmit}>
               <div style={{ marginBottom: 16 }}>
-                <label className="label" style={{ fontWeight: 700, fontSize: "0.82rem" }}>
+                <label htmlFor="delete-cond-reason" className="label" style={{ fontWeight: 700, fontSize: "0.82rem" }}>
                   Lý do xóa chẩn đoán (*)
                 </label>
                 <input
+                  id="delete-cond-reason"
                   type="text"
                   className="input"
                   placeholder="VD: Nhập nhầm từ hồ sơ bệnh nhân khác, chẩn đoán trùng lặp..."
                   value={deleteModal.reason}
                   onChange={(e) => setDeleteModal((prev) => ({ ...prev, reason: e.target.value }))}
                   required
-                  autoFocus
                 />
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>

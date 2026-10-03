@@ -337,6 +337,35 @@ def set_observation_status(
 
 
 @router.get("/{profile_id}/ai-summary", summary="AI tóm tắt diễn biến cho bác sĩ (chỉ tổng hợp dữ liệu hệ thống)")
+def _format_med_status(med: MedicationRecord) -> str:
+    if med.status == "stopped":
+        return f" — đã ngừng: {med.stop_reason}"
+    if med.status == "irregular":
+        return " — dùng không đều"
+    return ""
+
+
+def _extract_ai_highlights(
+    allergies: list[AllergyRecord],
+    triages: list[TriageAssessment],
+    meds: list[MedicationRecord],
+    by_source: dict[str, list[str]],
+) -> list[str]:
+    highlights: list[str] = []
+    if any(a.verification == "verified" and a.severity == "high" for a in allergies):
+        highlights.append("⚠ Có dị ứng mức CAO đã xác minh — rà soát mọi toa mới.")
+    if any(t.level == "red" for t in triages):
+        highlights.append("🚨 Có lần phân luồng ĐỎ — kiểm tra diễn biến sau cấp cứu.")
+    if any(m.verification != "verified" and m.is_current for m in meds):
+        highlights.append("? Có thuốc đang dùng chưa xác minh — cần xác nhận trước khi tổng liều.")
+    if len(by_source) > 1:
+        highlights.append(f"📋 Người bệnh dùng thuốc từ {len(by_source)} nguồn khác nhau — cần đối soát.")
+    if not highlights:
+        highlights.append("Không có dấu hiệu nguy cơ nổi bật trong dữ liệu gần đây.")
+    return highlights
+
+
+@router.get("/{profile_id}/ai-summary", summary="AI tóm tắt diễn biến cho bác sĩ (chỉ tổng hợp dữ liệu hệ thống)")
 def ai_summary(
     profile_id: str,
     user: CurrentUser = Depends(require_roles("doctor", "nurse")),
@@ -387,7 +416,7 @@ def ai_summary(
     for m in meds:
         src = m.source_label or "Không rõ nguồn"
         tag = "" if m.verification == "verified" else " (chưa xác minh)"
-        stopped = f" — đã ngừng: {m.stop_reason}" if m.status == "stopped" else (" — dùng không đều" if m.status == "irregular" else "")
+        stopped = _format_med_status(m)
         by_source.setdefault(src, []).append(f"{m.raw_name}{tag}{stopped}")
     med_lines = [f"- Nguồn «{src}»: " + "; ".join(items) for src, items in by_source.items()]
 
@@ -400,17 +429,7 @@ def ai_summary(
         for t in triages
     ]
 
-    highlights: list[str] = []
-    if any(a.verification == "verified" and a.severity == "high" for a in allergies):
-        highlights.append("⚠ Có dị ứng mức CAO đã xác minh — rà soát mọi toa mới.")
-    if any(t.level == "red" for t in triages):
-        highlights.append("🚨 Có lần phân luồng ĐỎ — kiểm tra diễn biến sau cấp cứu.")
-    if any(m.verification != "verified" and m.is_current for m in meds):
-        highlights.append("? Có thuốc đang dùng chưa xác minh — cần xác nhận trước khi tổng liều.")
-    if len(by_source) > 1:
-        highlights.append(f"📋 Người bệnh dùng thuốc từ {len(by_source)} nguồn khác nhau — cần đối soát.")
-    if not highlights:
-        highlights.append("Không có dấu hiệu nguy cơ nổi bật trong dữ liệu gần đây.")
+    highlights = _extract_ai_highlights(allergies, triages, meds, by_source)
 
     summary_text = (
         f"{profile.full_name}: {len(symptom_lines)} triệu chứng, {len(meds)} thuốc "
