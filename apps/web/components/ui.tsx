@@ -302,9 +302,10 @@ export function AppShell({
               title="Tin nhắn & Gọi trực tiếp (Zalo Y tế)"
               style={{ position: "relative", padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 4 }}
             >
-              💬
+              <span>💬</span>
               <span style={{ fontSize: 12, fontWeight: 600 }}>Chat & Gọi</span>
             </Link>
+
 
 
             <div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 6, borderLeft: "1px solid var(--border-default)" }}>

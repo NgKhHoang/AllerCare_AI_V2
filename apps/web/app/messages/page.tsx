@@ -47,6 +47,316 @@ interface CallSession {
   target_name: string;
 }
 
+const ROLE_LABELS: Record<string, { label: string; badgeCls: string; icon: string }> = {
+  doctor: { label: "Bác sĩ", badgeCls: "badge-ok", icon: "🩺" },
+  patient: { label: "Người bệnh", badgeCls: "badge-neutral", icon: "🧑‍💼" },
+  nurse: { label: "Điều dưỡng", badgeCls: "badge-warning", icon: "👩‍⚕️" },
+  pharmacist: { label: "Dược sĩ", badgeCls: "badge-ok", icon: "💊" },
+  caregiver: { label: "Người nhà", badgeCls: "badge-neutral", icon: "🤝" },
+  leader: { label: "Lãnh đạo", badgeCls: "badge-warning", icon: "📊" },
+  admin: { label: "Quản trị viên", badgeCls: "badge-danger", icon: "🛠" },
+};
+
+function formatTime(secs: number): string {
+  const mins = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${mins.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+function formatMsgTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "";
+  }
+}
+
+function getInitials(fullName: string): string {
+  return fullName
+    .split(" ")
+    .filter(Boolean)
+    .slice(-2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase() || "U";
+}
+
+/* ---------------- Sub-component: Contact Item ---------------- */
+
+function ContactItem({
+  contact,
+  isSelected,
+  onSelect,
+}: Readonly<{
+  contact: Contact;
+  isSelected: boolean;
+  onSelect: (c: Contact) => void;
+}>) {
+  const rInfo = ROLE_LABELS[contact.role] ?? { label: contact.role, badgeCls: "badge-neutral", icon: "👤" };
+  const initials = getInitials(contact.full_name);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(contact)}
+      style={{
+        width: "100%",
+        textAlign: "left",
+        padding: "10px 12px",
+        borderRadius: 12,
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        cursor: "pointer",
+        marginBottom: 4,
+        background: isSelected ? "var(--brand-100)" : "transparent",
+        border: isSelected ? "1px solid var(--brand-300)" : "1px solid transparent",
+        transition: "all 0.15s ease",
+      }}
+    >
+      <div style={{ position: "relative" }}>
+        <div
+          style={{
+            width: 42,
+            height: 42,
+            borderRadius: "50%",
+            background: isSelected ? "var(--brand-600)" : "var(--surface-ground)",
+            color: isSelected ? "#fff" : "var(--brand-700)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: 700,
+            fontSize: 14,
+            border: "1px solid var(--border-default)",
+          }}
+        >
+          {initials}
+        </div>
+        <span
+          style={{
+            position: "absolute",
+            bottom: 0,
+            right: 0,
+            width: 11,
+            height: 11,
+            borderRadius: "50%",
+            background: "#22c55e",
+            border: "2px solid #fff",
+          }}
+          title="Đang trực tuyến"
+        />
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+          <div
+            style={{
+              fontWeight: 700,
+              fontSize: 13.5,
+              color: "var(--text-primary)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {contact.full_name}
+          </div>
+          {contact.last_message_at && (
+            <span style={{ fontSize: 10, color: "var(--text-secondary)" }}>
+              {formatMsgTime(contact.last_message_at)}
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+          <span className={`badge ${rInfo.badgeCls}`} style={{ fontSize: 9.5, padding: "1px 5px" }}>
+            {rInfo.icon} {rInfo.label}
+          </span>
+          {contact.unread_count > 0 && (
+            <span
+              style={{
+                background: "var(--status-danger)",
+                color: "#fff",
+                borderRadius: 10,
+                padding: "1px 6px",
+                fontSize: 10,
+                fontWeight: 700,
+              }}
+            >
+              {contact.unread_count}
+            </span>
+          )}
+        </div>
+
+        <div
+          style={{
+            fontSize: 11.5,
+            color: "var(--text-secondary)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {contact.last_message || "Chưa có tin nhắn nào"}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/* ---------------- Sub-component: Message Bubble ---------------- */
+
+function MessageBubble({
+  message,
+  currentUserId,
+}: Readonly<{
+  message: Message;
+  currentUserId?: string;
+}>) {
+  const isMe = message.sender_id === currentUserId;
+  const isCallEvent = message.attachment_type?.startsWith("call_");
+
+  if (isCallEvent) {
+    return (
+      <div
+        style={{
+          margin: "4px auto",
+          padding: "6px 14px",
+          borderRadius: 16,
+          background: "var(--surface-card)",
+          border: "1px solid var(--border-default)",
+          fontSize: 12,
+          color: "var(--text-secondary)",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <span>{message.content}</span>
+        <span>• {formatMsgTime(message.created_at)}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: isMe ? "flex-end" : "flex-start",
+        maxWidth: "75%",
+        alignSelf: isMe ? "flex-end" : "flex-start",
+      }}
+    >
+      {!isMe && (
+        <span style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 2, marginLeft: 4 }}>
+          {message.sender_name || "Người dùng"}
+        </span>
+      )}
+
+      <div
+        style={{
+          padding: "10px 14px",
+          borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+          background: isMe ? "var(--brand-600)" : "var(--surface-card)",
+          color: isMe ? "#fff" : "var(--text-primary)",
+          border: isMe ? "none" : "1px solid var(--border-default)",
+          fontSize: 13.5,
+          lineHeight: 1.5,
+          wordBreak: "break-word",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+        }}
+      >
+        {message.content}
+        {message.attachment_url && (
+          <div style={{ marginTop: 8 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={message.attachment_url}
+              alt="Ảnh đính kèm"
+              style={{ maxWidth: 220, borderRadius: 8, display: "block" }}
+            />
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2, fontSize: 10, color: "var(--text-secondary)" }}>
+        <span>{formatMsgTime(message.created_at)}</span>
+        {isMe && <span>✓✓</span>}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Sub-component: Incoming Call Ringing Modal ---------------- */
+
+function IncomingCallModal({
+  incomingCall,
+  onAccept,
+  onDecline,
+}: Readonly<{
+  incomingCall: CallSession;
+  onAccept: () => void;
+  onDecline: () => void;
+}>) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.7)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+      }}
+    >
+      <div
+        style={{
+          background: "var(--surface-card)",
+          borderRadius: 20,
+          padding: 28,
+          width: 360,
+          textAlign: "center",
+          boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
+        }}
+      >
+        <div style={{ fontSize: 48, marginBottom: 12 }}>
+          {incomingCall.call_type === "video" ? "📹" : "📞"}
+        </div>
+        <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 4 }}>
+          {incomingCall.caller_name}
+        </div>
+        <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20 }}>
+          Đang gọi {incomingCall.call_type === "video" ? "Video trực tiếp" : "thoại trực tiếp"} cho bạn...
+        </div>
+
+        <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+          <button
+            type="button"
+            className="btn btn-danger"
+            style={{ flex: 1, padding: "10px 16px", borderRadius: 12, fontWeight: 700 }}
+            onClick={onDecline}
+          >
+            ✕ Từ chối
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ flex: 1, padding: "10px 16px", borderRadius: 12, fontWeight: 700, background: "#16a34a" }}
+            onClick={onAccept}
+          >
+            ✓ Trả lời
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Main Page Component ---------------- */
+
 export default function MessagesPage() {
   const [user, setUser] = useState<{ id?: string; full_name?: string; role: string } | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -71,16 +381,6 @@ export default function MessagesPage() {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideosRef = useRef<HTMLDivElement | null>(null);
 
-  const roleLabels: Record<string, { label: string; badgeCls: string; icon: string }> = {
-    doctor: { label: "Bác sĩ", badgeCls: "badge-ok", icon: "🩺" },
-    patient: { label: "Người bệnh", badgeCls: "badge-neutral", icon: "🧑‍💼" },
-    nurse: { label: "Điều dưỡng", badgeCls: "badge-warning", icon: "👩‍⚕️" },
-    pharmacist: { label: "Dược sĩ", badgeCls: "badge-ok", icon: "💊" },
-    caregiver: { label: "Người nhà", badgeCls: "badge-neutral", icon: "🤝" },
-    leader: { label: "Lãnh đạo", badgeCls: "badge-warning", icon: "📊" },
-    admin: { label: "Quản trị viên", badgeCls: "badge-danger", icon: "🛠" },
-  };
-
   const loadContacts = useCallback(async () => {
     try {
       const data = await api<Contact[]>("/v1/messages/contacts");
@@ -89,7 +389,7 @@ export default function MessagesPage() {
         setSelectedContact(data[0]);
       }
     } catch {
-      // Fallback demo contacts if backend is starting
+      // Fallback
     } finally {
       setLoading(false);
     }
@@ -111,17 +411,19 @@ export default function MessagesPage() {
     }
     const curUser = getUser();
     setUser(curUser);
-    loadContacts();
+    void loadContacts();
 
-    const interval = setInterval(loadContacts, 4000);
+    const interval = setInterval(() => {
+      void loadContacts();
+    }, 4000);
     return () => clearInterval(interval);
   }, [loadContacts]);
 
   useEffect(() => {
     if (!selectedContact) return;
-    loadMessages(selectedContact.id);
+    void loadMessages(selectedContact.id);
     const msgInterval = setInterval(() => {
-      loadMessages(selectedContact.id);
+      void loadMessages(selectedContact.id);
     }, 2500);
     return () => clearInterval(msgInterval);
   }, [selectedContact, loadMessages]);
@@ -130,7 +432,6 @@ export default function MessagesPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Timer for active call
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
     if (callStatus === "connected") {
@@ -157,7 +458,7 @@ export default function MessagesPage() {
       });
       setMessages((prev) => [...prev, newMsg]);
       if (!customText) setInputContent("");
-      loadContacts();
+      void loadContacts();
     } catch (err) {
       alert("Không thể gửi tin nhắn: " + String(err));
     } finally {
@@ -202,14 +503,9 @@ export default function MessagesPage() {
       setCallSession(resp);
       setCamOn(type === "video");
       setMicOn(true);
-      setCallStatus("connecting" as unknown as "connected");
 
-      // If LiveKit token is provided and URL exists, connect to LiveKit room
       if (resp.token && resp.livekit_url) {
-        const room = new Room({
-          adaptiveStream: true,
-          dynacast: true,
-        });
+        const room = new Room({ adaptiveStream: true, dynacast: true });
         livekitRoomRef.current = room;
 
         room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication) => {
@@ -232,7 +528,7 @@ export default function MessagesPage() {
       }
 
       setCallStatus("connected");
-      loadMessages(selectedContact.id);
+      void loadMessages(selectedContact.id);
     } catch (err) {
       alert("Không thể khởi tạo cuộc gọi: " + String(err));
       setCallStatus("idle");
@@ -247,19 +543,21 @@ export default function MessagesPage() {
     }
     setCallStatus("idle");
     setCallSession(null);
-    if (selectedContact) loadMessages(selectedContact.id);
+    if (selectedContact) {
+      void loadMessages(selectedContact.id);
+    }
   };
 
-  const toggleMic = async () => {
+  const toggleMic = () => {
     if (livekitRoomRef.current) {
-      await livekitRoomRef.current.localParticipant.setMicrophoneEnabled(!micOn);
+      void livekitRoomRef.current.localParticipant.setMicrophoneEnabled(!micOn);
     }
     setMicOn(!micOn);
   };
 
-  const toggleCam = async () => {
+  const toggleCam = () => {
     if (livekitRoomRef.current) {
-      await livekitRoomRef.current.localParticipant.setCameraEnabled(!camOn);
+      void livekitRoomRef.current.localParticipant.setCameraEnabled(!camOn);
     }
     setCamOn(!camOn);
   };
@@ -268,29 +566,15 @@ export default function MessagesPage() {
     const matchSearch =
       c.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (roleLabels[c.role]?.label ?? "").toLowerCase().includes(searchQuery.toLowerCase());
-    const matchRole =
-      roleFilter === "all" ||
-      (roleFilter === "doctor" && c.role === "doctor") ||
-      (roleFilter === "patient" && c.role === "patient") ||
-      (roleFilter === "staff" && ["nurse", "pharmacist", "caregiver"].includes(c.role));
+      (ROLE_LABELS[c.role]?.label ?? "").toLowerCase().includes(searchQuery.toLowerCase());
+    
+    let matchRole = true;
+    if (roleFilter === "doctor") matchRole = c.role === "doctor";
+    else if (roleFilter === "patient") matchRole = c.role === "patient";
+    else if (roleFilter === "staff") matchRole = ["nurse", "pharmacist", "caregiver"].includes(c.role);
+
     return matchSearch && matchRole;
   });
-
-  const formatTime = (secs: number) => {
-    const mins = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${mins.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  };
-
-  const formatMsgTime = (iso: string) => {
-    try {
-      const d = new Date(iso);
-      return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-    } catch {
-      return "";
-    }
-  };
 
   const roleName = (user?.role ?? "patient") as "patient" | "doctor" | "nurse" | "leader" | "admin";
 
@@ -303,7 +587,7 @@ export default function MessagesPage() {
       wide
     >
       <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 16, height: "76vh", minHeight: 560 }}>
-        {/* LEFT COLUMN: DANH BẠ HỘI THOẠI (CONTACT LIST) */}
+        {/* LEFT COLUMN: DANH BẠ HỘI THOẠI */}
         <div
           style={{
             background: "var(--surface-card)",
@@ -314,7 +598,6 @@ export default function MessagesPage() {
             overflow: "hidden",
           }}
         >
-          {/* Search & Filter Header */}
           <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border-default)", background: "var(--surface-ground)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div style={{ fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center", gap: 6 }}>
@@ -322,6 +605,7 @@ export default function MessagesPage() {
                 <span className="badge badge-ok" style={{ fontSize: 10 }}>{contacts.length} liên hệ</span>
               </div>
               <button
+                type="button"
                 className="btn btn-secondary btn-sm"
                 style={{ padding: "4px 8px", fontSize: 11 }}
                 onClick={() => {
@@ -356,7 +640,6 @@ export default function MessagesPage() {
               }}
             />
 
-            {/* Filter Tabs */}
             <div style={{ display: "flex", gap: 4 }}>
               {[
                 { id: "all", label: "Tất cả" },
@@ -366,6 +649,7 @@ export default function MessagesPage() {
               ].map((tab) => (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => setRoleFilter(tab.id)}
                   style={{
                     flex: 1,
@@ -386,141 +670,29 @@ export default function MessagesPage() {
             </div>
           </div>
 
-          {/* Contact list scrollable */}
           <div style={{ flex: 1, overflowY: "auto", padding: "6px" }}>
-            {loading ? (
+            {loading && (
               <div style={{ padding: 20, textAlign: "center", color: "var(--text-secondary)", fontSize: 13 }}>
                 Đang tải danh bạ...
               </div>
-            ) : filteredContacts.length === 0 ? (
+            )}
+            {!loading && filteredContacts.length === 0 && (
               <div style={{ padding: 20, textAlign: "center", color: "var(--text-secondary)", fontSize: 13 }}>
                 Không tìm thấy liên hệ phù hợp
               </div>
-            ) : (
-              filteredContacts.map((c) => {
-                const isSelected = selectedContact?.id === c.id;
-                const rInfo = roleLabels[c.role] ?? { label: c.role, badgeCls: "badge-neutral", icon: "👤" };
-                const initials = c.full_name
-                  .split(" ")
-                  .filter(Boolean)
-                  .slice(-2)
-                  .map((w) => w[0])
-                  .join("")
-                  .toUpperCase();
-
-                return (
-                  <div
-                    key={c.id}
-                    onClick={() => setSelectedContact(c)}
-                    style={{
-                      padding: "10px 12px",
-                      borderRadius: 12,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      cursor: "pointer",
-                      marginBottom: 4,
-                      background: isSelected ? "var(--brand-100)" : "transparent",
-                      border: isSelected ? "1px solid var(--brand-300)" : "1px solid transparent",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    {/* Avatar with online dot */}
-                    <div style={{ position: "relative" }}>
-                      <div
-                        style={{
-                          width: 42,
-                          height: 42,
-                          borderRadius: "50%",
-                          background: isSelected ? "var(--brand-600)" : "var(--surface-ground)",
-                          color: isSelected ? "#fff" : "var(--brand-700)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontWeight: 700,
-                          fontSize: 14,
-                          border: "1px solid var(--border-default)",
-                        }}
-                      >
-                        {initials || "U"}
-                      </div>
-                      <span
-                        style={{
-                          position: "absolute",
-                          bottom: 0,
-                          right: 0,
-                          width: 11,
-                          height: 11,
-                          borderRadius: "50%",
-                          background: "#22c55e",
-                          border: "2px solid #fff",
-                        }}
-                        title="Đang trực tuyến"
-                      />
-                    </div>
-
-                    {/* Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
-                        <div
-                          style={{
-                            fontWeight: 700,
-                            fontSize: 13.5,
-                            color: "var(--text-primary)",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
-                          {c.full_name}
-                        </div>
-                        {c.last_message_at && (
-                          <span style={{ fontSize: 10, color: "var(--text-secondary)" }}>
-                            {formatMsgTime(c.last_message_at)}
-                          </span>
-                        )}
-                      </div>
-
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                        <span className={`badge ${rInfo.badgeCls}`} style={{ fontSize: 9.5, padding: "1px 5px" }}>
-                          {rInfo.icon} {rInfo.label}
-                        </span>
-                        {c.unread_count > 0 && (
-                          <span
-                            style={{
-                              background: "var(--status-danger)",
-                              color: "#fff",
-                              borderRadius: 10,
-                              padding: "1px 6px",
-                              fontSize: 10,
-                              fontWeight: 700,
-                            }}
-                          >
-                            {c.unread_count}
-                          </span>
-                        )}
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: 11.5,
-                          color: "var(--text-secondary)",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {c.last_message || "Chưa có tin nhắn nào"}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
             )}
+            {!loading && filteredContacts.map((c) => (
+              <ContactItem
+                key={c.id}
+                contact={c}
+                isSelected={selectedContact?.id === c.id}
+                onSelect={setSelectedContact}
+              />
+            ))}
           </div>
         </div>
 
-        {/* RIGHT COLUMN: KHUNG CHAT & GỌI TRỰC TIẾP (MESSENGER MAIN WINDOW) */}
+        {/* RIGHT COLUMN: KHUNG CHAT & GỌI TRỰC TIẾP */}
         <div
           style={{
             background: "var(--surface-card)",
@@ -533,7 +705,7 @@ export default function MessagesPage() {
         >
           {selectedContact ? (
             <>
-              {/* Header: User details + Direct Call Buttons */}
+              {/* Header */}
               <div
                 style={{
                   padding: "12px 20px",
@@ -559,13 +731,7 @@ export default function MessagesPage() {
                       fontSize: 16,
                     }}
                   >
-                    {selectedContact.full_name
-                      .split(" ")
-                      .filter(Boolean)
-                      .slice(-2)
-                      .map((w) => w[0])
-                      .join("")
-                      .toUpperCase() || "U"}
+                    {getInitials(selectedContact.full_name)}
                   </div>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center", gap: 8 }}>
@@ -575,25 +741,26 @@ export default function MessagesPage() {
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: "var(--text-secondary)", display: "flex", gap: 8, alignItems: "center" }}>
-                      <span>Vai trò: <strong>{roleLabels[selectedContact.role]?.label ?? selectedContact.role}</strong></span>
+                      <span>Vai trò: <strong>{ROLE_LABELS[selectedContact.role]?.label ?? selectedContact.role}</strong></span>
                       {selectedContact.phone && <span>• SĐT: {selectedContact.phone}</span>}
                     </div>
                   </div>
                 </div>
 
-                {/* Direct Action Buttons: Voice Call & Video Call */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <button
+                    type="button"
                     className="btn btn-secondary btn-sm"
-                    onClick={() => startInstantCall("voice")}
+                    onClick={() => { void startInstantCall("voice"); }}
                     style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600, padding: "8px 14px" }}
                     title="Gọi thoại trực tiếp không cần lịch hẹn"
                   >
                     📞 <span style={{ fontSize: 12.5 }}>Gọi thoại</span>
                   </button>
                   <button
+                    type="button"
                     className="btn btn-primary btn-sm"
-                    onClick={() => startInstantCall("video")}
+                    onClick={() => { void startInstantCall("video"); }}
                     style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600, padding: "8px 14px" }}
                     title="Khám video trực tiếp LiveKit HD"
                   >
@@ -602,7 +769,7 @@ export default function MessagesPage() {
                 </div>
               </div>
 
-              {/* Message Thread Stream */}
+              {/* Message Thread */}
               <div
                 style={{
                   flex: 1,
@@ -625,88 +792,18 @@ export default function MessagesPage() {
                     </div>
                   </div>
                 ) : (
-                  messages.map((m) => {
-                    const isMe = m.sender_id === user?.id;
-                    const isCallEvent = m.attachment_type?.startsWith("call_");
-
-                    if (isCallEvent) {
-                      return (
-                        <div
-                          key={m.id}
-                          style={{
-                            margin: "4px auto",
-                            padding: "6px 14px",
-                            borderRadius: 16,
-                            background: "var(--surface-card)",
-                            border: "1px solid var(--border-default)",
-                            fontSize: 12,
-                            color: "var(--text-secondary)",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                          }}
-                        >
-                          <span>{m.content}</span>
-                          <span>• {formatMsgTime(m.created_at)}</span>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div
-                        key={m.id}
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: isMe ? "flex-end" : "flex-start",
-                          maxWidth: "75%",
-                          alignSelf: isMe ? "flex-end" : "flex-start",
-                        }}
-                      >
-                        {!isMe && (
-                          <span style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 2, marginLeft: 4 }}>
-                            {m.sender_name || "Người dùng"}
-                          </span>
-                        )}
-
-                        <div
-                          style={{
-                            padding: "10px 14px",
-                            borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                            background: isMe ? "var(--brand-600)" : "var(--surface-card)",
-                            color: isMe ? "#fff" : "var(--text-primary)",
-                            border: isMe ? "none" : "1px solid var(--border-default)",
-                            fontSize: 13.5,
-                            lineHeight: 1.5,
-                            wordBreak: "break-word",
-                            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                          }}
-                        >
-                          {m.content}
-                          {m.attachment_url && (
-                            <div style={{ marginTop: 8 }}>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={m.attachment_url}
-                                alt="Ảnh đính kèm"
-                                style={{ maxWidth: 220, borderRadius: 8, display: "block" }}
-                              />
-                            </div>
-                          )}
-                        </div>
-
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2, fontSize: 10, color: "var(--text-secondary)" }}>
-                          <span>{formatMsgTime(m.created_at)}</span>
-                          {isMe && <span>✓✓</span>}
-                        </div>
-                      </div>
-                    );
-                  })
+                  messages.map((m) => (
+                    <MessageBubble
+                      key={m.id}
+                      message={m}
+                      currentUserId={user?.id}
+                    />
+                  ))
                 )}
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Quick Clinical Prompts Bar */}
+              {/* Quick Clinical Prompts */}
               <div
                 style={{
                   padding: "8px 16px",
@@ -726,9 +823,10 @@ export default function MessagesPage() {
                 ].map((prompt, idx) => (
                   <button
                     key={idx}
+                    type="button"
                     className="btn btn-secondary btn-sm"
                     style={{ fontSize: 11, padding: "3px 8px", whiteSpace: "nowrap" }}
-                    onClick={() => handleSendMessage(prompt)}
+                    onClick={() => { void handleSendMessage(prompt); }}
                   >
                     {prompt}
                   </button>
@@ -747,6 +845,7 @@ export default function MessagesPage() {
                 }}
               >
                 <button
+                  type="button"
                   className="btn btn-secondary btn-sm"
                   style={{ padding: "8px 12px", fontSize: 14 }}
                   onClick={() => {
@@ -755,14 +854,16 @@ export default function MessagesPage() {
                       "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400"
                     );
                     if (sampleUrl) {
-                      api(`/v1/messages/${selectedContact.id}`, {
+                      void api(`/v1/messages/${selectedContact.id}`, {
                         method: "POST",
                         body: {
                           content: "📸 Đã gửi hình ảnh y tế:",
                           attachment_url: sampleUrl,
                           attachment_type: "image",
                         },
-                      }).then(() => loadMessages(selectedContact.id));
+                      }).then(() => {
+                        void loadMessages(selectedContact.id);
+                      });
                     }
                   }}
                   title="Gửi hình ảnh tổn thương da hoặc đơn thuốc"
@@ -778,7 +879,7 @@ export default function MessagesPage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      handleSendMessage();
+                      void handleSendMessage();
                     }
                   }}
                   style={{
@@ -792,8 +893,9 @@ export default function MessagesPage() {
                 />
 
                 <button
+                  type="button"
                   className="btn btn-primary"
-                  onClick={() => handleSendMessage()}
+                  onClick={() => { void handleSendMessage(); }}
                   disabled={sending || !inputContent.trim()}
                   style={{ padding: "10px 18px", fontWeight: 700 }}
                 >
@@ -810,65 +912,20 @@ export default function MessagesPage() {
         </div>
       </div>
 
-      {/* POPUP CUỘC GỌI ĐẾN (INCOMING CALL RINGING MODAL) */}
+      {/* POPUP CUỘC GỌI ĐẾN */}
       {incomingCall && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.7)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 9999,
+        <IncomingCallModal
+          incomingCall={incomingCall}
+          onAccept={() => {
+            setCallSession(incomingCall);
+            setCallStatus("connected");
+            setIncomingCall(null);
           }}
-        >
-          <div
-            style={{
-              background: "var(--surface-card)",
-              borderRadius: 20,
-              padding: 28,
-              width: 360,
-              textAlign: "center",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
-              animation: "pulse 1.5s infinite",
-            }}
-          >
-            <div style={{ fontSize: 48, marginBottom: 12 }}>
-              {incomingCall.call_type === "video" ? "📹" : "📞"}
-            </div>
-            <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 4 }}>
-              {incomingCall.caller_name}
-            </div>
-            <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20 }}>
-              Đang gọi {incomingCall.call_type === "video" ? "Video trực tiếp" : "thoại trực tiếp"} cho bạn...
-            </div>
-
-            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-              <button
-                className="btn btn-danger"
-                style={{ flex: 1, padding: "10px 16px", borderRadius: 12, fontWeight: 700 }}
-                onClick={() => setIncomingCall(null)}
-              >
-                ✕ Từ chối
-              </button>
-              <button
-                className="btn btn-primary"
-                style={{ flex: 1, padding: "10px 16px", borderRadius: 12, fontWeight: 700, background: "#16a34a" }}
-                onClick={() => {
-                  setCallSession(incomingCall);
-                  setCallStatus("connected");
-                  setIncomingCall(null);
-                }}
-              >
-                ✓ Trả lời
-              </button>
-            </div>
-          </div>
-        </div>
+          onDecline={() => setIncomingCall(null)}
+        />
       )}
 
-      {/* MODAL PHÒNG GỌI TỨC THÌ (INSTANT LIVEKIT CALL MODAL) */}
+      {/* MODAL PHÒNG GỌI TỨC THÌ */}
       {callSession && callStatus === "connected" && (
         <div
           style={{
@@ -881,7 +938,6 @@ export default function MessagesPage() {
             padding: 20,
           }}
         >
-          {/* Call Header */}
           <div
             style={{
               display: "flex",
@@ -909,7 +965,6 @@ export default function MessagesPage() {
             </span>
           </div>
 
-          {/* Video or Audio Waveform Grid */}
           <div
             style={{
               flex: 1,
@@ -923,7 +978,6 @@ export default function MessagesPage() {
           >
             {callSession.call_type === "video" ? (
               <div style={{ display: "flex", gap: 16, width: "100%", height: "100%", maxHeight: "60vh" }}>
-                {/* Local Video */}
                 <div
                   style={{
                     flex: 1,
@@ -960,7 +1014,6 @@ export default function MessagesPage() {
                   </span>
                 </div>
 
-                {/* Remote Video Container */}
                 <div
                   ref={remoteVideosRef}
                   style={{
@@ -984,7 +1037,6 @@ export default function MessagesPage() {
                 </div>
               </div>
             ) : (
-              /* Voice-only waveform display */
               <div style={{ textAlign: "center", color: "#fff" }}>
                 <div
                   style={{
@@ -1010,7 +1062,6 @@ export default function MessagesPage() {
             )}
           </div>
 
-          {/* Call Controls Floating Bar */}
           <div
             style={{
               display: "flex",
@@ -1021,6 +1072,7 @@ export default function MessagesPage() {
             }}
           >
             <button
+              type="button"
               onClick={toggleMic}
               style={{
                 padding: "12px 20px",
@@ -1041,6 +1093,7 @@ export default function MessagesPage() {
 
             {callSession.call_type === "video" && (
               <button
+                type="button"
                 onClick={toggleCam}
                 style={{
                   padding: "12px 20px",
@@ -1061,6 +1114,7 @@ export default function MessagesPage() {
             )}
 
             <button
+              type="button"
               onClick={endCall}
               style={{
                 padding: "12px 28px",
