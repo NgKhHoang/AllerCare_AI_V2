@@ -25,3 +25,6 @@ from app.modules.triage.models import (  # noqa: F401
     SuspectRanking,
     TriageAssessment,
 )
+from app.modules.messages.models import DirectMessage  # noqa: F401
+
+

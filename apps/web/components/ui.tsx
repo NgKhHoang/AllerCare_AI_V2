@@ -134,9 +134,10 @@ export interface NavItem {
 export const PATIENT_NAV: NavItem[] = [
   { href: "/patient", label: "Trang chủ", icon: "🏠" },
   { href: "/patient/updates", label: "Đối soát thuốc", icon: "📝" },
-  { href: "/patient/chat", label: "Hỏi đáp AI", icon: "💬" },
+  { href: "/patient/chat", label: "Hỏi đáp AI", icon: "🤖" },
   { href: "/patient/appointments", label: "Lịch hẹn", icon: "📅" },
   { href: "/notifications", label: "Thông báo", icon: "🔔" },
+  { href: "/messages", label: "Tin nhắn & Gọi", icon: "💬" },
 ];
 
 export const DOCTOR_NAV: NavItem[] = [
@@ -144,22 +145,27 @@ export const DOCTOR_NAV: NavItem[] = [
   { href: "/doctor/ai-suspect", label: "AI gợi ý tác nhân", icon: "🔍" },
   { href: "/pharmacist", label: "Tương tác thuốc", icon: "⚡" },
   { href: "/notifications", label: "Thông báo", icon: "🔔" },
+  { href: "/messages", label: "Tin nhắn & Gọi", icon: "💬" },
 ];
 
 export const NURSE_NAV: NavItem[] = [
   { href: "/nurse", label: "Hàng đợi", icon: "🚦" },
   { href: "/notifications", label: "Thông báo", icon: "🔔" },
+  { href: "/messages", label: "Tin nhắn & Gọi", icon: "💬" },
 ];
 
 export const LEADER_NAV: NavItem[] = [
   { href: "/leader", label: "Dashboard", icon: "📊" },
   { href: "/notifications", label: "Thông báo", icon: "🔔" },
+  { href: "/messages", label: "Tin nhắn & Gọi", icon: "💬" },
 ];
 
 export const ADMIN_NAV: NavItem[] = [
   { href: "/admin", label: "Quản trị", icon: "🛠" },
   { href: "/notifications", label: "Thông báo", icon: "🔔" },
+  { href: "/messages", label: "Tin nhắn & Gọi", icon: "💬" },
 ];
+
 
 /* ---------- Badge phân luồng TriageGuard ---------- */
 
@@ -289,6 +295,17 @@ export function AppShell({
                 </span>
               )}
             </Link>
+
+            <Link
+              href="/messages"
+              className="btn btn-secondary btn-sm"
+              title="Tin nhắn & Gọi trực tiếp (Zalo Y tế)"
+              style={{ position: "relative", padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 4 }}
+            >
+              💬
+              <span style={{ fontSize: 12, fontWeight: 600 }}>Chat & Gọi</span>
+            </Link>
+
 
             <div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 6, borderLeft: "1px solid var(--border-default)" }}>
               <span

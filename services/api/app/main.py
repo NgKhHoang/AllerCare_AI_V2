@@ -40,6 +40,13 @@ from app.modules.notifications.router import router as notifications_router  # n
 from app.modules.dashboard.router import router as dashboard_router  # noqa: E402
 from app.modules.admin.router import router as admin_router  # noqa: E402
 from app.modules.upload.router import router as upload_router  # noqa: E402
+from app.modules.messages.router import router as messages_router  # noqa: E402
+from app import models_registry as _models_reg  # noqa: F401, E402
+from app.db import Base, engine  # noqa: E402
+
+
+# Ensure newly registered tables exist
+Base.metadata.create_all(bind=engine)
 
 api.include_router(auth_router)
 api.include_router(doctor_patients_router)  # /patients/assigned ... (trước patients_router)
@@ -54,6 +61,8 @@ api.include_router(notifications_router)
 api.include_router(dashboard_router)
 api.include_router(admin_router)
 api.include_router(upload_router)
+api.include_router(messages_router)
+
 
 
 @api.get("/healthz", tags=["system"])
