@@ -61,6 +61,137 @@
   --shadow-float: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
 }
 
+[data-theme="dark"],
+.dark {
+  /* Nền & Bề mặt Tối */
+  --bg-base: #0a0f1d;
+  --bg-subtle: #0f172a;
+  --bg-gradient: radial-gradient(100% 60% at 50% 0%, #1e293b 0%, #0a0f1d 100%);
+  --surface-card: #131d31;
+  --surface-glass: rgba(19, 29, 49, 0.88);
+  --surface-hover: #1e2c47;
+  --border-default: #25334d;
+  --border-subtle: #1b263b;
+  --border-strong: #3d5070;
+
+  /* Xanh thương hiệu y tế & Trí tuệ AI trong nền tối */
+  --brand-50: #0c192c;
+  --brand-100: #102a4c;
+  --brand-200: #0369a1;
+  --brand-300: #38bdf8;
+  --brand-400: #38bdf8;
+  --brand-500: #0284c7;
+  --brand-600: #38bdf8;
+  --brand-700: #7dd3fc;
+  --brand-grad: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  --brand-grad-subtle: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  --ai-glow: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+
+  /* Trạng thái MedSafe trong Dark Mode */
+  --status-info: #38bdf8;
+  --status-info-bg: rgba(2, 132, 199, 0.22);
+  --status-warning: #fbbf24;
+  --status-warning-bg: rgba(245, 158, 11, 0.18);
+  --status-warning-border: #78350f;
+  --status-danger: #f87171;
+  --status-danger-bg: rgba(239, 68, 68, 0.18);
+  --status-danger-border: #7f1d1d;
+  --status-neutral: #94a3b8;
+  --status-neutral-bg: rgba(148, 163, 184, 0.14);
+  --status-missing: #facc15;
+  --status-missing-bg: rgba(234, 179, 8, 0.18);
+  --status-scope: #94a3b8;
+  --status-scope-bg: #1e293b;
+  --status-error: #f87171;
+  --status-error-bg: rgba(239, 68, 68, 0.22);
+  --unverified: #fbbf24;
+  --unverified-bg: rgba(245, 158, 11, 0.18);
+
+  /* Chữ trong Dark Mode */
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-disabled: #64748b;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(37, 51, 77, 0.9);
+  --shadow-hover: 0 10px 24px -5px rgba(0, 0, 0, 0.55), 0 0 0 1px #0284c7;
+  --shadow-float: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .app-header,
+.dark .app-header {
+  background: rgba(19, 29, 49, 0.85);
+  border-bottom-color: var(--border-default);
+}
+
+[data-theme="dark"] .page-hero,
+.dark .page-hero {
+  background: linear-gradient(135deg, rgba(16, 42, 76, 0.4) 0%, rgba(19, 29, 49, 0.9) 100%);
+  border-color: var(--border-default);
+}
+
+[data-theme="dark"] .input,
+.dark .input,
+[data-theme="dark"] .textarea,
+.dark .textarea,
+[data-theme="dark"] select.input,
+.dark select.input {
+  background: #0d1527;
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+[data-theme="dark"] .list-row,
+.dark .list-row {
+  background: #131d31;
+  border-color: var(--border-default);
+}
+
+[data-theme="dark"] .list-row:hover,
+.dark .list-row:hover {
+  background: #1a2742;
+  border-color: #0284c7;
+}
+
+[data-theme="dark"] .bubble-bot,
+.dark .bubble-bot {
+  background: #1a2742;
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+
+[data-theme="dark"] .floating-bottom-nav,
+.dark .floating-bottom-nav {
+  background: rgba(19, 29, 49, 0.92);
+  border-color: var(--border-default);
+}
+
+[data-theme="dark"] .btn-secondary,
+.dark .btn-secondary {
+  background: #131d31;
+  color: #f1f5f9;
+  border-color: var(--border-default);
+}
+
+[data-theme="dark"] .btn-secondary:hover,
+.dark .btn-secondary:hover {
+  background: #1a2742;
+  border-color: #38bdf8;
+}
+
+[data-theme="dark"] .badge-ok,
+.dark .badge-ok {
+  background: rgba(22, 163, 74, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+[data-theme="dark"] .empty-state,
+.dark .empty-state {
+  background: #0f172a;
+  border-color: #1e293b;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
