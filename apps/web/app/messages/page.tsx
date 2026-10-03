@@ -3,12 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, getToken, getUser } from "../../lib/api";
 import { AppShell } from "../../components/ui";
-import {
-  Room,
-  RoomEvent,
-  type RemoteTrack,
-  type RemoteTrackPublication,
-} from "livekit-client";
+import { Room } from "livekit-client";
 
 interface Contact {
   id: string;
@@ -547,7 +542,7 @@ export default function MessagesPage() {
     const checkIncoming = async () => {
       try {
         const inc = await api<CallSession & { status: string; offer?: RTCSessionDescriptionInit }>("/v1/messages/call/incoming");
-        if (inc && inc.status === "ringing" && callStatus === "idle") {
+        if (inc?.status === "ringing" && callStatus === "idle") {
           setIncomingCall(inc);
         }
       } catch {
@@ -565,11 +560,9 @@ export default function MessagesPage() {
   useEffect(() => {
     if (incomingCall || callStatus === "ringing") {
       stopRingtoneRef.current = playRingtone();
-    } else {
-      if (stopRingtoneRef.current) {
-        stopRingtoneRef.current();
-        stopRingtoneRef.current = null;
-      }
+    } else if (stopRingtoneRef.current) {
+      stopRingtoneRef.current();
+      stopRingtoneRef.current = null;
     }
     return () => {
       if (stopRingtoneRef.current) {
@@ -643,7 +636,7 @@ export default function MessagesPage() {
       peerConnectionRef.current = null;
     }
     if (livekitRoomRef.current) {
-      livekitRoomRef.current.disconnect();
+      void livekitRoomRef.current.disconnect();
       livekitRoomRef.current = null;
     }
     if (localStreamRef.current) {
@@ -711,7 +704,7 @@ export default function MessagesPage() {
         }
 
         pc.ontrack = (event) => {
-          const stream = event.streams && event.streams[0] ? event.streams[0] : new MediaStream([event.track]);
+          const stream = event.streams?.[0] || new MediaStream([event.track]);
           setHasRemoteStream(true);
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = stream;
@@ -751,18 +744,18 @@ export default function MessagesPage() {
           }>(`/v1/messages/call/signal/${resp.room_code}`);
 
           const pc = peerConnectionRef.current;
-          if (sig.status === "connected" && sig.answer && pc) {
-            if (!pc.currentRemoteDescription) {
-              await pc.setRemoteDescription(new RTCSessionDescription(sig.answer));
-              setCallStatus("connected");
-            }
+          if (sig.status === "connected" && sig.answer && pc && !pc.currentRemoteDescription) {
+            await pc.setRemoteDescription(new RTCSessionDescription(sig.answer));
+            setCallStatus("connected");
           }
-          if (sig.candidates && pc && pc.currentRemoteDescription) {
-            for (const c of sig.candidates) {
-              try {
-                await pc.addIceCandidate(new RTCIceCandidate(c));
-              } catch {}
-            }
+          if (sig.candidates && pc?.currentRemoteDescription) {
+            await Promise.all(
+              sig.candidates.map(async (c) => {
+                try {
+                  await pc.addIceCandidate(new RTCIceCandidate(c));
+                } catch {}
+              })
+            );
           }
           if (sig.status === "ended" || sig.status === "declined") {
             clearInterval(pollInterval);
@@ -824,7 +817,7 @@ export default function MessagesPage() {
         }
 
         pc.ontrack = (event) => {
-          const stream = event.streams && event.streams[0] ? event.streams[0] : new MediaStream([event.track]);
+          const stream = event.streams?.[0] || new MediaStream([event.track]);
           setHasRemoteStream(true);
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = stream;
@@ -856,11 +849,13 @@ export default function MessagesPage() {
         });
 
         if (sig.candidates) {
-          for (const c of sig.candidates) {
-            try {
-              await pc.addIceCandidate(new RTCIceCandidate(c));
-            } catch {}
-          }
+          await Promise.all(
+            sig.candidates.map(async (c) => {
+              try {
+                await pc.addIceCandidate(new RTCIceCandidate(c));
+              } catch {}
+            })
+          );
         }
       }
 
@@ -870,12 +865,15 @@ export default function MessagesPage() {
           const s = await api<{ status: string; candidates?: RTCIceCandidateInit[] }>(
             `/v1/messages/call/signal/${incomingCall.room_code}`
           );
-          if (s.candidates && peerConnectionRef.current) {
-            for (const c of s.candidates) {
-              try {
-                await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(c));
-              } catch {}
-            }
+          if (s.candidates && peerConnectionRef.current?.currentRemoteDescription) {
+            const pc = peerConnectionRef.current;
+            await Promise.all(
+              s.candidates.map(async (c) => {
+                try {
+                  await pc.addIceCandidate(new RTCIceCandidate(c));
+                } catch {}
+              })
+            );
           }
           if (s.status === "ended") {
             clearInterval(pollInterval);
@@ -909,7 +907,7 @@ export default function MessagesPage() {
     const nextMic = !micOn;
     if (peerConnectionRef.current) {
       peerConnectionRef.current.getSenders().forEach((sender) => {
-        if (sender.track && sender.track.kind === "audio") {
+        if (sender.track?.kind === "audio") {
           sender.track.enabled = nextMic;
         }
       });
@@ -926,7 +924,7 @@ export default function MessagesPage() {
     const nextCam = !camOn;
     if (peerConnectionRef.current) {
       peerConnectionRef.current.getSenders().forEach((sender) => {
-        if (sender.track && sender.track.kind === "video") {
+        if (sender.track?.kind === "video") {
           sender.track.enabled = nextCam;
         }
       });
@@ -1402,7 +1400,9 @@ export default function MessagesPage() {
           }}
         >
           {/* HIDDEN AUDIO ELEMENT FOR REMOTE VOICE STREAM */}
-          <audio ref={remoteAudioRef} autoPlay style={{ display: "none" }} />
+          <audio ref={remoteAudioRef} autoPlay style={{ display: "none" }}>
+            <track kind="captions" />
+          </audio>
 
           <div
             style={{
@@ -1474,7 +1474,9 @@ export default function MessagesPage() {
                       transform: "scaleX(-1)",
                       display: camOn ? "block" : "none",
                     }}
-                  />
+                  >
+                    <track kind="captions" />
+                  </video>
                   {!camOn && (
                     <div style={{ textAlign: "center", color: "#94a3b8" }}>
                       <div style={{ fontSize: 44, marginBottom: 8 }}>📷</div>
@@ -1528,7 +1530,9 @@ export default function MessagesPage() {
                       objectFit: "cover",
                       display: hasRemoteStream ? "block" : "none",
                     }}
-                  />
+                  >
+                    <track kind="captions" />
+                  </video>
                   {!hasRemoteStream && (
                     <div style={{ textAlign: "center" }}>
                       <div

@@ -109,6 +109,48 @@ def _seed_sample_messages_if_empty(db: Session) -> None:
     db.commit()
 
 
+PATIENT_CONTACT_FORBIDDEN_DETAIL = "Người bệnh chỉ có thể liên lạc với Bác sĩ đang phụ trách điều trị."
+
+
+def _get_patient_doctor_ids(patient_id: str, db: Session) -> set[str]:
+    """Lấy danh sách ID bác sĩ phụ trách cho bệnh nhân."""
+    doc_ids = set()
+    for ca in (
+        db.query(CareAssignment)
+        .filter(CareAssignment.patient_user_id == patient_id, CareAssignment.active == True)
+        .all()
+    ):
+        doc_ids.add(ca.doctor_id)
+
+    prof = db.query(PatientProfile).filter(PatientProfile.user_id == patient_id).first()
+    if prof and prof.assigned_doctor_id:
+        doc_ids.add(prof.assigned_doctor_id)
+
+    if not doc_ids:
+        doc1 = db.query(User).filter(User.username == "doctor1", User.is_active == True).first()
+        if doc1:
+            doc_ids.add(doc1.id)
+        else:
+            first_doc = db.query(User).filter(User.role == "doctor", User.is_active == True).first()
+            if first_doc:
+                doc_ids.add(first_doc.id)
+    return doc_ids
+
+
+def _get_caregiver_doctor_ids(caregiver_id: str, db: Session) -> set[str]:
+    """Lấy danh sách ID bác sĩ phụ trách cho các bệnh nhân liên kết với người nhà."""
+    patient_ids = [
+        cl.patient_user_id
+        for cl in db.query(CaregiverLink)
+        .filter(CaregiverLink.caregiver_user_id == caregiver_id, CaregiverLink.active == True)
+        .all()
+    ]
+    doc_ids = set()
+    for pid in patient_ids:
+        doc_ids.update(_get_patient_doctor_ids(pid, db))
+    return doc_ids
+
+
 def _get_allowed_contact_ids(user: CurrentUser, db: Session) -> set[str] | None:
     """Xác định danh sách user ID mà người dùng hiện tại được phép liên lạc:
     - Bác sĩ, Lãnh đạo, Quản trị viên, Điều dưỡng, Dược sĩ: Liên lạc toàn bộ danh bạ y tế (None).
@@ -119,54 +161,10 @@ def _get_allowed_contact_ids(user: CurrentUser, db: Session) -> set[str] | None:
         return None
 
     if user.role == "patient":
-        doc_ids = set()
-        # 1. Từ phân công điều trị CareAssignment
-        for ca in (
-            db.query(CareAssignment)
-            .filter(CareAssignment.patient_user_id == user.id, CareAssignment.active == True)
-            .all()
-        ):
-            doc_ids.add(ca.doctor_id)
-
-        # 2. Từ hồ sơ bệnh nhân PatientProfile.assigned_doctor_id
-        prof = db.query(PatientProfile).filter(PatientProfile.user_id == user.id).first()
-        if prof and prof.assigned_doctor_id:
-            doc_ids.add(prof.assigned_doctor_id)
-
-        # 3. Fallback an toàn cho tài khoản demo: Gán bác sĩ doctor1 (BS. Nguyễn Văn An)
-        if not doc_ids:
-            doc1 = db.query(User).filter(User.username == "doctor1", User.is_active == True).first()
-            if doc1:
-                doc_ids.add(doc1.id)
-            else:
-                first_doc = db.query(User).filter(User.role == "doctor", User.is_active == True).first()
-                if first_doc:
-                    doc_ids.add(first_doc.id)
-        return doc_ids
+        return _get_patient_doctor_ids(user.id, db)
 
     if user.role == "caregiver":
-        patient_ids = [
-            cl.patient_user_id
-            for cl in db.query(CaregiverLink)
-            .filter(CaregiverLink.caregiver_user_id == user.id, CaregiverLink.active == True)
-            .all()
-        ]
-        doc_ids = set()
-        for pid in patient_ids:
-            for ca in (
-                db.query(CareAssignment)
-                .filter(CareAssignment.patient_user_id == pid, CareAssignment.active == True)
-                .all()
-            ):
-                doc_ids.add(ca.doctor_id)
-            prof = db.query(PatientProfile).filter(PatientProfile.user_id == pid).first()
-            if prof and prof.assigned_doctor_id:
-                doc_ids.add(prof.assigned_doctor_id)
-        if not doc_ids:
-            doc1 = db.query(User).filter(User.username == "doctor1", User.is_active == True).first()
-            if doc1:
-                doc_ids.add(doc1.id)
-        return doc_ids
+        return _get_caregiver_doctor_ids(user.id, db)
 
     return None
 
@@ -264,7 +262,7 @@ def get_messages(
     if allowed_ids is not None and target_user.id not in allowed_ids:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Người bệnh chỉ có thể liên lạc với Bác sĩ đang phụ trách điều trị.",
+            PATIENT_CONTACT_FORBIDDEN_DETAIL,
         )
     
     messages = (
@@ -328,7 +326,7 @@ def send_message(
     if allowed_ids is not None and target_user.id not in allowed_ids:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Người bệnh chỉ có thể liên lạc với Bác sĩ đang phụ trách điều trị.",
+            PATIENT_CONTACT_FORBIDDEN_DETAIL,
         )
     
     if not data.content.strip() and not data.attachment_url:
@@ -379,7 +377,7 @@ def create_instant_call(
     if allowed_ids is not None and target_user.id not in allowed_ids:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Người bệnh chỉ có thể liên lạc với Bác sĩ đang phụ trách điều trị.",
+            PATIENT_CONTACT_FORBIDDEN_DETAIL,
         )
     
     # Tạo mã phòng hội thoại thống nhất giữa 2 người dùng
@@ -441,7 +439,7 @@ def check_incoming_call(
     """Kiểm tra xem có người gọi tới tài khoản hiện tại không (dùng để reo chuông thiết bị phía nhận)."""
     import time
     now = time.time()
-    for room_code, s in list(_CALL_SESSIONS.items()):
+    for room_code, s in _CALL_SESSIONS.items():
         if now - s.get("created_at", 0) > 90:
             if s.get("status") == "ringing":
                 s["status"] = "ended"
@@ -573,7 +571,7 @@ def trigger_auto_reply(
     if allowed_ids is not None and target_user.id not in allowed_ids:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Người bệnh chỉ có thể liên lạc với Bác sĩ đang phụ trách điều trị.",
+            PATIENT_CONTACT_FORBIDDEN_DETAIL,
         )
     
     # Mẫu câu trả lời theo role của target
@@ -597,8 +595,7 @@ def trigger_auto_reply(
         ],
     }
     choices = reply_templates.get(target_user.role, ["Đã nhận được tin nhắn của bạn."])
-    import random
-    reply_text = random.choice(choices)
+    reply_text = secrets.choice(choices)
 
     msg = DirectMessage(
         sender_id=contact_id,
