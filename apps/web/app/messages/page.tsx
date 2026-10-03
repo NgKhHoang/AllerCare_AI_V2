@@ -318,14 +318,30 @@ function MessageBubble({
           boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
         }}
       >
-        {message.content}
+        {message.content && <div>{message.content}</div>}
         {message.attachment_url && (
           <div style={{ marginTop: 8 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={message.attachment_url}
               alt="Ảnh đính kèm"
-              style={{ maxWidth: 220, borderRadius: 8, display: "block" }}
+              style={{
+                maxWidth: 240,
+                maxHeight: 240,
+                borderRadius: 10,
+                display: "block",
+                cursor: "pointer",
+                objectFit: "cover",
+                border: "1px solid rgba(0,0,0,0.12)",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                background: "#f1f5f9",
+              }}
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.open(message.attachment_url!, "_blank");
+                }
+              }}
+              title="Nhấn để xem ảnh kích thước gốc"
             />
           </div>
         )}
@@ -937,26 +953,50 @@ export default function MessagesPage() {
     setCamOn(nextCam);
   };
 
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   const roleName = (user?.role ?? "patient") as "patient" | "doctor" | "nurse" | "leader" | "admin";
   const isPatient = user?.role === "patient" || user?.role === "caregiver";
 
-  const handleSendImagePrompt = () => {
-    if (!selectedContact) return;
-    const sampleUrl = prompt(
-      "Nhập link hình ảnh tổn thương / đơn thuốc:",
-      "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400"
-    );
-    if (sampleUrl) {
-      void api(`/v1/messages/${selectedContact.id}`, {
+  const handleDeviceFileUpload = async (file: File) => {
+    if (!selectedContact || uploadingImage) return;
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const token = getToken();
+      const res = await fetch("/api/v1/upload", {
+        method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "Không thể tải ảnh lên máy chủ");
+      }
+
+      const data = (await res.json()) as { url: string };
+      const uploadedUrl = data.url;
+
+      const newMsg = await api<Message>(`/v1/messages/${selectedContact.id}`, {
         method: "POST",
         body: {
-          content: "📸 Đã gửi hình ảnh y tế:",
-          attachment_url: sampleUrl,
+          content: `📸 Đã gửi hình ảnh: ${file.name}`,
+          attachment_url: uploadedUrl,
           attachment_type: "image",
         },
-      }).then(() => {
-        void loadMessages(selectedContact.id);
       });
+
+      setMessages((prev) => [...prev, newMsg]);
+      void loadContacts();
+    } catch (err) {
+      alert("Lỗi khi tải ảnh từ thiết bị: " + String(err));
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -1012,7 +1052,8 @@ export default function MessagesPage() {
           sending={sending}
           autoReplying={autoReplying}
           onStartCall={(t) => void startInstantCall(t)}
-          onSendImage={handleSendImagePrompt}
+          onUploadFile={handleDeviceFileUpload}
+          uploadingImage={uploadingImage}
           messagesEndRef={messagesEndRef}
         />
       </div>
@@ -1275,7 +1316,8 @@ function ChatMainPanel({
   sending,
   autoReplying,
   onStartCall,
-  onSendImage,
+  onUploadFile,
+  uploadingImage,
   messagesEndRef,
 }: Readonly<{
   selectedContact: Contact | null;
@@ -1288,9 +1330,12 @@ function ChatMainPanel({
   sending: boolean;
   autoReplying: boolean;
   onStartCall: (type: "voice" | "video") => void;
-  onSendImage: () => void;
+  onUploadFile: (file: File) => void;
+  uploadingImage: boolean;
   messagesEndRef: React.RefObject<HTMLDivElement>;
 }>) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   if (!selectedContact) {
     return (
       <div
@@ -1322,6 +1367,21 @@ function ChatMainPanel({
         overflow: "hidden",
       }}
     >
+      {/* Hidden native device file picker */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            onUploadFile(file);
+            e.target.value = "";
+          }
+        }}
+      />
+
       {/* Header */}
       <div
         style={{
@@ -1484,11 +1544,19 @@ function ChatMainPanel({
         <button
           type="button"
           className="btn btn-secondary btn-sm"
-          style={{ padding: "8px 12px", fontSize: 14 }}
-          onClick={onSendImage}
-          title="Gửi hình ảnh tổn thương da hoặc đơn thuốc"
+          style={{
+            padding: "8px 14px",
+            fontSize: 13,
+            fontWeight: 600,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploadingImage || sending}
+          title="Chụp ảnh bằng Camera hoặc chọn ảnh từ thiết bị điện thoại/máy tính"
         >
-          📷 Ảnh
+          {uploadingImage ? "⏳ Đang tải..." : "📷 Tải ảnh từ máy"}
         </button>
 
         <input
