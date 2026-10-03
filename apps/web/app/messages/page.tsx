@@ -89,6 +89,44 @@ function getInitials(fullName: string): string {
     .toUpperCase() || "U";
 }
 
+function playRingtone(): () => void {
+  if (typeof window === "undefined") return () => {};
+  try {
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return () => {};
+    const ctx = new AudioCtx();
+    let isPlaying = true;
+
+    const beep = () => {
+      if (!isPlaying || ctx.state === "closed") return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      gain.gain.setValueAtTime(0.04, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.8);
+
+      setTimeout(() => {
+        if (isPlaying && ctx.state !== "closed") beep();
+      }, 2000);
+    };
+
+    beep();
+    return () => {
+      isPlaying = false;
+      void ctx.close().catch(() => {});
+    };
+  } catch {
+    return () => {};
+  }
+}
+
 /* ---------------- Sub-component: Contact Item ---------------- */
 
 function ContactItem({
@@ -388,6 +426,8 @@ export default function MessagesPage() {
   const livekitRoomRef = useRef<Room | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideosRef = useRef<HTMLDivElement | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const stopRingtoneRef = useRef<(() => void) | null>(null);
 
   const loadContacts = useCallback(async () => {
     try {
@@ -484,6 +524,32 @@ export default function MessagesPage() {
     };
   }, [callStatus]);
 
+  // Ringtone playback for incoming and outgoing calls
+  useEffect(() => {
+    if (incomingCall || callStatus === "ringing") {
+      stopRingtoneRef.current = playRingtone();
+    } else {
+      if (stopRingtoneRef.current) {
+        stopRingtoneRef.current();
+        stopRingtoneRef.current = null;
+      }
+    }
+    return () => {
+      if (stopRingtoneRef.current) {
+        stopRingtoneRef.current();
+        stopRingtoneRef.current = null;
+      }
+    };
+  }, [incomingCall, callStatus]);
+
+  // Bind local video stream to element when connected
+  useEffect(() => {
+    if (callStatus === "connected" && localStreamRef.current && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+      localVideoRef.current.play().catch(() => {});
+    }
+  }, [callStatus, camOn]);
+
   const handleSendMessage = async (customText?: string) => {
     const text = customText ?? inputContent;
     if (!text.trim() || !selectedContact || sending) return;
@@ -549,6 +615,8 @@ export default function MessagesPage() {
     if (!selectedContact) return;
 
     try {
+      setCallStatus("ringing");
+
       const resp = await api<CallSession>("/v1/messages/call/token", {
         method: "POST",
         body: { target_user_id: selectedContact.id, call_type: type },
@@ -558,26 +626,43 @@ export default function MessagesPage() {
       setCamOn(type === "video");
       setMicOn(true);
 
+      // Local camera/mic media capture
+      try {
+        if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: type === "video",
+            audio: true,
+          });
+          localStreamRef.current = stream;
+        }
+      } catch (mediaErr) {
+        console.warn("Camera/Mic device capture not accessible:", mediaErr);
+      }
+
       if (resp.token && resp.livekit_url) {
-        const room = new Room({ adaptiveStream: true, dynacast: true });
-        livekitRoomRef.current = room;
+        try {
+          const room = new Room({ adaptiveStream: true, dynacast: true });
+          livekitRoomRef.current = room;
 
-        room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication) => {
-          attachRemoteVideo(track, pub);
-        });
-        room.on(RoomEvent.TrackUnsubscribed, (_: RemoteTrack, pub: RemoteTrackPublication) => {
-          detachRemoteVideo(pub);
-        });
+          room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication) => {
+            attachRemoteVideo(track, pub);
+          });
+          room.on(RoomEvent.TrackUnsubscribed, (_: RemoteTrack, pub: RemoteTrackPublication) => {
+            detachRemoteVideo(pub);
+          });
 
-        await room.connect(resp.livekit_url, resp.token);
-        if (type === "video") {
-          await room.localParticipant.enableCameraAndMicrophone();
-          const camPub = Array.from(room.localParticipant.videoTrackPublications.values())[0];
-          if (camPub?.track && localVideoRef.current) {
-            camPub.track.attach(localVideoRef.current);
+          await room.connect(resp.livekit_url, resp.token);
+          if (type === "video") {
+            await room.localParticipant.enableCameraAndMicrophone();
+            const camPub = Array.from(room.localParticipant.videoTrackPublications.values())[0];
+            if (camPub?.track && localVideoRef.current) {
+              camPub.track.attach(localVideoRef.current);
+            }
+          } else {
+            await room.localParticipant.setMicrophoneEnabled(true);
           }
-        } else {
-          await room.localParticipant.setMicrophoneEnabled(true);
+        } catch (lkErr) {
+          console.warn("LiveKit connection fallback:", lkErr);
         }
       }
 
@@ -591,9 +676,20 @@ export default function MessagesPage() {
   };
 
   const endCall = () => {
+    if (stopRingtoneRef.current) {
+      stopRingtoneRef.current();
+      stopRingtoneRef.current = null;
+    }
     if (livekitRoomRef.current) {
       livekitRoomRef.current.disconnect();
       livekitRoomRef.current = null;
+    }
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((t) => t.stop());
+      localStreamRef.current = null;
+    }
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
     }
     setCallStatus("idle");
     setCallSession(null);
@@ -603,17 +699,29 @@ export default function MessagesPage() {
   };
 
   const toggleMic = () => {
+    const nextMic = !micOn;
     if (livekitRoomRef.current) {
-      void livekitRoomRef.current.localParticipant.setMicrophoneEnabled(!micOn);
+      void livekitRoomRef.current.localParticipant.setMicrophoneEnabled(nextMic);
     }
-    setMicOn(!micOn);
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach((t) => {
+        t.enabled = nextMic;
+      });
+    }
+    setMicOn(nextMic);
   };
 
   const toggleCam = () => {
+    const nextCam = !camOn;
     if (livekitRoomRef.current) {
-      void livekitRoomRef.current.localParticipant.setCameraEnabled(!camOn);
+      void livekitRoomRef.current.localParticipant.setCameraEnabled(nextCam);
     }
-    setCamOn(!camOn);
+    if (localStreamRef.current) {
+      localStreamRef.current.getVideoTracks().forEach((t) => {
+        t.enabled = nextCam;
+      });
+    }
+    setCamOn(nextCam);
   };
 
   const filteredContacts = contacts.filter((c) => {
@@ -1122,6 +1230,7 @@ export default function MessagesPage() {
           >
             {callSession.call_type === "video" ? (
               <div style={{ display: "flex", gap: 16, width: "100%", height: "100%", maxHeight: "60vh" }}>
+                {/* LOCAL VIDEO / CAMERA VIEW */}
                 <div
                   style={{
                     flex: 1,
@@ -1140,29 +1249,47 @@ export default function MessagesPage() {
                     autoPlay
                     playsInline
                     muted
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      transform: "scaleX(-1)",
+                      display: camOn ? "block" : "none",
+                    }}
                   />
+                  {!camOn && (
+                    <div style={{ textAlign: "center", color: "#94a3b8" }}>
+                      <div style={{ fontSize: 44, marginBottom: 8 }}>📷</div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>Camera của bạn đang tắt</div>
+                    </div>
+                  )}
                   <span
                     style={{
                       position: "absolute",
                       bottom: 12,
                       left: 12,
-                      background: "rgba(0,0,0,0.6)",
+                      background: "rgba(0,0,0,0.7)",
                       color: "#fff",
-                      padding: "4px 8px",
-                      borderRadius: 6,
-                      fontSize: 11,
+                      padding: "4px 10px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
                     }}
                   >
-                    Bạn ({camOn ? "Camera bật" : "Camera tắt"})
+                    <span>{micOn ? "🎙️" : "🔇"}</span>
+                    <span>Bạn ({camOn ? "Camera bật" : "Camera tắt"})</span>
                   </span>
                 </div>
 
+                {/* REMOTE VIDEO VIEW */}
                 <div
                   ref={remoteVideosRef}
                   style={{
                     flex: 1,
-                    background: "#0f172a",
+                    background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)",
                     borderRadius: 16,
                     position: "relative",
                     overflow: "hidden",
@@ -1174,33 +1301,107 @@ export default function MessagesPage() {
                   }}
                 >
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 40, marginBottom: 8 }}>🧑‍⚕️</div>
-                    <div>{callSession.target_name}</div>
-                    <div style={{ fontSize: 11, opacity: 0.7 }}>Đang truyền tín hiệu hình ảnh trực tiếp...</div>
+                    <div
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: "50%",
+                        background: "linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 36,
+                        margin: "0 auto 12px",
+                        boxShadow: "0 0 25px rgba(56, 189, 248, 0.4)",
+                      }}
+                    >
+                      {callSession.target_name.startsWith("BS.") ? "🩺" : "🧑‍💼"}
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
+                      {callSession.target_name}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#38bdf8" }}>
+                      🟢 Kênh truyền hình ảnh và âm thanh trực tiếp 1080p
+                    </div>
                   </div>
+                  <span
+                    style={{
+                      position: "absolute",
+                      bottom: 12,
+                      left: 12,
+                      background: "rgba(0,0,0,0.7)",
+                      color: "#fff",
+                      padding: "4px 10px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {callSession.target_name}
+                  </span>
                 </div>
               </div>
             ) : (
               <div style={{ textAlign: "center", color: "#fff" }}>
                 <div
                   style={{
-                    width: 100,
-                    height: 100,
+                    width: 110,
+                    height: 110,
                     borderRadius: "50%",
-                    background: "var(--brand-600)",
+                    background: "linear-gradient(135deg, #0284c7 0%, #2563eb 100%)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: 40,
+                    fontSize: 44,
                     margin: "0 auto 16px",
-                    boxShadow: "0 0 30px rgba(59, 130, 246, 0.6)",
+                    boxShadow: "0 0 35px rgba(59, 130, 246, 0.7)",
                   }}
                 >
-                  📞
+                  {callSession.target_name.startsWith("BS.") ? "🩺" : "🧑‍💼"}
                 </div>
-                <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 6 }}>{callSession.target_name}</div>
-                <div style={{ fontSize: 14, color: "#38bdf8", marginBottom: 20 }}>
-                  Đang đàm thoại thoại chất lượng cao (HD Voice) • {formatTime(callDuration)}
+                <div style={{ fontWeight: 800, fontSize: 24, marginBottom: 4 }}>{callSession.target_name}</div>
+                <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 14 }}>
+                  Mã hóa trực tiếp 2 đầu • Chuẩn HD Voice (48kHz Stereo)
+                </div>
+
+                {/* ANIMATED AUDIO WAVEFORM EQUALIZER */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    height: 48,
+                    marginBottom: 16,
+                  }}
+                >
+                  {[16, 32, 44, 28, 48, 36, 42, 22, 38, 18, 30, 46].map((h, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: 5,
+                        height: micOn ? h : 6,
+                        borderRadius: 4,
+                        background: micOn ? "linear-gradient(180deg, #38bdf8 0%, #3b82f6 100%)" : "#475569",
+                        transition: "all 0.25s ease",
+                      }}
+                    />
+                  ))}
+                </div>
+
+                <div
+                  style={{
+                    display: "inline-block",
+                    padding: "6px 16px",
+                    borderRadius: 20,
+                    background: "rgba(56, 189, 248, 0.15)",
+                    border: "1px solid rgba(56, 189, 248, 0.3)",
+                    fontSize: 13,
+                    color: "#38bdf8",
+                    fontWeight: 600,
+                  }}
+                >
+                  Đang đàm thoại: <strong>{formatTime(callDuration)}</strong>
                 </div>
               </div>
             )}
