@@ -5,8 +5,10 @@
  * xác nhận/từ chối kết quả TriageGuard, và thông báo kênh vai trò.
  */
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { api, getToken, getUser } from "../../lib/api";
 import { AppShell, EmptyState, ErrorBox, SuccessBox, TriageBadge } from "../../components/ui";
+
 
 interface QueueItem {
   id: string;
@@ -95,14 +97,18 @@ export default function NursePage() {
                 )}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <button className="btn btn-primary btn-sm" onClick={() => confirm(q.id, "confirmed")}>
                 ✓ Đã kiểm tra
               </button>
               <button className="btn btn-secondary btn-sm" onClick={() => confirm(q.id, "dismissed")}>
                 ✕ Không xác nhận
               </button>
+              <Link href="/messages" className="btn btn-secondary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                💬 Liên hệ người bệnh
+              </Link>
             </div>
+
           </div>
         ))}
       </div>
