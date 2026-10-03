@@ -64,3 +64,7 @@ uploads/*
 !uploads/.gitkeep
 services/api/uploads/*
 !services/api/uploads/.gitkeep
+
+# Office temp files
+~$*
+
