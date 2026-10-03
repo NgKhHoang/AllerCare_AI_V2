@@ -59,7 +59,7 @@ const ROLE_LABELS: Record<string, { label: string; badgeCls: string; icon: strin
 
 const DEMO_PERSONAS = [
   { u: "doctor1", p: "doctor123", label: "BS. Nguyễn Văn An", role: "doctor", icon: "🩺" },
-  { u: "patient1", p: "patient123", label: "NB. Đỗ Quốc Huy", role: "patient", icon: "🧑‍💼" },
+  { u: "patient1", p: "patient123", label: "NB. Lê Văn Cường", role: "patient", icon: "🧑‍💼" },
   { u: "nurse1", p: "nurse123", label: "ĐD. Trịnh Thu Hà", role: "nurse", icon: "👩‍⚕️" },
   { u: "pharmacist1", p: "pharma123", label: "DS. Nguyễn Thị Em", role: "pharmacist", icon: "💊" },
 ];
@@ -420,12 +420,16 @@ export default function MessagesPage() {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: form.toString(),
       });
-      if (!res.ok) throw new Error("Chuyển tài khoản thất bại");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Lỗi ${res.status}: Chuyển tài khoản thất bại`);
+      }
       const data = await res.json();
       localStorage.setItem("allercare_token", data.access_token);
       localStorage.setItem("allercare_user", JSON.stringify(data.user));
       setUser(data.user);
       setSelectedContact(null);
+      setLoading(true);
       const newContacts = await api<Contact[]>("/v1/messages/contacts");
       setContacts(newContacts);
       if (newContacts.length > 0) {
@@ -433,6 +437,8 @@ export default function MessagesPage() {
       }
     } catch (err) {
       alert(String(err));
+    } finally {
+      setLoading(false);
     }
   };
 
