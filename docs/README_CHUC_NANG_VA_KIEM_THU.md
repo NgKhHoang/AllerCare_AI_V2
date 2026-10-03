@@ -1,7 +1,8 @@
 # AllerCare V2 — Báo cáo Chức năng & Hướng dẫn Kiểm thử
 
-> **Cập nhật ngày:** 24 tháng 09 năm 2026  
-> **Phiên bản:** AllerCare V2 (Next.js + FastAPI + PostgreSQL trên Docker)
+> **Cập nhật ngày:** 03 tháng 10 năm 2026  
+> **Phiên bản:** AllerCare V2 (Next.js + FastAPI + PostgreSQL trên Docker / .NET Aspire)
+
 
 ---
 
