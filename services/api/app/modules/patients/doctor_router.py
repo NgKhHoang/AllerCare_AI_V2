@@ -336,7 +336,6 @@ def set_observation_status(
     return {"id": obs.id, "status": obs.status}
 
 
-@router.get("/{profile_id}/ai-summary", summary="AI tóm tắt diễn biến cho bác sĩ (chỉ tổng hợp dữ liệu hệ thống)")
 def _format_med_status(med: MedicationRecord) -> str:
     if med.status == "stopped":
         return f" — đã ngừng: {med.stop_reason}"
