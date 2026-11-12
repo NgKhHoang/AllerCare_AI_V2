@@ -6,7 +6,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from app.config import get_settings
-from app.db import Base
+from app.db import Base, _sqlalchemy_database_url
 import app.models_registry  # noqa: F401  (đăng ký toàn bộ models vào metadata)
 
 # this is the Alembic Config object, which provides
@@ -15,7 +15,7 @@ config = context.config
 
 # Lấy DATABASE_URL từ cấu hình ứng dụng (.env) — không hardcode trong ini.
 _settings = get_settings()
-config.set_main_option("sqlalchemy.url", _settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", _sqlalchemy_database_url(_settings.DATABASE_URL))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
