@@ -1,0 +1,69 @@
+# AllerCare AI V2 — Render demo environment
+#
+# The browser reaches the Next.js web service. Its /api/* rewrite proxies to
+# the private FastAPI service over Render's Singapore private network.
+# LiveKit remains optional: add its Cloud URL/key/secret in the API service's
+# Render Environment page after creating a LiveKit Cloud project.
+
+services:
+  - type: web
+    name: allercare-v2-web
+    runtime: docker
+    region: singapore
+    plan: free
+    dockerContext: apps/web
+    dockerfilePath: apps/web/Dockerfile
+    healthCheckPath: /login
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_ORIGIN
+        fromService:
+          name: allercare-v2-api
+          type: pserv
+          property: hostport
+
+  - type: pserv
+    name: allercare-v2-api
+    runtime: docker
+    region: singapore
+    plan: 0.5c-512mb
+    dockerContext: services/api
+    dockerfilePath: services/api/Dockerfile
+    autoDeployTrigger: commit
+    disk:
+      name: allercare-uploads
+      mountPath: /srv/uploads
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: allercare-v2-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        fromService:
+          name: allercare-v2-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DATA_DIR
+        value: /srv/data
+      - key: UPLOAD_DIR
+        value: /srv/uploads
+      - key: DEMO_MODE
+        value: "true"
+      - key: SEED_ON_START
+        value: "1"
+      - key: AI_PROVIDER
+        value: mock
+
+databases:
+  - name: allercare-v2-db
+    databaseName: allercare
+    user: allercare
+    postgresMajorVersion: "16"
+    region: singapore
+    plan: 0.1c-256mb
+    ipAllowList: []

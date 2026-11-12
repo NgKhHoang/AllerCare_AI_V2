@@ -19,7 +19,9 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# API_ORIGIN chỉ dùng cho rewrites lúc runtime (next start) — không ảnh hưởng build
+# Next.js ghi rewrites vào routes manifest trong lúc `npm run build`.
+# Render chuyển API_ORIGIN thành Docker build arg; local Docker Compose cũng có
+# thể truyền cùng biến này qua build args khi cần.
 ARG API_ORIGIN=http://api:8000
 ENV API_ORIGIN=$API_ORIGIN
 

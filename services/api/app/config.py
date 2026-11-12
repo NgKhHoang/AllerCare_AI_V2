@@ -45,8 +45,13 @@ def _find_key_in_candidate_files() -> str | None:
         Path(".env"),
         Path("/srv/.env"),
         Path(__file__).resolve().parents[2] / ".env",
-        Path(__file__).resolve().parents[3] / "src" / "AppHost" / "appsettings.json",
     ]
+    # In the Docker image this file is mounted at /srv/app/config.py, whose
+    # parent chain is shorter than the repository layout used in local runs.
+    # The AppHost settings are therefore optional rather than assumed.
+    module_path = Path(__file__).resolve()
+    if len(module_path.parents) > 3:
+        candidates.append(module_path.parents[3] / "src" / "AppHost" / "appsettings.json")
     for cand in candidates:
         if not cand.is_file():
             continue
@@ -84,8 +89,6 @@ class Settings(BaseSettings):
     def cors_origins(self) -> list[str]:
         origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
         defaults = [
-            "https://allercare-ai-v2-web.onrender.com",
-            "https://allercare-web.onrender.com",
             "http://localhost:3000",
             "http://127.0.0.1:3000",
         ]

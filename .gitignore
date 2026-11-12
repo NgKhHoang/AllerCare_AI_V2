@@ -38,6 +38,8 @@ yarn-error.log*
 .env.local
 .env.*.local
 *.env
+# Production secrets stay local or in Render Environment Variables.
+infra/.env.prod
 
 # OS
 .DS_Store
