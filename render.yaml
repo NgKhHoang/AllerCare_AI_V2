@@ -1,7 +1,9 @@
-# AllerCare AI V2 — Render demo environment
+# AllerCare AI V2 — $0 Render demo environment
 #
-# The browser reaches the Next.js web service. Its /api/* rewrite proxies to
-# the private FastAPI service over Render's Singapore private network.
+# Both application services use Render's free web-service plan. The browser
+# reaches Next.js, whose /api/* rewrite proxies to the API's public Render URL.
+# This configuration is for synthetic demo data only: free services can sleep,
+# uploads are ephemeral, and the free Postgres database expires after 30 days.
 # LiveKit remains optional: add its Cloud URL/key/secret in the API service's
 # Render Environment page after creating a LiveKit Cloud project.
 
@@ -21,21 +23,18 @@ services:
       - key: API_ORIGIN
         fromService:
           name: allercare-v2-api
-          type: pserv
-          property: hostport
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
 
-  - type: pserv
+  - type: web
     name: allercare-v2-api
     runtime: docker
     region: singapore
-    plan: 0.5c-512mb
+    plan: free
     dockerContext: services/api
     dockerfilePath: services/api/Dockerfile
+    healthCheckPath: /api/v1/healthz
     autoDeployTrigger: commit
-    disk:
-      name: allercare-uploads
-      mountPath: /srv/uploads
-      sizeGB: 1
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -65,5 +64,5 @@ databases:
     user: allercare
     postgresMajorVersion: "16"
     region: singapore
-    plan: 0.1c-256mb
+    plan: free
     ipAllowList: []
